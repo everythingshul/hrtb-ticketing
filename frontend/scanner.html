@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul.com Tickets — Scanner</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+    <div class="ph"><div class="ph-left"><h1>Ticket Scanner</h1><p>Scan QR codes to check in attendees</p></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start">
+
+      <!-- Left: camera + result -->
+      <div>
+        <div class="scan-box" id="qr-box">
+          <div id="qr-placeholder" style="text-align:center;padding:32px">
+            <div style="font-size:40px;opacity:.3;margin-bottom:12px"></div>
+            <p class="text2 sm">Camera will appear here</p>
+            <button class="btn btn-gold" style="margin-top:14px" onclick="startScan()">Start Camera</button>
+          </div>
+          <div id="qr-reader" style="width:100%"></div>
+        </div>
+        <div class="row" style="justify-content:center;margin-bottom:14px;gap:9px">
+          <button class="btn btn-gold" id="btn-start" onclick="startScan()">Start Camera</button>
+          <button class="btn btn-danger" id="btn-stop" style="display:none" onclick="stopScan()">Stop Camera</button>
+        </div>
+        <div id="scan-result" style="display:none"></div>
+        <!-- Manual lookup -->
+        <div class="card" style="margin-top:16px">
+          <div class="sm text2 mb8">Manual ticket lookup</div>
+          <div class="row">
+            <input id="manual-id" placeholder="TKT-XXXXXXXX" style="flex:1;font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')manualLookup()">
+            <button class="btn btn-gold" onclick="manualLookup()">Validate</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: check-in log -->
+      <div>
+        <div class="card">
+          <div class="row-between mb12">
+            <span class="sm text2">Check-in log</span>
+            <span id="log-count" class="chip">0 checked in</span>
+          </div>
+          <div id="log-list">
+            <div class="empty" style="padding:20px 0"><div class="ico" style="font-size:22px;margin-bottom:8px"></div><p>No scans yet</p></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="sm text2 mb8">Tips</div>
+          <div class="xs text2" style="line-height:2">
+            • Works on any phone browser (Safari or Chrome)<br>
+            • Point at the QR code on printed or digital ticket<br>
+            • Use manual lookup for damaged QR codes<br>
+            •  Green = valid entry &nbsp;  Red = denied<br>
+            •  Yellow = already checked in &nbsp;  Purple = unassigned
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></main>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+let scanner = null, scanning = false, logEntries = [], assignTicketId = '';
+
+function startScan() {
+  if (scanning) return;
+  document.getElementById('qr-placeholder').style.display = 'none';
+  scanner = new Html5Qrcode('qr-reader');
+  scanner.start({ facingMode:'environment' }, { fps:10, qrbox:{ width:220, height:220 } },
+    async decoded => {
+      let tid = decoded;
+      try { const p=JSON.parse(decoded); if(p.ticketId) tid=p.ticketId; } catch {}
+      scanner.pause();
+      await processTicket(tid.trim().toUpperCase());
+      setTimeout(() => scanner?.resume(), 2800);
+    }, () => {}
+  ).then(() => { scanning=true; document.getElementById('btn-start').style.display='none'; document.getElementById('btn-stop').style.display=''; })
+   .catch(e => { toast('Camera error: '+e.message,'error'); document.getElementById('qr-placeholder').style.display=''; });
+}
+
+function stopScan() {
+  scanner?.stop().catch(()=>{});
+  scanner=null; scanning=false;
+  document.getElementById('btn-start').style.display='';
+  document.getElementById('btn-stop').style.display='none';
+  document.getElementById('qr-reader').innerHTML='';
+}
+
+async function manualLookup() {
+  const id = document.getElementById('manual-id').value.trim().toUpperCase();
+  if (!id) return;
+  await processTicket(id);
+  document.getElementById('manual-id').value='';
+}
+
+async function processTicket(ticketId) {
+  try {
+    const data = await api.attendees.scan(ticketId);
+    showResult(data, ticketId);
+    logEntries.unshift({ ticketId, data, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+    renderLog();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function showResult(data, ticketId) {
+  const box = document.getElementById('scan-result');
+  box.style.display = 'block';
+  const isPreprint = data.reason === 'Not yet assigned';
+  let cls = data.valid ? 'scan-valid' : isPreprint ? 'scan-assign' : data.reason?.includes('Already') ? 'scan-warn' : 'scan-invalid';
+  let icon = data.valid ? '' : isPreprint ? '' : data.reason?.includes('Already') ? '' : '';
+  let heading = data.valid ? 'Valid — Entry granted' : data.reason;
+
+  let body = '';
+  if (data.attendee && !isPreprint) {
+    body = `<div style="margin-top:7px;font-size:13px">
+      <strong>${esc(data.attendee.first_name)} ${esc(data.attendee.last_name)}</strong>
+      ${data.attendee.table_number ? `<div>Table ${esc(data.attendee.table_number)} · Seat ${esc(data.attendee.seat_number||'—')}</div>` : ''}
+      ${data.event ? `<div style="opacity:.7">${esc(data.event.name)}</div>` : ''}
+    </div>`;
+  }
+
+  if (isPreprint) {
+    assignTicketId = ticketId;
+    body = `<div style="margin-top:10px">
+      <div class="xs mb8" style="opacity:.8">Ticket: ${ticketId}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+        <input id="as-fn" placeholder="First name *" style="padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:#fff;font-size:13px">
+        <input id="as-ln" placeholder="Last name *" style="padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:#fff;font-size:13px">
+      </div>
+      <input id="as-ph" placeholder="Phone (optional)" style="width:100%;padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(0,0,0,.2);color:#fff;font-size:13px;margin-bottom:7px">
+      <button onclick="assignAndCheckIn()" style="width:100%;background:var(--gold);color:#000;border:none;border-radius:8px;padding:9px;font-weight:600;font-size:13px;cursor:pointer">Assign & Check In →</button>
+    </div>`;
+  }
+
+  box.innerHTML = `<div class="scan-result ${cls}"><div style="font-weight:600;font-size:15px;margin-bottom:4px">${icon} ${esc(heading)}</div>${body}</div>
+    <button class="btn btn-sm btn-ghost" style="margin-top:7px" onclick="document.getElementById('scan-result').style.display='none'">Clear</button>`;
+}
+
+async function assignAndCheckIn() {
+  const fn=document.getElementById('as-fn')?.value.trim(), ln=document.getElementById('as-ln')?.value.trim(), ph=document.getElementById('as-ph')?.value.trim();
+  if (!fn||!ln) { toast('Enter first and last name','error'); return; }
+  try {
+    await api.attendees.assign({ ticketId:assignTicketId, first_name:fn, last_name:ln, phone:ph||undefined });
+    const data = await api.attendees.scan(assignTicketId);
+    showResult(data, assignTicketId);
+    logEntries[0] = { ticketId:assignTicketId, data, time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) };
+    renderLog(); toast(`Assigned & checked in: ${fn} ${ln}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function renderLog() {
+  const checkedIn = logEntries.filter(e=>e.data.valid).length;
+  document.getElementById('log-count').textContent = `${checkedIn} checked in`;
+  document.getElementById('log-list').innerHTML = logEntries.slice(0,30).map(e => {
+    const a = e.data.attendee;
+    const color = e.data.valid ? 'var(--green)' : e.data.reason?.includes('Already') ? 'var(--orange)' : 'var(--red)';
+    return `<div style="display:flex;align-items:center;gap:9px;padding:7px 10px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid var(--border);margin-bottom:6px">
+      <span style="font-size:15px">${e.data.valid?'':e.data.reason?.includes('Already')?'':''}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;color:${color}">${a?`${esc(a.first_name)} ${esc(a.last_name)}`:esc(e.ticketId)}</div>
+        ${!e.data.valid?`<div class="xs" style="color:${color};opacity:.8">${esc(e.data.reason)}</div>`:''}
+        ${a?.table_number?`<div class="xs text3">Table ${esc(a.table_number)} · Seat ${esc(a.seat_number||'—')}</div>`:''}
+      </div>
+      <span class="xs text3">${e.time}</span>
+    </div>`;
+  }).join('') || '<div class="empty" style="padding:20px 0"><div class="ico" style="font-size:22px;margin-bottom:8px"></div><p>No scans yet</p></div>';
+}
+</script>
+</body>
+</html>

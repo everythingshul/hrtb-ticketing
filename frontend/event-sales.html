@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Online Sales Settings</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+    <div class="ph mb22">
+      <div class="ph-left">
+        <h1 id="ev-title">Online Sales</h1>
+        <p id="ev-sub" class="text2"></p>
+      </div>
+    </div>
+
+    <div id="no-access" class="info-box warn" style="display:none">
+      Online sales are not enabled for your account. Please contact the Administrator.
+    </div>
+
+    <div id="sales-panel" class="card" style="display:none"></div>
+
+  </div></main>
+</div>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+const params = new URLSearchParams(location.search);
+const eventId = params.get('id');
+if (!eventId) window.location = '/events.html';
+
+let eventData = null;
+let levels = [];
+let salesSettings = null;
+
+async function load() {
+  const attData = await api.attendees.list(eventId);
+  levels = attData.levels || [];
+  eventData = attData.event;
+  if (!eventData) { window.location = '/events.html'; return; }
+  document.getElementById('ev-title').textContent = eventData.name + ' — Online Sales';
+  document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
+  document.title = `Online Sales — ${eventData.name}`;
+  localStorage.setItem('hrtb_current_event_name', eventData.name);
+  renderSidebar();
+
+  try {
+    salesSettings = await api.attendees.getSalesSettings(eventId);
+    document.getElementById('sales-panel').style.display = 'block';
+    renderSalesPanel();
+  } catch(e) {
+    document.getElementById('no-access').style.display = 'block';
+  }
+}
+
+function renderSalesPanel() {
+  const s = salesSettings;
+  const panel = document.getElementById('sales-panel');
+  const saleUrl = s.slug ? `${location.origin}/events/${s.slug}` : null;
+
+  panel.innerHTML = `
+    <div class="section-title mb12">Online Ticket Sales Settings</div>
+
+    <div class="fg mb12">
+      <label>Custom URL <span class="xs text2">(letters, numbers, hyphens only)</span></label>
+      <div class="row" style="gap:8px">
+        <span class="sm text2" style="white-space:nowrap;line-height:38px">${location.origin}/events/</span>
+        ${s.slug && Auth.user()?.role !== 'admin'
+          ? `<input value="${esc(s.slug)}" disabled style="flex:1;margin:0;background:var(--bg3);color:var(--text2)">
+             <span class="xs text2" style="line-height:38px;white-space:nowrap">🔒 Admin only</span>`
+          : `<input id="slug-input" placeholder="my-event-2025" value="${esc(s.slug||'')}" style="flex:1;margin:0">
+             <button class="btn btn-sm btn-gold" onclick="saveSlug()">Save</button>`}
+      </div>
+      ${saleUrl ? `<div class="hint mt4">
+        <a href="${saleUrl}" target="_blank" style="color:var(--cyan)">${saleUrl}</a>
+        <button class="btn btn-sm" style="margin-left:8px;font-size:11px" onclick="navigator.clipboard.writeText('${saleUrl}').then(()=>toast('Copied!'))">Copy Link</button>
+        <a href="${saleUrl}" target="_blank" class="btn btn-sm btn-gold" style="margin-left:4px;font-size:11px">Preview Page</a>
+      </div>` : '<div class="hint mt4">Set a URL slug above to generate your sales link</div>'}
+    </div>
+
+    <div class="row-between mb12" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r)">
+      <div><div style="font-size:13px;font-weight:600">Sales Active</div><div class="xs text2">Enable to make the ticket page publicly accessible</div></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="sale-enabled" ${s.sale_enabled?'checked':''} onchange="saveSaleSetting('sale_enabled',this.checked)" style="width:16px;height:16px">
+        <span class="sm" id="sale-status-label">${s.sale_enabled?'Active':'Inactive'}</span>
+      </label>
+    </div>
+
+    <div class="row-between mb16" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r)">
+      <div>
+        <div style="font-size:13px;font-weight:600">Allow Ticket Activation</div>
+        <div class="xs text2">Attendees can self-activate their ticket by entering their ticket ID on this page. Activated = confirmed attendance.</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="allow-activation" ${s.allow_activation?'checked':''} onchange="saveSaleSetting('allow_activation',this.checked)" style="width:16px;height:16px">
+        <span class="sm">${s.allow_activation?'On':'Off'}</span>
+      </label>
+    </div>
+
+    <div class="fg mb12">
+      <label>Sale Page Image <span class="xs text2">(PNG or JPG — shown at top of the sales page)</span></label>
+      <div class="row" style="gap:8px">
+        <input type="file" id="sale-image-input" accept="image/png,image/jpeg" style="flex:1;margin:0">
+        <button class="btn btn-sm btn-gold" onclick="uploadSaleImage()">Upload</button>
+      </div>
+      <div class="hint">Recommended: landscape image, at least 1200×400px</div>
+    </div>
+
+    <div class="fg mb16">
+      <label>Link Expiry <span class="xs text2">(sales page closes at this date/time)</span></label>
+      <div class="row" style="gap:8px">
+        <input type="datetime-local" id="expires-input" value="${s.expires_at?s.expires_at.slice(0,16):''}" style="flex:1;margin:0;color-scheme:light;background:#fff;color:#111;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:14px">
+        <button class="btn btn-sm btn-gold" onclick="saveExpiry()">Save</button>
+        <button class="btn btn-sm" onclick="autoSetExpiry()">Auto (+48h)</button>
+      </div>
+      <div class="hint">Auto sets the expiry to 48 hours after the event date</div>
+    </div>
+
+    <div class="section-title mb8">Ticket Levels for Sale</div>
+    <p class="sm text2 mb10">Set price (0 = free) and toggle online availability per level. Manage levels on the <a href="/event-levels.html?id=${eventId}" style="color:var(--cyan)">Ticket Levels page</a>.</p>
+    ${levels.length === 0
+      ? `<div class="info-box tip">Add ticket levels on the <a href="/event-levels.html?id=${eventId}" style="color:var(--cyan)">Ticket Levels page</a> first.</div>`
+      : levels.map(l => `
+        <div class="row mb8" style="gap:10px;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:var(--r)">
+          <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span>
+          <div style="flex:1">
+            <div class="row" style="gap:6px;align-items:center">
+              <span class="xs text2">Price: $</span>
+              <input type="number" min="0" step="0.01" placeholder="0.00"
+                value="${((l.price||0)/100).toFixed(2)}" id="price-${l.id}"
+                style="width:80px;margin:0;padding:5px 8px;font-size:13px"
+                onchange="saveLevelPrice('${l.id}',this.value)">
+            </div>
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" ${l.online_sale?'checked':''} onchange="saveLevelOnline('${l.id}',this.checked)" style="width:15px;height:15px">
+            Sell Online
+          </label>
+        </div>`).join('')}
+
+    ${s.total_online_sales > 0 ? `<div class="info-box ok mt12"><strong>${s.total_online_sales}</strong> ticket(s) sold online for this event.</div>` : ''}`;
+}
+
+async function saveSlug() {
+  const slug = document.getElementById('slug-input').value.trim();
+  try { await api.attendees.updateSalesSettings(eventId, { slug }); salesSettings.slug = slug.toLowerCase().replace(/[^a-z0-9-]/g,''); toast('URL saved'); renderSalesPanel(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveSaleSetting(key, val) {
+  try {
+    await api.attendees.updateSalesSettings(eventId, { [key]: val });
+    salesSettings[key] = val;
+    const lbl = document.getElementById('sale-status-label');
+    if (lbl) lbl.textContent = val ? 'Active' : 'Inactive';
+    toast(val ? 'Sales page is now live' : 'Sales page disabled');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function uploadSaleImage() {
+  const file = document.getElementById('sale-image-input').files[0];
+  if (!file) { toast('Select an image first', 'error'); return; }
+  try { await api.attendees.uploadSaleImage(eventId, file); toast('Image uploaded — will appear on the sales page'); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveExpiry() {
+  const val = document.getElementById('expires-input').value;
+  try { await api.attendees.updateSalesSettings(eventId, { expires_at: val || null }); toast('Expiry saved'); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function autoSetExpiry() {
+  if (!eventData?.date) { toast('Event has no date set', 'error'); return; }
+
+  // Parse date + time from the event date field
+  // Format is typically "Dec 5, 2025 · 7:00 PM" or "December 5, 2025"
+  const raw = eventData.date;
+
+  // Try to extract a parseable date string
+  // Remove day-of-week prefix like "Friday, " or "Fri, "
+  let cleaned = raw.replace(/^[A-Za-z]+,?\s*/, '').trim();
+
+  // Split on · to separate date and time parts
+  const parts = cleaned.split('·').map(s => s.trim());
+  const datePart = parts[0];
+  const timePart = parts[1] || ''; // e.g. "7:00 PM" if present
+
+  // Build a datetime string to parse
+  const dateTimeStr = timePart ? (datePart + ' ' + timePart) : datePart;
+  let d = new Date(dateTimeStr);
+  if (isNaN(d)) { d = new Date(datePart); } // fallback: date only = midnight
+
+  if (isNaN(d)) { toast('Could not parse event date: "' + raw + '"', 'error'); return; }
+
+  // d is now parsed in LOCAL time (browser). We need to treat it as EST.
+  // Get the EST offset for that date (handles DST automatically)
+  const estFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  });
+
+  // Parse the event date as if it's in EST
+  // Build an EST date string and convert to UTC
+  const year = d.getFullYear(), month = d.getMonth(), day = d.getDate();
+  const hour = d.getHours(), min = d.getMinutes();
+
+  // Create a date string in EST and parse it with timezone
+  const estStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}:00`;
+  // Use Intl to find offset between UTC and EST at that moment
+  const tempDate = new Date(estStr + 'Z'); // treat as UTC first
+  const estOffset = new Date(tempDate.toLocaleString('en-US', { timeZone: 'America/New_York' })) - tempDate;
+  const eventDateEST = new Date(tempDate.getTime() - estOffset); // actual UTC for that EST time
+
+  // Add 48 hours
+  const expiryUTC = new Date(eventDateEST.getTime() + 48 * 60 * 60 * 1000);
+  const iso = expiryUTC.toISOString().slice(0, 16);
+
+  document.getElementById('expires-input').value = iso;
+  await api.attendees.updateSalesSettings(eventId, { expires_at: iso });
+
+  const label = expiryUTC.toLocaleString('en-US', {
+    timeZone: 'America/New_York', month: 'short', day: 'numeric',
+    year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short'
+  });
+  toast('Expiry set: ' + label);
+}
+
+async function saveLevelPrice(levelId, dollars) {
+  const cents = Math.round(parseFloat(dollars||0)*100);
+  try { await api.attendees.updateLevelSales(levelId, { price: cents }); const lvl=levels.find(l=>l.id===levelId); if(lvl) lvl.price=cents; }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveLevelOnline(levelId, enabled) {
+  try { await api.attendees.updateLevelSales(levelId, { online_sale: enabled }); const lvl=levels.find(l=>l.id===levelId); if(lvl) lvl.online_sale=enabled?1:0; }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+load();
+</script>
+</body>
+</html>

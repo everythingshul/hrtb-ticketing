@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul.com Tickets — Dashboard</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main">
+    <div class="page">
+      <div class="ph mb22">
+        <div class="ph-left">
+          <h1>Dashboard</h1>
+          <p id="sub">Loading…</p>
+        </div>
+      </div>
+      <div class="stat-grid" id="stats"></div>
+      <div id="events-label" class="mb16" style="display:none"><span class="sm text2" id="events-label-text"></span></div>
+      <div id="events-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:13px"></div>
+      <div id="empty" class="empty" style="display:none">
+        <h3>No events yet</h3>
+        <p>Head to Events to create your first one</p>
+        <a href="/events.html" class="btn btn-gold" style="margin-top:14px">Go to Events</a>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+async function load() {
+  const user = Auth.user();
+  document.getElementById('sub').textContent = `Welcome back, ${user.name}`;
+
+  if (user.role === 'admin') {
+    await loadAdminDashboard();
+  } else {
+    await loadUserDashboard();
+  }
+}
+
+async function loadAdminDashboard() {
+  try {
+    // Admin sees all accounts, all events, system-wide stats
+    const [statsData, eventsData] = await Promise.all([
+      api.admin.stats().catch(() => null),
+      api.admin.events().catch(() => ({ events: [] }))
+    ]);
+
+    const allEvents = eventsData.events || [];
+    const s = statsData?.stats || {};
+
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-label">Total Accounts</div><div class="stat-val gold">${s.accounts || 0}</div></div>
+      <div class="stat"><div class="stat-label">Total Events</div><div class="stat-val">${s.events || allEvents.length}</div></div>
+      <div class="stat"><div class="stat-label">Total Attendees</div><div class="stat-val">${s.attendees || 0}</div></div>
+      <div class="stat"><div class="stat-label">Tickets Sent</div><div class="stat-val blue">${s.sent || 0}</div></div>
+      <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checkedIn || 0}</div></div>`;
+
+    if (!allEvents.length) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('events-label').style.display = 'block';
+    document.getElementById('events-label-text').textContent = `All events across all accounts (${allEvents.length})`;
+
+    document.getElementById('events-grid').innerHTML = allEvents.slice(0, 12).map(ev => `
+      <a href="/event-detail.html?id=${ev.id}" class="card" style="cursor:pointer;text-decoration:none;display:block">
+        <div class="row-between mb8">
+          <strong style="font-family:var(--font-d);font-size:15px">${esc(ev.name)}</strong>
+          <span class="chip">${ev.attendee_count || 0} guests</span>
+        </div>
+        <div class="sm text2 mb4" style="color:var(--cyan)">${esc(ev.account_name || '')}</div>
+        ${ev.date ? `<div class="sm text2 mb4">${esc(ev.date)}</div>` : ''}
+        ${ev.venue ? `<div class="sm text2">${esc(ev.venue)}</div>` : ''}
+      </a>`).join('');
+  } catch(e) {
+    document.getElementById('stats').innerHTML = `<div class="info-box warn">Dashboard error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function loadUserDashboard() {
+  try {
+    const { events } = await api.events.list();
+    const total  = events.length;
+    const totalA = events.reduce((s,e) => s + (e.stats?.total   || 0), 0);
+    const totalS = events.reduce((s,e) => s + (e.stats?.sent    || 0) + (e.stats?.checked || 0), 0);
+    const totalC = events.reduce((s,e) => s + (e.stats?.checked || 0), 0);
+
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-label">Events</div><div class="stat-val gold">${total}</div></div>
+      <div class="stat"><div class="stat-label">Attendees</div><div class="stat-val">${totalA}</div></div>
+      <div class="stat"><div class="stat-label">Tickets Sent</div><div class="stat-val blue">${totalS}</div></div>
+      <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${totalC}</div></div>`;
+
+    if (!events.length) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('events-label').style.display = 'block';
+    document.getElementById('events-label-text').textContent = 'Your events';
+
+    document.getElementById('events-grid').innerHTML = events.slice(0, 9).map(ev => `
+      <a href="/event-detail.html?id=${ev.id}" class="card" style="cursor:pointer;text-decoration:none;display:block">
+        <div class="row-between mb8">
+          <strong style="font-family:var(--font-d);font-size:15px">${esc(ev.name)}</strong>
+          <span class="chip">${ev.stats?.total || 0} guests</span>
+        </div>
+        ${ev.date  ? `<div class="sm text2 mb4">${esc(ev.date)}</div>`  : ''}
+        ${ev.venue ? `<div class="sm text2 mb8">${esc(ev.venue)}</div>` : ''}
+        <div class="row" style="gap:5px;margin-top:8px">
+          ${ev.stats?.checked ? `<span class="badge badge-checked">${ev.stats.checked} in</span>`     : ''}
+          ${ev.stats?.sent    ? `<span class="badge badge-sent">${ev.stats.sent} sent</span>`         : ''}
+          ${ev.stats?.pending ? `<span class="badge badge-pending">${ev.stats.pending} pending</span>` : ''}
+        </div>
+      </a>`).join('');
+  } catch(e) {
+    document.getElementById('stats').innerHTML = `<div class="info-box warn">Could not load dashboard: ${esc(e.message)}</div>`;
+  }
+}
+
+load();
+RealtimeSync.register(load, 30000);
+</script>
+</body>
+</html>

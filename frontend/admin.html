@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul.com Tickets — Admin</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+    <div class="ph">
+      <div class="ph-left"><h1>Admin Panel</h1><p>Manage all accounts and events</p></div>
+      <div class="ph-actions">
+        <input id="search" placeholder="Search…" style="width:180px" oninput="onSearch()" autocomplete="off" type="search">
+        <button class="btn btn-sm" onclick="openNewEventModal()">+ New Event</button>
+        <button class="btn btn-gold" onclick="openInviteModal()">Invite New User</button>
+      </div>
+    </div>
+    <div class="stat-grid" id="stats"></div>
+
+    <div class="row mb16" style="gap:8px">
+      <button class="btn btn-sm" id="tab-accounts" onclick="setTab('accounts')">Accounts</button>
+      <button class="btn btn-sm btn-ghost" id="tab-events" onclick="setTab('events')">All Events</button>
+      <button class="btn btn-sm btn-ghost" id="tab-backup" onclick="setTab('backup')"> Backup &amp; Restore</button>
+      <button class="btn btn-sm btn-ghost" id="tab-trash" onclick="setTab('trash')">Trash</button>
+    </div>
+
+    <div id="tab-accounts-content"></div>
+    <div id="tab-events-content" style="display:none"></div>
+    <div id="tab-trash-content" style="display:none"></div>
+    <div id="tab-backup-content" style="display:none">
+
+      <!-- Full Excel Export -->
+      <div class="card mb16">
+        <div class="section-title" style="margin-bottom:8px"> Export Everything to Excel</div>
+        <p class="sm text2" style="margin-bottom:6px">Downloads one Excel file with every account, event, and attendee clearly organized:</p>
+        <div style="margin:10px 0 14px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);font-size:13px;line-height:2">
+           <strong>Summary sheet</strong> — totals for every account at a glance<br>
+           <strong>All Logins sheet</strong> — every user, their role, and what they have access to<br>
+           <strong>One sheet per account</strong> — their team members and events overview<br>
+           <strong>One sheet per event</strong> — full attendee list with ticket IDs, table, seat, check-in time
+        </div>
+        <div class="row" style="gap:10px;align-items:center">
+          <button class="btn btn-gold" onclick="doExcelExport()"> Download Full Excel Export</button>
+          <span class="xs text2">Opens directly in Excel or Google Sheets</span>
+        </div>
+      </div>
+
+      <!-- Backup -->
+      <div class="card mb16">
+        <div class="section-title" style="margin-bottom:8px"> Export Full Backup</div>
+        <p class="sm text2" style="margin-bottom:14px">Downloads everything — all accounts, passwords, events, attendees, tickets, scanner PINs — as one small JSON file. Save it to Google Drive. Takes 1 second.</p>
+        <div class="row" style="gap:10px;align-items:center">
+          <button class="btn btn-gold" onclick="doBackup()"> Download Backup Now</button>
+          <span class="xs text2">Recommended: do this before pausing your Render plan</span>
+        </div>
+      </div>
+
+      <!-- Restore -->
+      <div class="card mb16">
+        <div class="section-title" style="margin-bottom:8px"> Restore From Backup</div>
+        <p class="sm text2" style="margin-bottom:6px">Upload a backup file to restore everything. Existing data is kept — only missing records are added. All passwords are preserved exactly as they were.</p>
+        <div class="info-box warn mb14" style="margin-top:10px">
+           After restoring, all users will need to log in again. Their passwords are the same — just the session expires.
+        </div>
+        <div class="upload-zone" style="padding:24px" onclick="document.getElementById('restore-file').click()">
+          <div style="font-size:24px;margin-bottom:8px"></div>
+          <h3 style="font-size:14px;margin-bottom:4px">Click to select backup file</h3>
+          <p>hrtb-backup-YYYY-MM-DD.json</p>
+        </div>
+        <input type="file" id="restore-file" accept=".json" style="display:none" onchange="doRestore(event)">
+        <div id="restore-result" style="margin-top:12px;display:none"></div>
+      </div>
+
+      <!-- Maintenance mode -->
+      <div class="card">
+        <div class="section-title" style="margin-bottom:8px"> Maintenance Mode</div>
+        <p class="sm text2" style="margin-bottom:14px">
+          When turned on, regular users see a friendly "we're updating" message instead of the login page.
+          You can still access the admin panel at <strong style="color:var(--text);font-family:monospace">/admin.html</strong> to restore a backup and turn it back off.
+        </p>
+        <div class="row" style="gap:12px;align-items:center">
+          <button class="btn btn-danger" id="btn-maintenance-on" onclick="setMaintenance(true)">Turn ON Maintenance Mode</button>
+          <button class="btn btn-success" id="btn-maintenance-off" onclick="setMaintenance(false)" style="display:none">Turn OFF Maintenance Mode</button>
+          <span id="maintenance-status" class="chip">Checking…</span>
+        </div>
+      </div>
+
+    </div>
+</div>
+
+<!-- Create account modal -->
+<div id="modal-create" class="backdrop" style="display:none">
+  <div class="modal"><div class="modal-hd"><h2>Invite New Account</h2><button class="modal-x" onclick="hideModal('modal-create')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Fill in the person's name and email. They will receive an invite link and set their own password.</p>
+    <div class="form-row">
+      <div class="fg"><label>Full name *</label><input id="ca-name" placeholder="Jane Doe" autocomplete="off"></div>
+      <div class="fg"><label>Email address *</label><input id="ca-email" type="email" placeholder="jane@example.com"></div>
+    </div>
+    <div class="fg">
+      <label>Role</label>
+      <select id="ca-role">
+        <option value="user">User — manages their own events</option>
+        <option value="admin">System Admin — full access to everything</option>
+      </select>
+    </div>
+    <div id="ca-admin-warn" class="modal-warn-banner" style="display:none">
+      <div class="wico"></div>
+      <div><strong>Warning:</strong> System Admin gives this person full access to ALL accounts and ALL data. Only invite people you fully trust.</div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-create');clearInviteForm()">Cancel</button><button class="btn btn-gold" onclick="createAccount()">Send Invite ↗</button></div>
+  </div>
+</div>
+
+<!-- Edit Event Modal (admin only) -->
+<div id="modal-edit-event" class="backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-hd"><h2>Edit Event</h2><button class="modal-x" onclick="hideModal('modal-edit-event')">&#x2715;</button></div>
+    <div id="ee-account-badge" class="info-box tip mb12" style="display:none"></div>
+    <div class="fg"><label>Event Name *</label><input id="ee-name" placeholder="Event name"></div>
+    <div class="form-row">
+      <div class="fg"><label>Date</label><input id="ee-date" type="date" style="color-scheme:light;background:#fff;color:#111;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:14px;width:100%"></div>
+      <div class="fg"><label>Time (optional)</label><input id="ee-time" type="time" style="color-scheme:light;background:#fff;color:#111;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:14px;width:100%"></div>
+    </div>
+    <div class="fg"><label>Venue *</label><input id="ee-venue" placeholder="Venue / Address"></div>
+    <div class="fg"><label>Description (optional)</label><textarea id="ee-desc"></textarea></div>
+    <div class="section-title mt12 mb8">Stripe Key (Admin Only)</div>
+    <div class="row mb8" style="gap:8px">
+      <input id="ee-stripe-key" type="password" placeholder="sk_live_... (leave blank to use system key)" style="flex:1;margin:0">
+      <button class="btn btn-sm btn-gold" onclick="saveEventStripeKey()">Save Key</button>
+    </div>
+    <div class="hint mb12">System-wide key is set via STRIPE_SECRET_KEY env var. Set per-event key here to use a different Stripe account for this event.</div>
+    <div id="ee-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-edit-event')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveEditEvent()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Event modal (admin — can assign to any account) -->
+<div id="modal-new-event" class="backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-hd"><h2>New Event</h2><button class="modal-x" onclick="hideModal('modal-new-event')">&#x2715;</button></div>
+    <div class="fg">
+      <label>Account *</label>
+      <select id="ne-account"></select>
+      <div class="hint">The event will be created under this account</div>
+    </div>
+    <div class="fg"><label>Event name *</label><input id="ne-name" placeholder="Annual Gala 2025" autocomplete="off"></div>
+    <div class="form-row">
+      <div class="fg"><label>Date *</label><input id="ne-date" type="date" style="color-scheme:light;background:#fff;color:#111;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:14px;width:100%"></div>
+      <div class="fg"><label>Time (optional)</label><input id="ne-time" type="time" style="color-scheme:light;background:#fff;color:#111;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:14px;width:100%"></div>
+    </div>
+    <div class="fg"><label>Venue *</label><input id="ne-venue" placeholder="Grand Ballroom" autocomplete="off"></div>
+    <div class="fg"><label>Description (optional)</label><textarea id="ne-desc" placeholder="Any notes…"></textarea></div>
+    <div id="ne-err" style="display:none" class="info-box warn mb4"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-new-event')">Cancel</button>
+      <button class="btn btn-gold" onclick="createAdminEvent()">Create Event</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage account modal -->
+<div id="modal-manage" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-manage')">
+  <div class="modal modal-lg"><div class="modal-hd"><h2 id="manage-title">Manage Account</h2><button class="modal-x" onclick="hideModal('modal-manage')">&#x2715;</button></div>
+    <div id="manage-body"></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+if (!Auth.requireAdmin()) throw 0;
+renderSidebar();
+
+let accounts = [], events = [], curTab = 'accounts', currentManageId = '';
+
+function buildStatsHTML(s) {
+  return `
+    <div class="stat"><div class="stat-label">Accounts</div><div class="stat-val gold">${s.accounts}</div></div>
+    <div class="stat"><div class="stat-label">Events</div><div class="stat-val">${s.events}</div></div>
+    <div class="stat"><div class="stat-label">Attendees</div><div class="stat-val">${s.attendees}</div></div>
+    <div class="stat"><div class="stat-label">Tickets Sent</div><div class="stat-val blue">${s.sent}</div></div>
+    <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checkedIn}</div></div>`;
+}
+
+async function load() {
+  try {
+    const sData = await api.admin.stats();
+    document.getElementById('stats').innerHTML = buildStatsHTML(sData.stats);
+  } catch(e) { console.error('stats error', e); }
+  try {
+    const aData = await api.admin.accounts();
+    accounts = aData.accounts;
+    renderAccounts();
+  } catch(e) { console.error('accounts error', e); document.getElementById('tab-accounts-content').innerHTML='<div class="info-box warn">Could not load accounts: '+e.message+'</div>'; }
+  try {
+    const eData = await api.admin.events();
+    events = eData.events;
+  } catch(e) { console.error('events error', e); }
+}
+
+function onSearch() {
+  if (curTab === 'accounts') renderAccounts();
+  else if (curTab === 'events') renderEvents();
+}
+
+function setTab(t) {
+  curTab = t;
+  const srch = document.getElementById('search');
+  if (srch) srch.value = '';
+  document.getElementById('tab-accounts-content').style.display = t==='accounts' ? '' : 'none';
+  document.getElementById('tab-events-content').style.display = t==='events' ? '' : 'none';
+  document.getElementById('tab-backup-content').style.display = t==='backup' ? '' : 'none';
+  document.getElementById('tab-trash-content').style.display = t==='trash' ? '' : 'none';
+  document.getElementById('tab-accounts').className = `btn btn-sm${t==='accounts'?' btn-gold':''}`;
+  document.getElementById('tab-events').className = `btn btn-sm${t==='events'?' btn-gold':' btn-ghost'}`;
+  document.getElementById('tab-backup').className = `btn btn-sm${t==='backup'?' btn-gold':' btn-ghost'}`;
+  document.getElementById('tab-trash').className = `btn btn-sm${t==='trash'?' btn-gold':' btn-ghost'}`;
+  if (t === 'events') renderEvents();
+  if (t === 'backup') loadMaintenanceStatus();
+  if (t === 'trash') loadTrash();
+}
+
+function renderAccounts() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const list = accounts.filter(a => !q || `${a.name} ${a.email}`.toLowerCase().includes(q));
+  if (!list.length) { document.getElementById('tab-accounts-content').innerHTML='<div class="empty"><div class="ico"></div><h3>No accounts found</h3></div>'; return; }
+  document.getElementById('tab-accounts-content').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Events</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(a=>`<tr>
+      <td><strong>${esc(a.name)}</strong></td>
+      <td class="text2">${esc(a.email)}</td>
+      <td>${badgeHTML(a.role)}</td>
+      <td>${a.eventCount}</td>
+      <td><span class="badge ${a.is_active?'badge-checked':'badge-deactivated'}">${a.is_active?'Active':'Disabled'}</span></td>
+      <td class="text2 sm">${new Date(a.created_at).toLocaleDateString()}</td>
+      <td><div class="row" style="gap:4px">
+        <button class="btn btn-sm" onclick="openManage('${a.id}')">Manage</button>
+        <button class="btn btn-sm ${a.is_active?'btn-danger':'btn-success'}" onclick="toggleAccount('${a.id}')">${a.is_active?'Disable':'Enable'}</button>
+      </div></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+  makeSortable(document.querySelector('#tab-accounts-content table'));
+}
+
+function renderEvents() {
+  const el = document.getElementById('tab-events-content');
+  if (!el) return;
+  if (!events.length) { el.innerHTML='<div class="empty"><h3>No events yet</h3></div>'; return; }
+  const q = document.getElementById('search').value.toLowerCase();
+  const filteredEvs = q ? events.filter(e => `${e.name} ${e.account_name} ${e.venue||''}`.toLowerCase().includes(q)) : events;
+  if (!filteredEvs.length) { document.getElementById('tab-events-content').innerHTML='<div class="empty"><h3>No events found</h3></div>'; return; }
+  document.getElementById('tab-events-content').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Account</th><th>Date</th><th>Venue</th><th>Attendees</th><th>Created</th><th></th></tr></thead>
+    <tbody>${filteredEvs.map(e=>`<tr style="cursor:pointer" onclick="window.open('/event-detail.html?id=${e.id}','_blank')">
+      <td><strong>${esc(e.name)}</strong></td>
+      <td class="text2">${esc(e.account_name)}</td>
+      <td class="text2">${esc(e.date||'—')}</td>
+      <td class="text2">${esc(e.venue||'—')}</td>
+      <td>${e.attendee_count}</td>
+      <td class="text2 sm">${new Date(e.created_at).toLocaleDateString()}</td>
+      <td><div class="row" style="gap:4px"><button class="btn btn-sm" onclick="arguments[0].stopPropagation();window.open('/event-detail.html?id=${e.id}','_blank')">Open</button><button class="btn btn-sm btn-blue" onclick="arguments[0].stopPropagation();openEditEvent('${e.id}','${esc(e.name)}','${esc(e.date||'')}','${esc(e.venue||'')}','${esc(e.description||'')}','${esc(e.account_name||'')}')">Edit</button></div></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+  makeSortable(document.querySelector('#tab-events-content table'));
+}
+
+function openManage(id) {
+  currentManageId = id;
+  const a = accounts.find(x=>x.id===id);
+  document.getElementById('manage-title').textContent = a.name;
+  renderManageBody(a);
+  showModal('modal-manage');
+}
+
+function renderManageBody(a) {
+  const isSelf = a.id === Auth.user()?.id;
+  document.getElementById('manage-body').innerHTML = `
+    <div class="row mb12" style="gap:6px;flex-wrap:wrap">
+      <span class="chip">${esc(a.email)}</span>
+      ${badgeHTML(a.role)}
+      <span class="badge ${a.is_active?'badge-checked':'badge-deactivated'}">${a.is_active?'Active':'Disabled'}</span>
+      <span class="chip">${a.eventCount} events</span>
+    </div>
+    <div class="card mb12" style="padding:12px 14px;background:var(--bg3)">
+      <div class="section-title mb8">Contact Information</div>
+      <div class="form-row" style="gap:8px;margin-bottom:6px">
+        <div><span class="xs text2">First Name</span><div style="font-size:13px">${esc(a.first_name||'—')}</div></div>
+        <div><span class="xs text2">Last Name</span><div style="font-size:13px">${esc(a.last_name||'—')}</div></div>
+      </div>
+      <div class="form-row" style="gap:8px;margin-bottom:0">
+        <div><span class="xs text2">Phone</span><div style="font-size:13px">${esc(a.phone||'—')}</div></div>
+        <div><span class="xs text2">Company</span><div style="font-size:13px">${esc(a.company||'—')}</div></div>
+      </div>
+    </div>
+    <div class="section-title">Role</div>
+    <div id="admin-warn-${a.id}" class="modal-warn-banner" style="display:none">
+      <div class="wico"></div>
+      <div><strong>Warning:</strong> Promoting to System Admin gives this person full access to ALL accounts, ALL events, and ALL data in the system. Only do this for people you fully trust.</div>
+    </div>
+    <div class="row mb16" style="gap:6px">
+      <button class="btn btn-sm ${a.role==='admin'?'btn-gold':''}" onclick="promptSetAdmin('${a.id}','${esc(a.name)}')">System Admin</button>
+      <button class="btn btn-sm ${a.role==='user'?'btn-gold':''}" onclick="setRole('${a.id}','user')"> User</button>
+    </div>
+    <div class="section-title">Access</div>
+    <div class="row mb16" style="gap:6px">
+      ${!isSelf ? `
+      <button class="btn btn-sm ${a.is_active?'btn-danger':'btn-success'}" onclick="toggleAccount('${a.id}')">
+        ${a.is_active ? 'Disable Account' : 'Enable Account'}
+      </button>
+      <button class="btn btn-sm btn-danger" onclick="deleteAccount('${a.id}','${esc(a.name)}')">Delete Account</button>
+      ` : '<span class="xs text2">Cannot modify your own account here</span>'}
+    </div>
+    <div class="section-title">Online Sales Permission</div>
+    <div class="row-between mb16" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:600">Allow this account to sell tickets online</div>
+        <div class="xs text2">Enables the Online Sales panel on their events. Requires Stripe to be configured.</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="can-sell-online-toggle" ${a.can_sell_online?'checked':''} onchange="setCanSellOnline('${a.id}',this.checked)" style="width:16px;height:16px;cursor:pointer">
+        <span class="sm" style="color:${a.can_sell_online?'var(--green)':'var(--red)'}">${a.can_sell_online?'Enabled':'Disabled'}</span>
+      </label>
+    </div>
+    <div class="section-title">Email Sending Permission</div>
+    <div class="row-between mb16" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:600">Allow this account to send ticket emails</div>
+        <div class="xs text2">By default accounts cannot send emails. Enable to allow ticket delivery.</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="can-send-email-toggle" ${a.can_send_email?'checked':''} onchange="setCanSendEmail('${a.id}',this.checked)" style="width:16px;height:16px;cursor:pointer">
+        <span class="sm" style="color:${a.can_send_email?'var(--green)':'var(--red);'}">${a.can_send_email?'Allowed':'Blocked'}</span>
+      </label>
+    </div>
+    <div class="section-title">Reply-To Email for Tickets</div>
+    <p class="sm text2 mb8">Ticket emails sent from this account will show this as the reply-to address. Defaults to the account email if left empty.</p>
+    <div class="row mb16" style="gap:8px">
+      <input id="reply-to-input" type="email" placeholder="${esc(a.email)} (default)" value="${esc(a.reply_to||'')}" style="flex:1">
+      <button class="btn btn-sm btn-gold" onclick="saveReplyTo('${a.id}')">Save</button>
+    </div>
+    <div class="section-title">Event Limit</div>
+    <p class="sm text2 mb8">Maximum number of events this account can create. Default is 1.</p>
+    <div class="row mb16" style="gap:8px">
+      <input id="max-events-input" type="number" min="1" max="999" value="${a.max_events ?? 1}" style="width:80px">
+      <button class="btn btn-sm btn-gold" onclick="saveMaxEvents('${a.id}')">Save</button>
+      <span class="xs text2">Current events: ${a.eventCount}</span>
+    </div>
+    <div class="section-title">Reset Password</div>
+    <div class="row mb4" style="gap:8px">
+      <input id="new-pw" type="password" placeholder="New password (min. 8 chars)" style="flex:1">
+      <button class="btn btn-sm btn-warn" onclick="resetPassword('${a.id}')">Reset Password</button>
+    </div>
+    <div class="hint mb16">User logs in again with the new password</div>
+    <div class="section-title">Team Members (${(a.members||[]).length})</div>
+    ${a.members?.length ? a.members.map(m=>`
+    <div class="row-between mb8" style="padding:9px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--navy)">${esc(m.name)}</div>
+        <div class="xs text2">${esc(m.email)} · ${m.role}</div>
+      </div>
+      <div class="row" style="gap:5px">
+        <button class="btn btn-sm btn-danger" onclick="removeMember('${a.id}','${m.id}')">Remove</button>
+      </div>
+    </div>`).join('') : '<p class="sm text2 mb12">No team members yet</p>'}
+    <div class="divider"></div>
+    <div class="section-title">Invite Member</div>
+    <div class="row" style="gap:8px">
+      <input id="inv-em" type="email" placeholder="email@example.com" style="flex:1">
+      <select id="inv-role" style="width:130px"><option value="member">Member</option><option value="owner">Owner</option></select>
+      <button class="btn btn-gold btn-sm" onclick="inviteMember('${a.id}')">Invite ↗</button>
+    </div>`;
+}
+
+// Show warning if admin role selected
+document.addEventListener('DOMContentLoaded', () => {
+  const roleSelect = document.getElementById('ca-role');
+  if (roleSelect) {
+    roleSelect.addEventListener('change', () => {
+      const warn = document.getElementById('ca-admin-warn');
+      if (warn) warn.style.display = roleSelect.value === 'admin' ? 'flex' : 'none';
+    });
+  }
+  // Fix backdrop click for modal-create
+  const mc = document.getElementById('modal-create');
+  if (mc) mc.addEventListener('click', e => { if (e.target === mc) hideModal('modal-create'); });
+  // Fix backdrop click for modal-manage
+  const mm = document.getElementById('modal-manage');
+  if (mm) mm.addEventListener('click', e => { if (e.target === mm) hideModal('modal-manage'); });
+  // Prevent search from autofilling with saved emails
+  const srch = document.getElementById('search');
+  if (srch) { srch.setAttribute('autocomplete', 'off'); srch.setAttribute('type', 'search'); }
+});
+
+function openInviteModal() {
+  clearInviteForm();
+  showModal('modal-create');
+  setTimeout(() => document.getElementById('ca-email')?.focus(), 100);
+}
+
+function clearInviteForm() {
+  const email = document.getElementById('ca-email');
+  const role = document.getElementById('ca-role');
+  const warn = document.getElementById('ca-admin-warn');
+  const nameEl = document.getElementById('ca-name');
+  if (nameEl) nameEl.value = '';
+  if (email) email.value = '';
+  if (role) role.value = 'user';
+  if (warn) warn.style.display = 'none';
+}
+
+async function createAccount() {
+  const email = document.getElementById('ca-email').value.trim();
+  const role = document.getElementById('ca-role').value;
+  if (!email) { toast('Email address required', 'error'); return; }
+
+  if (role === 'admin') {
+    const confirmed = confirm(` ADMIN WARNING\n\nYou are inviting "${email}" as a System Admin.\n\nThis gives them full access to ALL accounts and ALL data.\n\nAre you absolutely sure?`);
+    if (!confirmed) return;
+  }
+
+  try {
+    const name = document.getElementById('ca-name').value.trim();
+    if (!name) { toast('Name is required', 'error'); return; }
+    await api.admin.inviteNewAccount({ email, name, role });
+    toast(`Invite sent to ${email}`);
+    hideModal('modal-create');
+    clearInviteForm();
+    // Instantly reload accounts list without full page refresh
+    const aData = await api.admin.accounts();
+    accounts = aData.accounts;
+    renderAccounts();
+    const sData = await api.admin.stats();
+    document.getElementById('stats').innerHTML = buildStatsHTML(sData.stats);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function promptSetAdmin(id, name) {
+  // Show the warning banner first
+  const warn = document.getElementById(`admin-warn-${id}`);
+  if (warn) warn.style.display = 'flex';
+  // Ask for confirmation with a typed confirm
+  const confirmed = confirm(` ADMIN WARNING\n\nYou are about to give "${name}" full System Admin access.\n\nThis gives them:\n• Full access to ALL accounts\n• Full access to ALL events and data\n• Ability to delete and modify anything\n\nAre you absolutely sure?`);
+  if (!confirmed) { if (warn) warn.style.display = 'none'; return; }
+  setRole(id, 'admin');
+}
+
+async function deleteAccount(id, name) {
+  const confirmed = confirm(` DELETE ACCOUNT\n\nYou are about to permanently delete "${name}".\n\nThis will:\n• Remove their login\n• Remove them from all team memberships\n• Keep their events and attendees\n\nThis CANNOT be undone. Are you sure?`);
+  if (!confirmed) return;
+  try {
+    await api.admin.deleteAccount(id);
+    toast(`${name} has been deleted`);
+    hideModal('modal-manage');
+    // Remove from local list instantly
+    accounts = accounts.filter(a => a.id !== id);
+    renderAccounts();
+    const sData = await api.admin.stats();
+    document.getElementById('stats').innerHTML = buildStatsHTML(sData.stats);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function resetPassword(userId) {
+  const pw = document.getElementById('new-pw')?.value.trim();
+  if (!pw) { toast('Enter a new password', 'error'); return; }
+  if (pw.length < 8) { toast('Password must be at least 8 characters', 'error'); return; }
+  if (!confirm('Reset this user\'s password?')) return;
+  try {
+    await api.auth.resetPassword(userId, pw);
+    toast('Password reset successfully');
+    document.getElementById('new-pw').value = '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function setCanSellOnline(accountId, enabled) {
+  try {
+    await fetch(`/api/sales/account/${accountId}/enable`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.token()}` },
+      body: JSON.stringify({ enabled })
+    });
+    const acc = accounts.find(a => a.id === accountId);
+    if (acc) acc.can_sell_online = enabled ? 1 : 0;
+    const lbl = document.querySelector('#can-sell-online-toggle + span');
+    if (lbl) { lbl.textContent = enabled ? 'Enabled' : 'Disabled'; lbl.style.color = enabled ? 'var(--green)' : 'var(--red)'; }
+    toast(enabled ? 'Online sales enabled' : 'Online sales disabled');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function setCanSendEmail(accountId, enabled) {
+  try {
+    await fetch(`/api/admin/accounts/${accountId}/can-send-email`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.token()}` },
+      body: JSON.stringify({ enabled })
+    });
+    const acc = accounts.find(a => a.id === accountId);
+    if (acc) acc.can_send_email = enabled ? 1 : 0;
+    const lbl = document.querySelector('#can-send-email-toggle + span');
+    if (lbl) { lbl.textContent = enabled ? 'Allowed' : 'Blocked'; lbl.style.color = enabled ? 'var(--green)' : 'var(--red)'; }
+    toast(enabled ? 'Email sending enabled' : 'Email sending blocked');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveMaxEvents(accountId) {
+  const val = parseInt(document.getElementById('max-events-input')?.value);
+  if (isNaN(val) || val < 1) { toast('Must be at least 1', 'error'); return; }
+  try {
+    await api.admin.setMaxEvents(accountId, val);
+    const acc = accounts.find(a => a.id === accountId);
+    if (acc) acc.max_events = val;
+    toast(`Event limit set to ${val}`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveReplyTo(accountId) {
+  const val = document.getElementById('reply-to-input')?.value.trim();
+  try {
+    await api.admin.setReplyTo(accountId, val || null);
+    toast(val ? `Reply-to set to ${val}` : 'Reply-to cleared — will use account email');
+    // Update local data
+    const acc = accounts.find(a => a.id === accountId);
+    if (acc) acc.reply_to = val || null;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleAccount(id) {
+  try {
+    const r = await api.admin.toggleAccount(id);
+    toast(r.is_active ? 'Account enabled' : 'Account disabled');
+    // Update locally without full reload
+    const acc = accounts.find(a => a.id === id);
+    if (acc) acc.is_active = r.is_active ? 1 : 0;
+    renderAccounts();
+    // Refresh manage modal if open
+    if (currentManageId === id) openManage(id);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function setRole(id, role) {
+  try {
+    await api.admin.setRole(id, role);
+    toast(`Role set to ${role} — user will be logged out automatically`);
+    // Update locally
+    const acc = accounts.find(a => a.id === id);
+    if (acc) acc.role = role;
+    renderAccounts();
+    if (currentManageId === id) openManage(id);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function removeMember(accountId, userId) {
+  if (!confirm('Remove this member from the account?')) return;
+  try {
+    await api.admin.removeMember(accountId, userId);
+    toast('Member removed');
+    // Refresh that account's member list
+    const freshAccounts = await api.admin.accounts();
+    accounts = freshAccounts.accounts;
+    renderAccounts();
+    if (currentManageId === accountId) openManage(accountId);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function inviteMember(accountId) {
+  const email = document.getElementById('inv-em').value.trim();
+  const role = document.getElementById('inv-role').value;
+  if (!email) { toast('Enter an email', 'error'); return; }
+  try {
+    await api.auth.invite({ email, accountId, role });
+    toast(`Invite sent to ${email}`);
+    document.getElementById('inv-em').value = '';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Excel Export ──────────────────────────────────────────
+function doExcelExport() {
+  const token = localStorage.getItem('hrtb_token');
+  const a = document.createElement('a');
+  a.href = `/api/admin/export-excel?token=${token}`;
+  a.click();
+  toast('Preparing Excel export…');
+}
+
+// ── Backup ────────────────────────────────────────────────
+function doBackup() {
+  const token = localStorage.getItem('hrtb_token');
+  const a = document.createElement('a');
+  a.href = '/api/admin/backup';
+  // Pass token via query param for file download
+  a.href = `/api/admin/backup?token=${token}`;
+  a.click();
+  toast('Backup downloading…');
+}
+
+// ── Restore ───────────────────────────────────────────────
+async function doRestore(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const resultEl = document.getElementById('restore-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="info-box tip">Reading backup file…</div>';
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.version || !data.accounts) {
+      resultEl.innerHTML = '<div class="info-box warn">Invalid backup file. Make sure you are uploading an EverythingShul backup JSON file.</div>';
+      return;
+    }
+    resultEl.innerHTML = '<div class="info-box tip">Restoring… please wait…</div>';
+    const r = await api.admin.restore(data);
+    resultEl.innerHTML = `<div class="info-box ok">
+       Restore complete!<br>
+      Accounts restored: ${r.restored.accounts}<br>
+      Events restored: ${r.restored.events}<br>
+      Attendees restored: ${r.restored.attendees}<br>
+      Members restored: ${r.restored.members}<br>
+      <br>
+      All passwords are preserved. Users need to log in again.
+    </div>`;
+    toast('Restore complete!');
+    await load();
+  } catch(err) {
+    resultEl.innerHTML = `<div class="info-box warn">Restore failed: ${esc(err.message)}</div>`;
+    toast(err.message, 'error');
+  }
+}
+
+// ── Maintenance mode ──────────────────────────────────────
+async function loadMaintenanceStatus() {
+  try {
+    const { maintenance } = await api.admin.maintenanceStatus();
+    updateMaintenanceUI(maintenance);
+  } catch {}
+}
+
+function updateMaintenanceUI(on) {
+  document.getElementById('maintenance-status').textContent = on ? ' ON — users see maintenance page' : ' OFF — site is live';
+  document.getElementById('btn-maintenance-on').style.display = on ? 'none' : '';
+  document.getElementById('btn-maintenance-off').style.display = on ? '' : 'none';
+}
+
+async function setMaintenance(enabled) {
+  const label = enabled ? 'turn ON maintenance mode' : 'turn OFF maintenance mode';
+  if (!confirm(`Are you sure you want to ${label}?`)) return;
+  try {
+    await api.admin.setMaintenance(enabled);
+    updateMaintenanceUI(enabled);
+    toast(enabled ? 'Maintenance mode ON — users see holding page' : 'Maintenance mode OFF — site is live');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+
+
+load();
+
+// ── Edit Event (admin only) ───────────────────────────────
+let editingEventId = null;
+
+function openEditEvent(id, name, dateStr, venue, description, accountName) {
+  editingEventId = id;
+  document.getElementById('ee-name').value = name || '';
+  document.getElementById('ee-venue').value = venue || '';
+  document.getElementById('ee-desc').value = description || '';
+  document.getElementById('ee-err').style.display = 'none';
+  const badge = document.getElementById('ee-account-badge');
+  if (accountName) { badge.textContent = `Account: ${accountName}`; badge.style.display = 'block'; }
+  else badge.style.display = 'none';
+
+  // Parse date and time — stored as "Fri, Dec 5, 2025 · 7:00 PM" or "Fri, Dec 5, 2025"
+  document.getElementById('ee-date').value = '';
+  document.getElementById('ee-time').value = '';
+  if (dateStr) {
+    const parts = dateStr.split(' · ');
+    const datePart = parts[0].trim();
+    const timePart = parts[1]?.trim() || '';
+
+    // Parse date
+    try {
+      const d = new Date(datePart);
+      if (!isNaN(d)) {
+        document.getElementById('ee-date').value = d.toISOString().slice(0,10);
+      }
+    } catch {}
+
+    // Parse time — e.g. "7:00 PM" -> "19:00"
+    if (timePart) {
+      try {
+        const t = new Date('1970-01-01 ' + timePart);
+        if (!isNaN(t)) {
+          const hh = String(t.getHours()).padStart(2,'0');
+          const mm = String(t.getMinutes()).padStart(2,'0');
+          document.getElementById('ee-time').value = `${hh}:${mm}`;
+        }
+      } catch {}
+    }
+  }
+  showModal('modal-edit-event');
+  setTimeout(() => document.getElementById('ee-name').focus(), 100);
+}
+
+async function saveEventStripeKey() {
+  const key = document.getElementById('ee-stripe-key').value.trim();
+  if (!key) { toast('Enter a Stripe key first', 'error'); return; }
+  try {
+    const res = await fetch(`/api/sales/settings/${editingEventId}/stripe`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.token()}` },
+      body: JSON.stringify({ stripe_key: key })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    document.getElementById('ee-stripe-key').value = '';
+    document.getElementById('ee-stripe-key').placeholder = '●●● configured ●●●';
+    toast('Stripe key saved for this event');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveEditEvent() {
+  const errEl = document.getElementById('ee-err');
+  errEl.style.display = 'none';
+  const name  = document.getElementById('ee-name').value.trim();
+  const date  = document.getElementById('ee-date').value;
+  const time  = document.getElementById('ee-time').value;
+  const venue = document.getElementById('ee-venue').value.trim();
+  const desc  = document.getElementById('ee-desc').value.trim();
+  if (!name)  { errEl.textContent='Event name required'; errEl.style.display='block'; return; }
+  if (!venue) { errEl.textContent='Venue required';      errEl.style.display='block'; return; }
+  try {
+    let dateFmt = date;
+    if (date) {
+      const dateObj = new Date(date + 'T12:00:00');
+      dateFmt = dateObj.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+      if (time) dateFmt += ' · ' + new Date('1970-01-01T'+time).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    }
+    const token = Auth.token();
+    const res = await fetch(`/api/events/${editingEventId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ name, date: dateFmt, venue, description: desc })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    hideModal('modal-edit-event');
+    toast('Event updated');
+    // Update local events list instantly
+    const idx = events.findIndex(e => e.id === editingEventId);
+    if (idx !== -1) { events[idx].name = name; events[idx].date = dateFmt; events[idx].venue = venue; events[idx].description = desc; }
+    renderEvents();
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+
+// ── Trash & Restore ───────────────────────────────────────
+// Upload history sub-tab
+let trashSubTab = 'deleted';
+
+function setTrashTab(t) {
+  trashSubTab = t;
+  document.getElementById('trash-tab-deleted').className = `btn btn-sm${t==='deleted'?' btn-gold':' btn-ghost'}`;
+  document.getElementById('trash-tab-uploads').className = `btn btn-sm${t==='uploads'?' btn-gold':' btn-ghost'}`;
+  loadTrash();
+}
+
+async function loadTrash() {
+  const el = document.getElementById('tab-trash-content');
+
+  // Sub-tab buttons
+  el.innerHTML = `<div class="row mb16" style="gap:6px">
+    <button id="trash-tab-deleted" class="btn btn-sm${trashSubTab==='deleted'?' btn-gold':' btn-ghost'}" onclick="setTrashTab('deleted')">Deleted Items</button>
+    <button id="trash-tab-uploads" class="btn btn-sm${trashSubTab==='uploads'?' btn-gold':' btn-ghost'}" onclick="setTrashTab('uploads')">Upload History</button>
+  </div><div id="trash-body"><div class="text2 sm">Loading…</div></div>`;
+
+  if (trashSubTab === 'uploads') { await loadUploadHistory(); return; }
+
+  try {
+    const [{ items: atts }, { items: evts }, { items: accs }] = await Promise.all([
+      api.admin.getTrashAttendees(),
+      api.admin.getTrashEvents(),
+      api.admin.getTrashAccounts()
+    ]);
+
+    function daysLeft(deleted_at) {
+      const d = Math.ceil((new Date(deleted_at).getTime() + 30*24*60*60*1000 - Date.now()) / 86400000);
+      return d > 0 ? d : 0;
+    }
+
+    function section(title, items, rowFn) {
+      if (!items.length) return `<div class="sm text2 mb8">No deleted ${title.toLowerCase()}.</div>`;
+      return `<div class="section-title mb8">${title} (${items.length})</div>
+        <div class="table-wrap mb22"><table>
+          <thead><tr><th>Name</th><th>Details</th><th>Deleted</th><th>Expires In</th><th>Actions</th></tr></thead>
+          <tbody>${items.map(rowFn).join('')}</tbody>
+        </table></div>`;
+    }
+
+    document.getElementById('trash-body').innerHTML = `
+      <div class="info-box tip mb16">Items in trash are permanently deleted after 30 days. Restore to recover them.</div>
+
+      ${section('Deleted Attendees', atts, a => `<tr>
+        <td><strong>${esc(a.first_name||'—')} ${esc(a.last_name||'')}</strong><br><span class="xs text2">${esc(a.ticket_id)}</span></td>
+        <td class="xs text2">${esc(a.event_name||'')}${a.account_name?` · ${esc(a.account_name)}`:''}</td>
+        <td class="xs text2">${new Date(a.deleted_at).toLocaleDateString()}</td>
+        <td class="xs ${daysLeft(a.deleted_at)<5?'red':'text2'}">${daysLeft(a.deleted_at)}d</td>
+        <td><div class="row" style="gap:4px">
+          <button class="btn btn-sm btn-success" onclick="restoreItem('attendee','${a.id}')">Restore</button>
+          <button class="btn btn-sm btn-danger" onclick="purgeItem('attendee','${a.id}')">Purge</button>
+        </div></td>
+      </tr>`)}
+
+      ${section('Deleted Events', evts, e => `<tr>
+        <td><strong>${esc(e.name)}</strong></td>
+        <td class="xs text2">${esc(e.account_name||'')} · ${e.deleted_attendees||0} attendees in trash</td>
+        <td class="xs text2">${new Date(e.deleted_at).toLocaleDateString()}</td>
+        <td class="xs ${daysLeft(e.deleted_at)<5?'red':'text2'}">${daysLeft(e.deleted_at)}d</td>
+        <td><div class="row" style="gap:4px">
+          <button class="btn btn-sm btn-success" onclick="restoreItem('event','${e.id}')">Restore</button>
+          <button class="btn btn-sm btn-danger" onclick="purgeItem('event','${e.id}')">Purge</button>
+        </div></td>
+      </tr>`)}
+
+      ${section('Deleted Accounts', accs, a => `<tr>
+        <td><strong>${esc(a.name)}</strong><br><span class="xs text2">${esc(a.email)}</span></td>
+        <td class="xs text2">${esc(a.role)} · ${esc(a.company||'')}</td>
+        <td class="xs text2">${new Date(a.deleted_at).toLocaleDateString()}</td>
+        <td class="xs ${daysLeft(a.deleted_at)<5?'red':'text2'}">${daysLeft(a.deleted_at)}d</td>
+        <td><div class="row" style="gap:4px">
+          <button class="btn btn-sm btn-success" onclick="restoreItem('account','${a.id}')">Restore</button>
+          <button class="btn btn-sm btn-danger" onclick="purgeItem('account','${a.id}')">Purge</button>
+        </div></td>
+      </tr>`)}`;
+  } catch(e) {
+    document.getElementById('trash-body').innerHTML = `<div class="info-box warn">Could not load trash: ${esc(e.message)}</div>`;
+  }
+}
+
+async function loadUploadHistory() {
+  const body = document.getElementById('trash-body');
+  body.innerHTML = '<div class="text2 sm">Loading upload history…</div>';
+
+  // Load batches for all events
+  const allEvents = events || [];
+  if (!allEvents.length) { body.innerHTML = '<div class="sm text2">No events found.</div>'; return; }
+
+  let allBatches = [];
+  for (const ev of allEvents.slice(0, 30)) {
+    try {
+      const { batches } = await api.attendees.getUploadBatches(ev.id);
+      allBatches = allBatches.concat(batches.map(b => ({ ...b, event_name: ev.name })));
+    } catch {}
+  }
+
+  if (!allBatches.length) { body.innerHTML = '<div class="sm text2 mt8">No upload history found.</div>'; return; }
+  allBatches.sort((a,b) => b.uploaded_at.localeCompare(a.uploaded_at));
+
+  body.innerHTML = `
+    <div class="info-box tip mb16">Every upload is logged here. Undo restores the list to exactly how it was before that upload — including reverting any overwritten fields.</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Event</th><th>Uploaded By</th><th>Date &amp; Time</th><th>Added</th><th>Updated</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>${allBatches.map(b => `<tr>
+        <td><strong>${esc(b.event_name||'')}</strong></td>
+        <td class="xs text2">${esc(b.uploaded_by_name||b.uploaded_by)}</td>
+        <td class="xs text2">${new Date(b.uploaded_at).toLocaleString()}</td>
+        <td class="xs">${b.added_count}</td>
+        <td class="xs">${b.updated_count}</td>
+        <td>${b.undone
+          ? `<span class="badge badge-deactivated">Undone ${new Date(b.undone_at).toLocaleDateString()}</span>`
+          : '<span class="badge badge-checked">Active</span>'}</td>
+        <td>${!b.undone
+          ? `<button class="btn btn-sm btn-warn" onclick="undoUploadBatch('${b.event_id}','${b.id}','${esc(b.event_name||'')}',${b.added_count},${b.updated_count})">Undo</button>`
+          : '<span class="xs text2">—</span>'}</td>
+      </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+  makeSortable(body.querySelector('table'));
+}
+
+async function undoUploadBatch(eventId, batchId, eventName, added, updated) {
+  const msg = `Undo upload for "${eventName}"?
+
+This will:
+• Remove ${added} newly added attendee(s)
+• Restore ${updated} updated attendee(s) to their previous state
+
+This cannot be easily reversed.`;
+  if (!confirm(msg)) return;
+  try {
+    const r = await api.attendees.undoUpload(eventId, batchId);
+    toast(`Undone — ${r.removed} removed, ${r.restored} restored`);
+    loadTrash();
+    await load();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function restoreItem(type, id) {
+  try {
+    if (type === 'attendee') await api.admin.restoreAttendee(id);
+    else if (type === 'event') await api.admin.restoreEvent(id);
+    else await api.admin.restoreAccount(id);
+    toast('Restored successfully');
+    loadTrash();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function purgeItem(type, id) {
+  if (!confirm('Permanently delete this item? This cannot be undone.')) return;
+  try {
+    if (type === 'attendee') await api.admin.purgeAttendee(id);
+    else if (type === 'event') await api.admin.purgeEvent(id);
+    else await api.admin.purgeAccount(id);
+    toast('Permanently deleted');
+    loadTrash();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Admin New Event ───────────────────────────────────────
+function openNewEventModal() {
+  // Populate account dropdown
+  const sel = document.getElementById('ne-account');
+  sel.innerHTML = accounts.filter(a => a.is_active && a.role !== 'scanner')
+    .map(a => `<option value="${a.id}">${esc(a.name)} (${esc(a.email)})</option>`).join('');
+  ['ne-name','ne-venue','ne-desc'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('ne-date').value = '';
+  document.getElementById('ne-time').value = '';
+  document.getElementById('ne-err').style.display = 'none';
+  showModal('modal-new-event');
+  setTimeout(() => document.getElementById('ne-name').focus(), 100);
+}
+
+async function createAdminEvent() {
+  const accountId = document.getElementById('ne-account').value;
+  const name = document.getElementById('ne-name').value.trim();
+  const date = document.getElementById('ne-date').value;
+  const time = document.getElementById('ne-time').value;
+  const venue = document.getElementById('ne-venue').value.trim();
+  const desc = document.getElementById('ne-desc').value.trim();
+  const errEl = document.getElementById('ne-err');
+  errEl.style.display = 'none';
+  if (!name)  { errEl.textContent = 'Event name is required'; errEl.style.display = 'block'; return; }
+  if (!date)  { errEl.textContent = 'Date is required'; errEl.style.display = 'block'; return; }
+  if (!venue) { errEl.textContent = 'Venue is required'; errEl.style.display = 'block'; return; }
+  try {
+    const dateObj = new Date(date + 'T12:00:00');
+    const dateFmt = dateObj.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+    const timeFmt = time ? new Date('1970-01-01T' + time).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }) : '';
+    // Use admin token but create under the selected account
+    const res = await fetch('/api/events/admin', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${Auth.token()}` },
+      body: JSON.stringify({ name, date: dateFmt + (timeFmt ? ' · ' + timeFmt : ''), venue, description: desc, accountId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    hideModal('modal-new-event');
+    toast('Event created under ' + (accounts.find(a=>a.id===accountId)?.name || 'account'));
+    await load();
+    // Open the event
+    window.open('/event-detail.html?id=' + data.event.id, '_blank');
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+</script>
+</body>
+</html>

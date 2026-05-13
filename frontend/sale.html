@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Buy Tickets</title>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;color:#111;min-height:100vh}
+.hero-wrap{width:100%;height:260px;overflow:hidden;background:#1a3a6b}
+.hero-wrap img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+.hero-placeholder{width:100%;height:100%;background:linear-gradient(135deg,#1a3a6b,#00aadd)}
+.logo-footer{text-align:center;padding:28px 16px 40px;border-top:1px solid #eee;margin-top:12px;background:#fff;width:100%}
+.logo-footer img{height:46px;object-fit:contain;opacity:.85}
+.container{max-width:600px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:23px;font-weight:800;margin-bottom:4px;color:#0d1b3e}
+.sub{color:#666;font-size:14px;margin-bottom:20px;line-height:1.5}
+.card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:20px;margin-bottom:14px}
+.slabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#999;margin-bottom:12px}
+.level-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #f2f2f2}
+.level-row:last-child{border-bottom:none;padding-bottom:0}
+.level-row.sold-out{opacity:.4;pointer-events:none}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase;color:#fff}
+.li{flex:1;min-width:0}
+.ln{font-weight:700;font-size:14px}
+.ld{font-size:12px;color:#888;margin-top:2px}
+.la{font-size:11px;margin-top:3px}
+.lp{font-size:17px;font-weight:800;color:#1a3a6b;min-width:56px;text-align:right;flex-shrink:0}
+.qw{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.qb{width:30px;height:30px;border-radius:50%;border:2px solid #1a3a6b;background:#fff;color:#1a3a6b;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;-webkit-tap-highlight-color:transparent;user-select:none}
+.qb:active,.qb:hover{background:#1a3a6b;color:#fff}
+.qb:disabled{border-color:#ccc;color:#ccc;cursor:default;background:#fff}
+.qn{min-width:24px;text-align:center;font-weight:700;font-size:15px}
+.sbox{background:#f7f9fc;border-radius:8px;padding:13px 15px;margin-top:14px;border:1px solid #e8eef5}
+.srow{display:flex;justify-content:space-between;font-size:14px;margin-bottom:5px;color:#444}
+.stotal{display:flex;justify-content:space-between;font-size:16px;font-weight:800;border-top:2px solid #dde6f0;margin-top:8px;padding-top:9px;color:#0d1b3e}
+.btn{display:block;width:100%;padding:14px;background:#1a3a6b;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;margin-top:18px;-webkit-tap-highlight-color:transparent}
+.btn:hover{background:#1e4a8a}
+.btn:disabled{background:#8a9bbf;cursor:not-allowed}
+.btn-back{background:#fff;color:#1a3a6b;border:2px solid #1a3a6b;flex:0 0 80px;padding:10px;font-size:14px;margin-top:0}
+.btn-back:hover{background:#f0f4ff}
+.btn-row{display:flex;gap:10px;margin-top:18px}
+input{width:100%;padding:11px 13px;border:1.5px solid #ddd;border-radius:8px;font-size:14px;margin-bottom:10px;color:#111;background:#fff}
+input:focus{outline:none;border-color:#1a3a6b}
+label{font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ab{background:#f7f9fc;border-radius:8px;padding:14px;margin-bottom:10px;border:1px solid #e8eef5}
+.at{font-size:13px;font-weight:700;margin-bottom:10px;color:#1a3a6b}
+.crow{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:13px;color:#555}
+.crow input[type=checkbox]{width:auto;margin:0;cursor:pointer}
+.err{background:#fff0f0;border:1px solid #ffb3b3;border-radius:8px;padding:11px 14px;font-size:13px;color:#c00;margin:10px 0;display:none}
+.step{display:none}.step.active{display:block}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skel{background:linear-gradient(90deg,#ebebeb 25%,#f5f5f5 50%,#ebebeb 75%);background-size:200% 100%;animation:shimmer 1.3s infinite;border-radius:8px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+#panels-wrap{display:flex;gap:14px;flex-wrap:wrap}
+#purchase-panel{flex:1;min-width:260px}
+#activation-panel{flex:1;min-width:260px}
+#purchase-panel.centered{flex:none;width:100%;max-width:100%}
+</style>
+</head>
+<body>
+
+<div id="step-select" class="step active">
+  <div id="hero-wrap"></div>
+  <div class="container">
+    <div id="event-header"></div>
+    <div id="panels-wrap">
+      <!-- Purchase panel -->
+      <div class="card" id="purchase-panel">
+        <div class="slabel">Buy Tickets</div>
+        <div id="levels-list">
+          <div class="skel" style="height:52px;margin-bottom:10px"></div>
+          <div class="skel" style="height:52px;margin-bottom:10px"></div>
+          <div class="skel" style="height:52px"></div>
+        </div>
+        <div class="sbox" id="summary" style="display:none">
+          <div id="summary-lines"></div>
+          <div class="stotal"><span>Total</span><span id="summary-total">$0.00</span></div>
+        </div>
+        <div class="err" id="err-select"></div>
+        <button class="btn" id="btn-continue" onclick="goToAttendees()" style="display:none">Continue &rarr;</button>
+      </div>
+
+      <!-- Activation panel (shown when allowActivation=true) -->
+      <div class="card" id="activation-panel" style="display:none">
+        <div class="slabel">Activate Your Ticket</div>
+        <p style="font-size:13px;color:#555;margin-bottom:16px;line-height:1.6">
+          Already have a ticket? Enter your ticket ID to activate it and confirm your attendance.<br>
+          Your ticket ID is printed on your ticket and starts with <strong>TKT-</strong>.
+        </p>
+        <label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px">Ticket ID *</label>
+        <div style="display:flex;gap:8px">
+          <span style="padding:11px 10px;background:#f5f7fa;border:1.5px solid #ddd;border-right:none;border-radius:8px 0 0 8px;font-size:14px;color:#555;white-space:nowrap">TKT-</span>
+          <input type="text" id="activate-id" placeholder="XXXXXXXX" style="border-radius:0 8px 8px 0;text-transform:uppercase;letter-spacing:.08em;font-family:monospace;font-size:15px;margin:0;flex:1" maxlength="12" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+        </div>
+        <div class="err" id="err-activate" style="margin-top:8px"></div>
+        <div id="activate-success" style="display:none;background:#f0fff4;border:1px solid #b2f5ca;border-radius:8px;padding:14px;margin-top:12px;text-align:center">
+          <div style="color:#27a85f;font-weight:700;font-size:15px;margin-bottom:4px">&#x2713; Ticket Activated!</div>
+          <div id="activate-name" style="color:#555;font-size:14px"></div>
+        </div>
+        <button class="btn" onclick="activateTicket()" style="margin-top:14px">Activate Ticket</button>
+      </div>
+    </div>
+  </div>
+  <div class="logo-footer"><img src="/logo.png" alt="EverythingShul.com"></div>
+</div>
+
+<div id="step-attendees" class="step">
+  <div class="container" style="padding-top:32px">
+    <h2 style="font-size:20px;font-weight:800;color:#0d1b3e;margin-bottom:4px">Attendee Information</h2>
+    <p class="sub" id="attendee-sub"></p>
+    <div class="crow">
+      <input type="checkbox" id="copy-all" onchange="toggleCopyAll()">
+      <label for="copy-all" style="margin:0;cursor:pointer">Same phone &amp; email for all tickets <span style="color:#aaa;font-size:11px">(name required per person)</span></label>
+    </div>
+    <div id="attendee-forms"></div>
+    <div class="err" id="err-attendees"></div>
+    <div class="btn-row">
+      <button class="btn btn-back" onclick="goStep('step-select')">&larr; Back</button>
+      <button class="btn" style="flex:1;margin-top:0" onclick="goToCheckout()">Continue to Payment &rarr;</button>
+    </div>
+  </div>
+  <div class="logo-footer"><img src="/logo.png" alt="EverythingShul.com"></div>
+</div>
+
+<div id="step-payment" class="step">
+  <div class="container" style="padding-top:32px">
+    <h2 style="font-size:20px;font-weight:800;color:#0d1b3e;margin-bottom:14px">Payment</h2>
+    <div class="sbox card" style="margin-bottom:14px">
+      <div id="payment-summary-lines"></div>
+      <div class="stotal"><span>Total</span><span id="payment-total">$0.00</span></div>
+    </div>
+    <div class="card">
+      <label>Billing Email *</label>
+      <input type="email" id="billing-email" placeholder="email@example.com" autocomplete="email">
+      <div id="payment-element" style="margin-top:4px"></div>
+      <div class="err" id="err-payment" style="margin-top:10px"></div>
+      <button class="btn" id="pay-btn" onclick="submitPayment()" style="margin-top:16px">Pay Now &rarr;</button>
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;margin-top:12px;color:#bbb;font-size:12px">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Secured by Stripe
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:8px">
+      <button style="background:none;border:none;color:#888;font-size:13px;cursor:pointer;padding:8px" onclick="goStep('step-attendees')">&larr; Back</button>
+    </div>
+  </div>
+  <div class="logo-footer"><img src="/logo.png" alt="EverythingShul.com"></div>
+</div>
+
+<div id="step-confirm" class="step">
+  <div class="container" style="padding-top:48px">
+    <div class="card" style="text-align:center;padding:36px 24px">
+      <div style="width:60px;height:60px;border-radius:50%;background:#f0fff4;border:2px solid #b2f5ca;display:flex;align-items:center;justify-content:center;margin:0 auto 18px">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#27a85f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <h2 style="font-size:22px;font-weight:800;color:#27a85f;margin-bottom:10px">Payment Successful!</h2>
+      <p style="color:#555;font-size:14px;line-height:1.8;margin-bottom:18px">
+        Thank you! Your tickets will be emailed within a few minutes.
+      </p>
+      <div style="background:#f0fff4;border-radius:8px;padding:12px;font-size:13px;color:#27a85f;border:1px solid #b2f5ca">
+        Didn't receive your tickets? Check your spam folder.
+      </div>
+    </div>
+  </div>
+  <div class="logo-footer"><img src="/logo.png" alt="EverythingShul.com"></div>
+</div>
+
+<script>
+var slug = (location.pathname.split('/events/')[1] || '').split('/')[0];
+var eventData = null;
+var quantities = {};
+var attendeePeople = [];
+var stripeObj = null;
+var stripeElements = null;
+var paymentElement = null;
+var currentOrderId = null;
+
+function fmt(c) { return '$' + (c/100).toFixed(2); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showErr(id, msg) { var el=document.getElementById(id); el.textContent=msg; el.style.display='block'; }
+function hideErr(id) { document.getElementById(id).style.display='none'; }
+function goStep(id) {
+  document.querySelectorAll('.step').forEach(function(s){s.classList.remove('active');});
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function load() {
+  fetch('/api/sales/event/'+slug)
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+    .then(function(res){
+      if(!res.ok){
+        document.body.innerHTML='<div style="max-width:440px;margin:80px auto;text-align:center;padding:24px"><img src="/logo.png" style="height:50px;margin-bottom:20px"><br><h2 style="color:#c00;margin-bottom:8px;font-size:19px">'+esc(res.data.error||'Not available')+'</h2><p style="color:#888;font-size:14px">This ticket link is not available.</p></div>';
+        return;
+      }
+      eventData=res.data;
+      document.title='Tickets \u2014 '+eventData.name;
+
+      var hw=document.getElementById('hero-wrap');
+      if(eventData.saleImage){
+        hw.innerHTML='<div class="hero-wrap"><img src="'+esc(eventData.saleImage)+'" onerror="this.parentElement.className=\'hero-placeholder\'"></div>';
+      } else {
+        hw.innerHTML='<div class="hero-placeholder"></div>';
+      }
+
+      var hdr='<h1>'+esc(eventData.name)+'</h1>';
+      var parts=[eventData.date,eventData.venue].filter(Boolean);
+      if(parts.length) hdr+='<p class="sub">'+parts.map(esc).join(' &middot; ')+'</p>';
+      document.getElementById('event-header').innerHTML=hdr;
+
+      var list=document.getElementById('levels-list');
+      if(eventData.eventSoldOut){
+        list.innerHTML='<div style="text-align:center;padding:28px;color:#c00;font-weight:600">This event is sold out.</div>';
+        return;
+      }
+      var levels=eventData.levels||[];
+      if(!levels.length){
+        list.innerHTML='<p style="color:#888;text-align:center;padding:24px;font-size:14px">No tickets available at this time.</p>';
+        return;
+      }
+
+      quantities={};
+      var html='';
+      for(var i=0;i<levels.length;i++){
+        var l=levels[i];
+        quantities[l.id]=0;
+        html+='<div class="level-row'+(l.soldOut?' sold-out':'')+'">';
+        html+='<div class="li"><div class="ln"><span class="badge" style="background:'+esc(l.color)+'">'+esc(l.name)+'</span></div>';
+        if(l.description) html+='<div class="ld">'+esc(l.description)+'</div>';
+        if(l.soldOut) html+='<div class="la" style="color:#c00;font-weight:600">Sold Out</div>';
+        else if(l.show_availability&&l.available!==null) html+='<div class="la" style="color:'+(l.available<=5?'#c00':'#888')+'">'+l.available+' left</div>';
+        html+='</div>';
+        html+='<div class="lp">'+(l.price>0?fmt(l.price):'Free')+'</div>';
+        html+='<div class="qw"><button class="qb" onclick="chQty(\''+l.id+'\',-1)"'+(l.soldOut?' disabled':'')+'>&#8722;</button><span class="qn" id="q-'+l.id+'">0</span><button class="qb" onclick="chQty(\''+l.id+'\',1)"'+(l.soldOut?' disabled':'')+'>&plus;</button></div>';
+        html+='</div>';
+      }
+      list.innerHTML=html;
+      document.getElementById('btn-continue').style.display='block';
+  if(eventData.allowActivation){
+    document.getElementById('activation-panel').style.display='block';
+    document.getElementById('purchase-panel').classList.remove('centered');
+  } else {
+    document.getElementById('activation-panel').style.display='none';
+    document.getElementById('purchase-panel').classList.add('centered');
+  }
+    })
+    .catch(function(){
+      document.getElementById('levels-list').innerHTML='<div style="text-align:center;padding:28px"><div style="color:#888;font-size:14px;margin-bottom:14px">Could not load tickets. Please check your connection.</div><button onclick="load()" style="background:#1a3a6b;color:#fff;border:none;padding:11px 28px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Try Again</button></div>';
+    });
+}
+
+function chQty(id,delta){
+  if(!eventData) return;
+  var level=null;
+  for(var i=0;i<eventData.levels.length;i++){if(eventData.levels[i].id===id){level=eventData.levels[i];break;}}
+  if(!level||level.soldOut) return;
+  var next=Math.max(0,Math.min(20,(quantities[id]||0)+delta));
+  if(delta>0&&level.available!==null&&next>level.available) return;
+  quantities[id]=next;
+  document.getElementById('q-'+id).textContent=next;
+  var lines=(eventData.levels||[]).filter(function(l){return quantities[l.id]>0;});
+  var total=0,html='';
+  for(var i=0;i<lines.length;i++){total+=lines[i].price*quantities[lines[i].id];html+='<div class="srow"><span>'+esc(lines[i].name)+' &times; '+quantities[lines[i].id]+'</span><span>'+fmt(lines[i].price*quantities[lines[i].id])+'</span></div>';}
+  document.getElementById('summary-lines').innerHTML=html;
+  document.getElementById('summary-total').textContent=fmt(total);
+  document.getElementById('summary').style.display=lines.length?'block':'none';
+}
+
+function goToAttendees(){
+  var items=(eventData.levels||[]).filter(function(l){return quantities[l.id]>0;});
+  if(!items.length){showErr('err-select','Please select at least one ticket');return;}
+  hideErr('err-select');
+  attendeePeople=[];
+  for(var i=0;i<items.length;i++) for(var j=0;j<quantities[items[i].id];j++) attendeePeople.push({levelId:items[i].id,levelName:items[i].name,levelColor:items[i].color});
+  var total=attendeePeople.length;
+  document.getElementById('attendee-sub').textContent=total+' ticket'+(total>1?'s':'');
+  var html='';
+  for(var i=0;i<attendeePeople.length;i++){
+    var p=attendeePeople[i];
+    html+='<div class="ab"><div class="at">Ticket '+(i+1)+' &mdash; <span class="badge" style="background:'+esc(p.levelColor)+'">'+esc(p.levelName)+'</span></div>';
+    html+='<div class="form-row"><div><label>First Name *</label><input type="text" id="fn-'+i+'" placeholder="First name" autocomplete="given-name"></div><div><label>Last Name *</label><input type="text" id="ln-'+i+'" placeholder="Last name" autocomplete="family-name"></div></div>';
+    html+='<label>Phone * <span style="font-size:10px;color:#aaa">(10 digits)</span></label><input type="tel" id="ph-'+i+'" placeholder="5551234567" maxlength="15"'+(i>0?' class="cp-ph"':'')+' autocomplete="tel">';
+    html+='<label>Email *</label><input type="email" id="em-'+i+'" placeholder="email@example.com"'+(i>0?' class="cp-em"':'')+' autocomplete="email">';
+    html+='</div>';
+  }
+  document.getElementById('attendee-forms').innerHTML=html;
+  document.getElementById('copy-all').checked=false;
+  goStep('step-attendees');
+}
+
+function toggleCopyAll(){
+  if(!document.getElementById('copy-all').checked||attendeePeople.length<=1) return;
+  var ph0=document.getElementById('ph-0').value,em0=document.getElementById('em-0').value;
+  document.querySelectorAll('.cp-ph').forEach(function(el){el.value=ph0;});
+  document.querySelectorAll('.cp-em').forEach(function(el){el.value=em0;});
+  document.getElementById('ph-0').oninput=function(){document.querySelectorAll('.cp-ph').forEach(function(el){el.value=document.getElementById('ph-0').value;});};
+  document.getElementById('em-0').oninput=function(){document.querySelectorAll('.cp-em').forEach(function(el){el.value=document.getElementById('em-0').value;});};
+}
+
+function goToCheckout(){
+  var people=[];
+  for(var i=0;i<attendeePeople.length;i++){
+    var fn=document.getElementById('fn-'+i).value.trim();
+    var ln=document.getElementById('ln-'+i).value.trim();
+    var ph=document.getElementById('ph-'+i).value.trim().replace(/\D/g,'');
+    var em=document.getElementById('em-'+i).value.trim();
+    if(!fn){showErr('err-attendees','First name required for ticket '+(i+1));return;}
+    if(!ln){showErr('err-attendees','Last name required for ticket '+(i+1));return;}
+    if(ph.length!==10){showErr('err-attendees','Phone must be 10 digits for ticket '+(i+1)+' (entered: '+ph.length+')');return;}
+    if(!em||em.indexOf('@')<1){showErr('err-attendees','Valid email required for ticket '+(i+1));return;}
+    people.push({levelId:attendeePeople[i].levelId,levelName:attendeePeople[i].levelName,levelColor:attendeePeople[i].levelColor,first_name:fn,last_name:ln,phone:ph,email:em});
+  }
+  attendeePeople=people;
+  hideErr('err-attendees');
+  var items=(eventData.levels||[]).filter(function(l){return quantities[l.id]>0;});
+  var total=0,html='';
+  for(var i=0;i<items.length;i++){total+=items[i].price*quantities[items[i].id];html+='<div class="srow"><span>'+esc(items[i].name)+' &times; '+quantities[items[i].id]+'</span><span>'+fmt(items[i].price*quantities[items[i].id])+'</span></div>';}
+  document.getElementById('payment-summary-lines').innerHTML=html;
+  document.getElementById('payment-total').textContent=fmt(total);
+  document.getElementById('billing-email').value=people[0]?people[0].email:'';
+  goStep('step-payment');
+  loadPaymentElement();
+}
+
+function loadPaymentElement(){
+  if(paymentElement){paymentElement.destroy();paymentElement=null;}
+  document.getElementById('payment-element').innerHTML='<div style="color:#888;font-size:13px;padding:12px 0">Loading payment form...</div>';
+  hideErr('err-payment');
+  document.getElementById('pay-btn').disabled=true;
+
+  var items=[];
+  for(var i=0;i<(eventData.levels||[]).length;i++){
+    if(quantities[eventData.levels[i].id]>0) items.push({levelId:eventData.levels[i].id,quantity:quantities[eventData.levels[i].id]});
+  }
+  var email=document.getElementById('billing-email').value.trim()||(attendeePeople[0]?attendeePeople[0].email:'');
+
+  fetch('/api/sales/event/'+slug+'/checkout',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({items:items,attendees:attendeePeople,email:email})
+  })
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(result){
+    if(!result.ok) throw new Error(result.data.error||'Could not start payment');
+    var key=result.data.publishableKey;
+    var secret=result.data.clientSecret;
+    currentOrderId=result.data.orderId;
+    if(!key||!secret) throw new Error('Payment not configured. Contact the organizer.');
+    stripeObj=Stripe(key);
+    stripeElements=stripeObj.elements({clientSecret:secret,appearance:{theme:'stripe',variables:{colorPrimary:'#1a3a6b'}}});
+    paymentElement=stripeElements.create('payment');
+    document.getElementById('payment-element').innerHTML='';
+    paymentElement.mount('#payment-element');
+    document.getElementById('pay-btn').disabled=false;
+  })
+  .catch(function(e){
+    document.getElementById('payment-element').innerHTML='';
+    showErr('err-payment',e.message||'Could not load payment form. Please go back and try again.');
+    document.getElementById('pay-btn').disabled=false;
+  });
+}
+
+function submitPayment(){
+  if(!stripeObj||!stripeElements){showErr('err-payment','Payment form not ready. Please wait.');return;}
+  var email=document.getElementById('billing-email').value.trim();
+  if(!email||email.indexOf('@')<1){showErr('err-payment','Please enter your billing email');return;}
+  hideErr('err-payment');
+  var btn=document.getElementById('pay-btn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Processing...';
+
+  stripeObj.confirmPayment({
+    elements:stripeElements,
+    confirmParams:{
+      return_url:location.origin+'/events/'+slug+'?order='+currentOrderId+'&paid=1',
+      receipt_email:email
+    },
+    redirect:'if_required'
+  })
+  .then(function(result){
+    if(result.error){
+      showErr('err-payment',result.error.message);
+      btn.disabled=false;
+      btn.textContent='Pay Now \u2192';
+    } else if(result.paymentIntent&&result.paymentIntent.status==='succeeded'){
+      goStep('step-confirm');
+      pollOrder(currentOrderId);
+    }
+  });
+}
+
+function pollOrder(orderId){
+  fetch('/api/sales/order/'+orderId+'/status')
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.status==='pending'||d.status==='processing') setTimeout(function(){pollOrder(orderId);},3000);})
+    .catch(function(){});
+}
+
+function activateTicket(){
+  var raw=document.getElementById('activate-id').value.trim().toUpperCase();
+  if(!raw){showErr('err-activate','Please enter your ticket ID');return;}
+  var ticketId='TKT-'+raw.replace(/^TKT-/,'');
+  hideErr('err-activate');
+  document.getElementById('activate-success').style.display='none';
+  var btn=event.target||document.querySelector('#activation-panel .btn');
+  if(btn){btn.disabled=true;btn.textContent='Activating...';}
+
+  fetch('/api/attendees/activate',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ticket_id:ticketId})
+  })
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(result){
+    if(btn){btn.disabled=false;btn.textContent='Activate Ticket';}
+    if(result.ok){
+      document.getElementById('activate-success').style.display='block';
+      document.getElementById('activate-name').textContent=result.data.attendee.first_name+' '+result.data.attendee.last_name+' — '+result.data.attendee.event_name;
+      document.getElementById('activate-id').value='';
+    } else if(result.data.already){
+      document.getElementById('activate-success').style.display='block';
+      document.getElementById('activate-success').style.background='#fffbeb';
+      document.getElementById('activate-success').style.borderColor='#fcd34d';
+      document.getElementById('activate-name').innerHTML='<span style="color:#92400e">Already activated: '+esc(result.data.attendee.first_name)+' '+esc(result.data.attendee.last_name)+'</span>';
+    } else {
+      showErr('err-activate',result.data.error||'Could not activate ticket');
+    }
+  })
+  .catch(function(){
+    if(btn){btn.disabled=false;btn.textContent='Activate Ticket';}
+    showErr('err-activate','Network error. Please try again.');
+  });
+}
+
+var params=new URLSearchParams(location.search);
+if((params.get('order')&&params.get('session'))||(params.get('order')&&params.get('paid'))){
+  goStep('step-confirm');
+  pollOrder(params.get('order'));
+} else {
+  load();
+}
+</script>
+</body>
+</html>

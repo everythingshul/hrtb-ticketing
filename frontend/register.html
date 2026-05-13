@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul.com — Set Up Your Account</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo" style="margin-bottom:28px">
+      <img src="/logo.png" alt="EverythingShul.com" style="width:200px;height:auto;display:block;margin:0 auto 10px">
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.5)">Ticket System</p>
+    </div>
+    <div class="auth-card">
+      <div id="invite-banner" style="display:none" class="info-box ok mb16"></div>
+      <div id="invite-error" style="display:none" class="info-box warn mb16"></div>
+      <h2 id="page-title">Set up your account</h2>
+      <p class="sub" id="page-sub">Choose a password to complete your account setup</p>
+      <div id="err" style="display:none" class="info-box warn mb16"></div>
+
+      <!-- First admin only fields (shown when no token) -->
+      <div id="first-admin-fields" style="display:none">
+        <div class="fg"><label>Your full name</label><input id="name" type="text" placeholder="Jane Doe"></div>
+        <div class="fg"><label>Email</label><input id="email" type="email" placeholder="you@example.com"></div>
+      </div>
+
+      <!-- Name display (shown when invited — read only, set by admin) -->
+      <div id="invited-name-display" style="display:none;margin-bottom:14px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Your name</div>
+        <div id="invited-name" style="font-size:15px;font-weight:600;color:var(--navy)"></div>
+      </div>
+
+      <div id="profile-fields">
+        <div class="form-row">
+          <div class="fg"><label>First name *</label><input id="fname" placeholder="Jane"></div>
+          <div class="fg"><label>Last name *</label><input id="lname" placeholder="Doe"></div>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>Phone *</label><input id="uphone" placeholder="+1 555 000 0000"></div>
+          <div class="fg"><label>Company (optional)</label><input id="company" placeholder="ABC Events"></div>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Choose a password</label>
+        <input id="pass" type="password" placeholder="At least 8 characters">
+        <div class="hint">You will use this every time you log in</div>
+      </div>
+      <div class="fg">
+        <label>Confirm password</label>
+        <input id="pass2" type="password" placeholder="Repeat your password">
+      </div>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:11px;margin-top:4px" onclick="register()">
+        Activate my account →
+      </button>
+    </div>
+    <div class="auth-foot" style="color:rgba(255,255,255,.5)">
+      Already have an account? <a href="/index.html">Sign in</a>
+    </div>
+  </div>
+</div>
+<script src="/js/app.js"></script>
+<script>
+  if (Auth.token()) window.location = '/dashboard.html';
+
+  const params = new URLSearchParams(location.search);
+  const inviteToken = params.get('token');
+
+  if (!inviteToken) {
+    // No token — must be first admin setup
+    document.getElementById('first-admin-fields').style.display = 'block';
+    document.getElementById('page-title').textContent = 'Create admin account';
+    document.getElementById('page-sub').textContent = 'Set up the system administrator account';
+    const pf = document.getElementById('profile-fields');
+    if (pf) pf.style.display = 'none';
+    document.getElementById('name').focus();
+  } else {
+    // Invited user — look up invite to show their name
+    api.auth.inviteInfo(inviteToken).then(d => {
+      document.getElementById('invite-banner').style.display = 'block';
+      document.getElementById('invite-banner').innerHTML = ` You've been invited to <strong>EverythingShul.com Ticket System</strong> as <strong>${esc(d.role)}</strong>`;
+      // Show name set by admin
+      if (d.name) {
+        document.getElementById('invited-name-display').style.display = 'block';
+        document.getElementById('invited-name').textContent = d.name;
+      }
+    }).catch(() => {
+      document.getElementById('invite-error').textContent = 'This invite link has expired or is invalid. Ask your admin to send a new one.';
+      document.getElementById('invite-error').style.display = 'block';
+      document.getElementById('pass').disabled = true;
+      document.getElementById('pass2').disabled = true;
+    });
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') register(); });
+
+  async function register() {
+    const pass  = document.getElementById('pass').value;
+    const pass2 = document.getElementById('pass2').value;
+    const err   = document.getElementById('err');
+    err.style.display = 'none';
+
+    if (!pass)        { err.textContent = 'Choose a password'; err.style.display = 'block'; return; }
+    if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.style.display = 'block'; return; }
+    if (pass !== pass2) { err.textContent = 'Passwords do not match'; err.style.display = 'block'; return; }
+
+    const fname = document.getElementById('fname')?.value.trim();
+    const lname = document.getElementById('lname')?.value.trim();
+    const uphone = document.getElementById('uphone')?.value.trim();
+    const company = document.getElementById('company')?.value.trim();
+
+    if (inviteToken) {
+      if (!fname) { err.textContent = 'First name is required'; err.style.display = 'block'; return; }
+      if (!lname) { err.textContent = 'Last name is required'; err.style.display = 'block'; return; }
+      if (!uphone) { err.textContent = 'Phone number is required'; err.style.display = 'block'; return; }
+    }
+
+    try {
+      let body;
+      if (!inviteToken) {
+        const name  = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        if (!name || !email) { err.textContent = 'Name and email are required'; err.style.display = 'block'; return; }
+        body = { name, email, password: pass };
+      } else {
+        body = { password: pass, token: inviteToken, first_name: fname, last_name: lname, phone: uphone, company: company || null };
+      }
+
+      const { token, user } = await api.auth.register(body);
+      Auth.set(token, user);
+      window.location = '/dashboard.html';
+    } catch(e) {
+      err.textContent = e.message;
+      err.style.display = 'block';
+    }
+  }
+</script>
+</body>
+</html>

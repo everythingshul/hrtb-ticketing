@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>EverythingShul.com — Door Scanner</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  body { background: #080808; }
+  .kiosk { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+  .kiosk-logo { text-align: center; margin-bottom: 36px; }
+  .kiosk-logo .ico { width: 60px; height: 60px; background: var(--gold); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; font-size: 28px; }
+  .kiosk-logo h1 { font-family: var(--font-d); font-size: 22px; font-weight: 800; }
+  .kiosk-logo p { font-size: 12px; text-transform: uppercase; letter-spacing: .15em; color: var(--text3); margin-top: 4px; }
+  .kiosk-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 22px; padding: 32px; width: 100%; max-width: 360px; }
+  .kiosk-card h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .kiosk-card .sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+  .event-selector { margin-bottom: 18px; }
+  .pin-display { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; text-align: center; margin-bottom: 18px; letter-spacing: .3em; font-family: monospace; font-size: 32px; font-weight: 700; color: var(--gold); min-height: 64px; display: flex; align-items: center; justify-content: center; }
+  .pin-display.empty { color: var(--text3); font-size: 24px; letter-spacing: .1em; }
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .numpad-btn { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 16px; font-size: 22px; font-weight: 600; cursor: pointer; color: var(--text); font-family: var(--font-d); transition: all .12s; text-align: center; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .numpad-btn:hover, .numpad-btn:active { background: var(--bg4); border-color: var(--border2); transform: scale(.97); }
+  .numpad-btn.del { font-size: 18px; color: var(--text2); }
+  .numpad-btn.enter { background: var(--gold); color: #000; border-color: transparent; font-size: 15px; font-weight: 700; }
+  .numpad-btn.enter:hover { background: var(--gold2); }
+  .err { background: rgba(224,80,80,.1); border: 1px solid rgba(224,80,80,.25); border-radius: var(--r); padding: 10px 13px; font-size: 13px; color: var(--red); margin-bottom: 14px; display: none; }
+  .back-link { text-align: center; margin-top: 18px; font-size: 12px; color: var(--text3); }
+  .back-link a { color: var(--text2); }
+</style>
+</head>
+<body>
+<div class="kiosk">
+  <div class="kiosk-logo">
+    <img src="/logo.png" alt="EverythingShul.com" style="width:180px;height:auto;display:block;margin:0 auto 10px">
+    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--text3)">Door Scanner</p>
+  </div>
+  <div class="kiosk-card">
+    <h2>Scanner Login</h2>
+    <p class="sub">Select your event and enter the PIN provided by the organiser</p>
+
+    <div class="event-selector">
+      <div class="fg" style="margin-bottom:0">
+        <label>Event</label>
+        <select id="event-select">
+          <option value="">Loading events…</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="err" class="err"></div>
+
+    <div class="pin-display empty" id="pin-display">• • • • • •</div>
+
+    <div class="numpad" id="numpad">
+      <div class="numpad-btn" onclick="addDigit('1')">1</div>
+      <div class="numpad-btn" onclick="addDigit('2')">2</div>
+      <div class="numpad-btn" onclick="addDigit('3')">3</div>
+      <div class="numpad-btn" onclick="addDigit('4')">4</div>
+      <div class="numpad-btn" onclick="addDigit('5')">5</div>
+      <div class="numpad-btn" onclick="addDigit('6')">6</div>
+      <div class="numpad-btn" onclick="addDigit('7')">7</div>
+      <div class="numpad-btn" onclick="addDigit('8')">8</div>
+      <div class="numpad-btn" onclick="addDigit('9')">9</div>
+      <div class="numpad-btn del" onclick="delDigit()">⌫</div>
+      <div class="numpad-btn" onclick="addDigit('0')">0</div>
+      <div class="numpad-btn enter" onclick="submitPin()">Enter →</div>
+    </div>
+  </div>
+  <div class="back-link"><a href="/index.html">← Staff login</a></div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+// If already logged in as scanner, go straight to scanner dashboard
+const stored = localStorage.getItem('hrtb_scanner');
+if (stored) {
+  try {
+    const s = JSON.parse(stored);
+    if (s.token && s.event) { window.location = '/scanner-kiosk.html'; }
+  } catch {}
+}
+
+let pin = '';
+
+// Load public events list for the PIN login selector
+async function loadEvents() {
+  const params = new URLSearchParams(location.search);
+  const preselect = params.get('event');
+
+  try {
+    if (preselect) {
+      // Event-specific URL — only show this event, no dropdown
+      const data = await fetch('/api/events/public/' + preselect).then(r=>r.json());
+      if (data.event) {
+        const sel = document.getElementById('event-select');
+        sel.innerHTML = `<option value="${data.event.id}">${esc(data.event.name)}${data.event.date ? ' · '+esc(data.event.date) : ''}</option>`;
+        sel.disabled = true;
+        sel.style.opacity = '.7';
+        return;
+      }
+    }
+    const { events } = await fetch('/api/events/public').then(r=>r.json());
+    const sel = document.getElementById('event-select');
+    if (!events.length) { sel.innerHTML = '<option value="">No events available</option>'; return; }
+    sel.innerHTML = events.map(e => `<option value="${e.id}">${esc(e.name)}${e.date ? ' · '+esc(e.date) : ''}</option>`).join('');
+  } catch {
+    document.getElementById('event-select').innerHTML = '<option value="">Could not load events</option>';
+  }
+}
+
+function addDigit(d) {
+  if (pin.length >= 6) return;
+  pin += d;
+  updateDisplay();
+}
+
+function delDigit() {
+  pin = pin.slice(0, -1);
+  updateDisplay();
+}
+
+function updateDisplay() {
+  const el = document.getElementById('pin-display');
+  if (!pin) { el.textContent = '• • • • • •'; el.className = 'pin-display empty'; return; }
+  el.className = 'pin-display';
+  el.textContent = pin.split('').join(' ');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key >= '0' && e.key <= '9') addDigit(e.key);
+  else if (e.key === 'Backspace') delDigit();
+  else if (e.key === 'Enter') submitPin();
+});
+
+async function submitPin() {
+  const eventId = document.getElementById('event-select').value;
+  const err = document.getElementById('err');
+  err.style.display = 'none';
+  if (!eventId) { err.textContent = 'Please select an event'; err.style.display = 'block'; return; }
+  if (pin.length !== 6) { err.textContent = 'PIN must be 6 digits'; err.style.display = 'block'; return; }
+  try {
+    const data = await api.auth.pinLogin({ pin, eventId });
+    // Store scanner session separately from main session
+    localStorage.setItem('hrtb_scanner', JSON.stringify({ token: data.token, user: data.user, event: data.event, allow_lookup: data.allow_lookup !== false }));
+    window.location = '/scanner-kiosk.html';
+  } catch(e) {
+    err.textContent = e.message || 'Invalid PIN';
+    err.style.display = 'block';
+    pin = '';
+    updateDisplay();
+  }
+}
+
+loadEvents();
+</script>
+</body>
+</html>
