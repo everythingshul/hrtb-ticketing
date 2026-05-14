@@ -243,9 +243,13 @@ function load() {
       document.getElementById('btn-continue').style.display='block';
   if(eventData.allowActivation){
     document.getElementById('activation-panel').style.display='block';
+  }
+  if(!eventData.salesOpen){
+    // Sales closed — hide purchase panel, only show activation
+    document.getElementById('purchase-panel').style.display='none';
+  } else if(eventData.allowActivation){
     document.getElementById('purchase-panel').classList.remove('centered');
   } else {
-    document.getElementById('activation-panel').style.display='none';
     document.getElementById('purchase-panel').classList.add('centered');
   }
     })

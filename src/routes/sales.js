@@ -90,22 +90,27 @@ function tid() {
 
 // ── Public: get event sales page info ─────────────────────
 r.get('/event/:slug', (req, res) => {
+  // Load event — no sale_enabled filter so activation works even when sales closed
   const event = db.prepare(`
     SELECT e.*, a.name as account_name
     FROM events e JOIN accounts a ON a.id = e.account_id
-    WHERE e.slug=? AND e.sale_enabled=1 AND e.deleted_at IS NULL
+    WHERE e.slug=? AND e.deleted_at IS NULL
   `).get(req.params.slug);
-  if (!event) return res.status(404).json({ error: 'Event not found or sales not available' });
+  if (!event) return res.status(404).json({ error: 'Event not found' });
 
-  // Check expiry (48h after event)
-  if (event.expires_at && new Date(event.expires_at) < new Date()) {
+  const salesOpen = event.sale_enabled &&
+    (!event.expires_at || new Date(event.expires_at) >= new Date());
+
+  // If sales closed AND activation not enabled — nothing to show
+  if (!salesOpen && !event.allow_activation) {
     return res.status(410).json({ error: 'Ticket sales have closed for this event' });
   }
 
-  const levels = db.prepare(`
+  // Only show purchasable levels when sales are open
+  const levels = salesOpen ? db.prepare(`
     SELECT id, name, color, description, price, online_sale, max_tickets, show_availability
     FROM ticket_levels WHERE event_id=? AND online_sale=1 ORDER BY price ASC
-  `).all(event.id);
+  `).all(event.id) : [];
 
   // Add availability data per level — respect the count_unconfirmed toggle
   const saleCountAll = event.capacity_count_unconfirmed !== 0;
@@ -141,7 +146,8 @@ r.get('/event/:slug', (req, res) => {
     accountName: event.account_name,
     publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
     eventSoldOut,
-    allowActivation: event.allow_activation === 1
+    allowActivation: event.allow_activation === 1,
+    salesOpen
   });
 });
 
@@ -519,3 +525,94 @@ r.get('/orders/:eventId', (req, res) => {
 });
 
 export default r;
+
+// ── Portal sell: get event + levels for portal sale (auth required) ─
+r.get('/portal/:eventId', auth, async (req, res) => {
+  const ev = db.prepare('SELECT * FROM events WHERE id=? AND deleted_at IS NULL').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+
+  // Check account has can_sell_online
+  if (req.user.role !== 'admin') {
+    const acc = db.prepare('SELECT can_sell_online FROM accounts WHERE id=?').get(req.user.id);
+    if (!acc?.can_sell_online) return res.status(403).json({ error: 'Online sales not enabled for your account' });
+  }
+
+  const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=? ORDER BY created_at').all(ev.id);
+  const levelsWithCap = levels.map(l => {
+    const sold = db.prepare("SELECT COUNT(*) c FROM attendees WHERE event_id=? AND level_id=? AND deleted_at IS NULL AND status!='deactivated'").get(ev.id, l.id).c;
+    const available = l.max_tickets ? Math.max(0, l.max_tickets - sold) : null;
+    const overLimit = l.max_tickets ? sold >= l.max_tickets : false;
+    return { ...l, sold, available, overLimit };
+  });
+
+  const totalSold = db.prepare("SELECT COUNT(*) c FROM attendees WHERE event_id=? AND deleted_at IS NULL AND status!='deactivated'").get(ev.id).c;
+  const eventOverLimit = ev.max_tickets ? totalSold >= ev.max_tickets : false;
+
+  res.json({
+    event: { id: ev.id, name: ev.name, date: ev.date, venue: ev.venue, slug: ev.slug, stripe_key: ev.stripe_key ? '***' : null, max_tickets: ev.max_tickets },
+    levels: levelsWithCap,
+    totalSold,
+    eventOverLimit,
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
+  });
+});
+
+// ── Portal sell: create PaymentIntent (bypasses sale_enabled/expires checks) ─
+r.post('/portal/:eventId/checkout', auth, async (req, res) => {
+  try {
+    const ev = db.prepare('SELECT * FROM events WHERE id=? AND deleted_at IS NULL').get(req.params.eventId);
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
+
+    if (req.user.role !== 'admin') {
+      const acc = db.prepare('SELECT can_sell_online FROM accounts WHERE id=?').get(req.user.id);
+      if (!acc?.can_sell_online) return res.status(403).json({ error: 'Online sales not enabled' });
+    }
+
+    const { items, attendees: checkoutAttendees, email, bypassCapacity } = req.body;
+    if (!items?.length) return res.status(400).json({ error: 'No items selected' });
+
+    const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(ev.id);
+    const levelMap = Object.fromEntries(levels.map(l => [l.id, l]));
+
+    let totalCents = 0;
+    const warnings = [];
+
+    for (const item of items) {
+      const lvl = levelMap[item.levelId];
+      if (!lvl) return res.status(400).json({ error: 'Invalid ticket level' });
+      if (item.quantity < 1 || item.quantity > 100) return res.status(400).json({ error: 'Invalid quantity' });
+
+      // Check capacity — warn but don't block (portal override)
+      if (!bypassCapacity) {
+        const cap = checkCapacity(ev.id, lvl.id);
+        if (!cap.ok) {
+          warnings.push(...cap.warnings);
+          // Return warning for frontend to confirm bypass
+          return res.status(409).json({ error: 'CAPACITY_WARNING', warnings: cap.warnings });
+        }
+      }
+      totalCents += lvl.price * item.quantity;
+    }
+
+    if (totalCents < 50) return res.status(400).json({ error: 'Minimum charge is $0.50' });
+
+    const orderId = uuid();
+    const stripe = getStripe(ev);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalCents,
+      currency: 'usd',
+      receipt_email: email || undefined,
+      description: `[Portal Sale] Tickets — ${ev.name}`,
+      metadata: { order_id: orderId, event_id: ev.id, event_name: ev.name, event_slug: ev.slug || '' }
+    });
+
+    db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
+      .run(orderId, ev.id, paymentIntent.id, 'pending', email||null, totalCents, JSON.stringify(items), JSON.stringify(checkoutAttendees||[]));
+
+    res.json({ clientSecret: paymentIntent.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '', orderId });
+  } catch(e) {
+    console.error('[portal/checkout]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});

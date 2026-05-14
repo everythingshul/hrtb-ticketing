@@ -23,7 +23,7 @@ const r = Router();
 // ── Public endpoints (no auth) ────────────────────────────
 // Ticket PDF download by ticket ID — linked from email
 r.get('/ticket-pdf/:ticketId', async (req, res) => {
-  const a = db.prepare("SELECT * FROM attendees WHERE ticket_id=? AND deleted_at IS NULL").get(req.params.ticketId.toUpperCase());
+  const a = db.prepare("SELECT att.*, l.name as level_name, l.color as level_color FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.ticket_id=? AND att.deleted_at IS NULL").get(req.params.ticketId.toUpperCase());
   if (!a) return res.status(404).send('Ticket not found');
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(a.event_id);
   const designPath = getEventDesignPath(a.event_id);
