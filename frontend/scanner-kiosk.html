@@ -418,11 +418,13 @@ function showResult(data, ticketId) {
 
   if (data.valid) {
     const a = data.attendee;
+    const lvlBadge = a.level_name ? `<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:${a.level_color||'#6366f1'}22;border:1.5px solid ${a.level_color||'#6366f1'}66;margin-bottom:10px"><span style="width:9px;height:9px;border-radius:50%;background:${a.level_color||'#6366f1'};display:inline-block"></span><span style="font-size:12px;font-weight:700;color:${a.level_color||'#6366f1'};text-transform:uppercase;letter-spacing:.06em">${esc(a.level_name)}</span></div>` : '';
     area.innerHTML = `
       <div class="result-card valid">
         <div style="display:inline-block;background:var(--green);color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">VALID</div>
         <div class="result-head" style="color:var(--green)">Entry Granted</div>
         <div class="result-name">${esc(a.first_name)} ${esc(a.last_name)}</div>
+        ${lvlBadge}
         ${a.phone ? `<div class="result-sub">${esc(a.phone)}</div>` : ''}
         ${a.table_number || a.seat_number ? `
           <div class="result-seats">
@@ -452,11 +454,13 @@ function showResult(data, ticketId) {
 
   } else if (isAlready) {
     const a = data.attendee;
+    const lvlBadge = a?.level_name ? `<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;background:${a.level_color||'#6366f1'}22;border:1.5px solid ${a.level_color||'#6366f1'}66;margin-bottom:8px"><span style="width:8px;height:8px;border-radius:50%;background:${a.level_color||'#6366f1'};display:inline-block"></span><span style="font-size:11px;font-weight:700;color:${a.level_color||'#6366f1'};text-transform:uppercase;letter-spacing:.06em">${esc(a.level_name)}</span></div>` : '';
     area.innerHTML = `
       <div class="result-card warn">
         <div style="display:inline-block;background:var(--orange);color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">DUPLICATE</div>
         <div class="result-head" style="color:var(--orange)">Already Checked In</div>
         ${a ? `<div class="result-name">${esc(a.first_name)} ${esc(a.last_name)}</div>` : ''}
+        ${lvlBadge}
         ${data.checkedAt ? `<div class="result-sub">First scanned at ${new Date(data.checkedAt).toLocaleTimeString()}</div>` : ''}
       </div>`;
     resultTimer = setTimeout(() => { area.innerHTML = ''; }, 7000);

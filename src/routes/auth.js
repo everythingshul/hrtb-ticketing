@@ -213,6 +213,16 @@ r.patch('/scanner-pin/:id/lookup', auth, (req, res) => {
   db.prepare('UPDATE scanner_pins SET allow_lookup=? WHERE id=?').run(allow_lookup ? 1 : 0, req.params.id);
   res.json({ ok: true });
 });
+
+r.patch('/scanner-pin/:id', auth, (req, res) => {
+  const { label, allow_lookup, allowed_levels } = req.body;
+  const pin = db.prepare('SELECT * FROM scanner_pins WHERE id=?').get(req.params.id);
+  if (!pin) return res.status(404).json({ error: 'PIN not found' });
+  if (label !== undefined) db.prepare('UPDATE scanner_pins SET label=? WHERE id=?').run(label, req.params.id);
+  if (allow_lookup !== undefined) db.prepare('UPDATE scanner_pins SET allow_lookup=? WHERE id=?').run(allow_lookup ? 1 : 0, req.params.id);
+  if (allowed_levels !== undefined) db.prepare('UPDATE scanner_pins SET allowed_levels=? WHERE id=?').run(allowed_levels, req.params.id);
+  res.json({ ok: true });
+});
 r.post('/scanner-pin', auth, async (req, res) => {
   try {
     const { eventId, label, allow_lookup = 1, allowed_levels = null } = req.body;

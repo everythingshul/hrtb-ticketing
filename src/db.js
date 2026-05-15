@@ -101,7 +101,29 @@ db.exec(`
 // ── Migrations (safe — run every time, no-op if already done) ──
 try { db.exec('ALTER TABLE accounts ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allow_lookup INTEGER NOT NULL DEFAULT 1'); } catch {}
-try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allowed_levels TEXT'); } catch {} // JSON array of level IDs, null = all levels
+try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allowed_levels TEXT'); } catch {}
+
+// Promo codes
+db.exec(`CREATE TABLE IF NOT EXISTS promo_codes (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  code TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'percent', -- 'percent' or 'fixed'
+  value INTEGER NOT NULL, -- percent (0-100) or cents
+  expires_at TEXT,
+  max_uses INTEGER, -- null = unlimited total uses
+  max_tickets_per_level TEXT, -- JSON {levelId: maxTickets}
+  max_money INTEGER, -- max total cents given away
+  max_total_tickets INTEGER, -- max total tickets across all levels
+  allowed_emails TEXT, -- JSON array of emails, null = all
+  uses INTEGER NOT NULL DEFAULT 0,
+  money_given INTEGER NOT NULL DEFAULT 0,
+  tickets_given INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);`);
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS promo_code_event ON promo_codes (event_id, code)'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN first_name TEXT'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN last_name TEXT'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN phone TEXT'); } catch {}

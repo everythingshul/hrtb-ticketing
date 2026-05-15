@@ -137,6 +137,16 @@ label{font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:4px}
     <div class="card">
       <label>Billing Email *</label>
       <input type="email" id="billing-email" placeholder="email@example.com" autocomplete="email">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1">
+          <label>Promo Code <span style="color:#aaa;font-size:11px">(optional)</span></label>
+          <input type="text" id="promo-code" placeholder="Enter code" style="text-transform:uppercase;letter-spacing:.05em;margin:0" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button onclick="applyPromo()" style="background:var(--navy,#1a3a6b);color:#fff;border:none;padding:11px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">Apply</button>
+        </div>
+      </div>
+      <div id="promo-result" style="display:none;padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:13px"></div>
       <div id="payment-element" style="margin-top:4px"></div>
       <div class="err" id="err-payment" style="margin-top:10px"></div>
       <button class="btn" id="pay-btn" onclick="submitPayment()" style="margin-top:16px">Pay Now &rarr;</button>
@@ -179,6 +189,42 @@ var stripeObj = null;
 var stripeElements = null;
 var paymentElement = null;
 var currentOrderId = null;
+var promoData = null; // validated promo result
+
+async function applyPromo() {
+  var code = document.getElementById('promo-code').value.trim().toUpperCase();
+  var email = document.getElementById('billing-email').value.trim();
+  var resultEl = document.getElementById('promo-result');
+  if (!code) { resultEl.style.display='block'; resultEl.style.background='#fff0f0'; resultEl.style.border='1px solid #ffb3b3'; resultEl.style.color='#c00'; resultEl.textContent='Enter a promo code'; return; }
+
+  var items = [];
+  for (var i=0; i<(eventData.levels||[]).length; i++) {
+    if (quantities[eventData.levels[i].id]>0) items.push({levelId:eventData.levels[i].id, quantity:quantities[eventData.levels[i].id]});
+  }
+
+  resultEl.style.display='block'; resultEl.style.background='#f0f4ff'; resultEl.style.border='1px solid #c7d2fe'; resultEl.style.color='#3730a3'; resultEl.textContent='Checking...';
+
+  fetch('/api/sales/event/'+slug+'/promo', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({code:code, items:items, email:email})
+  })
+  .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
+  .then(function(res){
+    if (!res.ok) {
+      promoData = null;
+      resultEl.style.background='#fff0f0'; resultEl.style.border='1px solid #ffb3b3'; resultEl.style.color='#c00';
+      resultEl.textContent = res.data.error || 'Invalid promo code';
+    } else {
+      promoData = res.data;
+      resultEl.style.background='#f0fff4'; resultEl.style.border='1px solid #b2f5ca'; resultEl.style.color='#145a2e';
+      var savings = '$'+(res.data.discountCents/100).toFixed(2);
+      resultEl.innerHTML = '✓ Promo applied — you save '+savings+'! New total: $'+(res.data.finalCents/100).toFixed(2);
+      // Reload payment element with discounted total
+      loadPaymentElement();
+    }
+  })
+  .catch(function(){ resultEl.style.background='#fff0f0'; resultEl.style.border='1px solid #ffb3b3'; resultEl.style.color='#c00'; resultEl.textContent='Could not verify code. Try again.'; });
+}
 
 function fmt(c) { return '$' + (c/100).toFixed(2); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -341,16 +387,26 @@ function loadPaymentElement(){
   for(var i=0;i<(eventData.levels||[]).length;i++){
     if(quantities[eventData.levels[i].id]>0) items.push({levelId:eventData.levels[i].id,quantity:quantities[eventData.levels[i].id]});
   }
+  var promoCode = document.getElementById('promo-code') ? document.getElementById('promo-code').value.trim().toUpperCase() : null;
   var email=document.getElementById('billing-email').value.trim()||(attendeePeople[0]?attendeePeople[0].email:'');
 
   fetch('/api/sales/event/'+slug+'/checkout',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({items:items,attendees:attendeePeople,email:email})
+    body:JSON.stringify({items:items,attendees:attendeePeople,email:email,promoCode:promoCode||undefined})
   })
   .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
   .then(function(result){
     if(!result.ok) throw new Error(result.data.error||'Could not start payment');
+    // Free order — no payment needed
+    if(result.data.free){
+      currentOrderId=result.data.orderId;
+      document.getElementById('payment-element').innerHTML='<div style="text-align:center;padding:16px;color:#27a85f;font-weight:600">✓ Free order — click Complete below</div>';
+      var btn=document.getElementById('pay-btn');
+      btn.disabled=false; btn.textContent='Complete Order \u2192';
+      btn.onclick=function(){goStep('step-confirm');pollOrder(currentOrderId);};
+      return;
+    }
     var key=result.data.publishableKey;
     var secret=result.data.clientSecret;
     currentOrderId=result.data.orderId;

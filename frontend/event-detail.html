@@ -1030,7 +1030,32 @@ async function sendInvite() {
   catch(e) { toast(e.message,'error'); }
 }
 
-function doExport() { window.open(api.attendees.exportUrl(eventId)); }
+function doExport() {
+  if (filtered.length === attendees.length) {
+    // No filter — use server export
+    window.open(api.attendees.exportUrl(eventId));
+    return;
+  }
+  // Filtered — export only the filtered rows as CSV client-side
+  const rows = [
+    ['Ticket ID','First Name','Last Name','Phone','Email','Table','Seat','Level','Status','Activated','Source','Sent At','Checked In At'],
+    ...filtered.map(a => {
+      const lvl = levels.find(l => l.id === a.level_id);
+      return [a.ticket_id, a.first_name||'', a.last_name||'', a.phone||'', a.email||'',
+        a.table_number||'', a.seat_number||'', lvl?.name||'',
+        a.status, a.confirmed?'Yes':'No', a.source||'offline',
+        a.sent_at||'', a.checked_in_at||''];
+    })
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'attendees-filtered.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`Exported ${filtered.length} filtered attendees`);
+}
 
 // ── Upload dropdown menu ──────────────────────────────────
 function toggleAddMenu() {
@@ -1431,7 +1456,9 @@ async function loadPins() {
             <button class="btn btn-sm" onclick="togglePinLookup('${p.id}',${p.allow_lookup?0:1})">${p.allow_lookup?'Disable':'Enable'}</button>
           </div>
         </td>
-        <td>${allowedLvls.length ? lvlNames : '<span class="xs text2">All levels</span>'}</td>
+        <td>${allowedLvls.length ? lvlNames : '<span class="xs text2">All levels</span>'}
+          <button class="btn btn-sm" style="margin-left:4px;font-size:11px" onclick="editPinLevels('${p.id}')">Edit</button>
+        </td>
         <td><button class="btn btn-sm btn-danger" onclick="deletePin('${p.id}')">Delete</button></td>
       </tr>`;}).join('')}</tbody>
     </table></div>`;
@@ -1455,7 +1482,41 @@ async function createPin() {
 async function togglePinLookup(id, newVal) {
   try {
     await api.auth.updateScannerLookup(id, newVal);
-    toast(newVal ? 'Name/phone lookup enabled' : 'Name/phone lookup disabled');
+    toast(newVal ? 'Lookup enabled' : 'Lookup disabled');
+    await loadPins();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function editPinLevels(pinId) {
+  const pin = (await api.auth.getScannerPins(eventId)).pins.find(p => p.id === pinId);
+  if (!pin) return;
+  const current = pin.allowed_levels ? JSON.parse(pin.allowed_levels) : [];
+  const checks = levels.map(l => `<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer">
+    <input type="checkbox" value="${l.id}" ${current.includes(l.id)?'checked':''} style="width:15px;height:15px">
+    <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span>
+  </label>`).join('');
+  const div = document.createElement('div');
+  div.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:24px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3>
+      <p class="xs text2 mb12">Leave all unchecked = allow all levels</p>
+      <div id="edit-lvl-checks">${checks || '<p class="text2 sm">No levels set up for this event</p>'}</div>
+      <div class="row mt16" style="gap:8px;justify-content:flex-end">
+        <button class="btn" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="this.closest('[style*=fixed]').remove()">Cancel</button>
+        <button class="btn btn-gold" onclick="savePinLevels('${pinId}',this)">Save</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+async function savePinLevels(pinId, btn) {
+  const overlay = btn.closest('[style*=fixed]');
+  const checked = [...overlay.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+  try {
+    await api.auth.updateScannerPin(pinId, { allowed_levels: checked.length ? JSON.stringify(checked) : null });
+    toast('Level restrictions saved');
+    overlay.remove();
     await loadPins();
   } catch(e) { toast(e.message, 'error'); }
 }

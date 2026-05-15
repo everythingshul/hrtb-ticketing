@@ -45,6 +45,7 @@ const api = {
     changePassword: b => req('/auth/change-password', { method: 'POST', body: JSON.stringify(b) }),
     updateUserProfile: (id, b) => req(`/auth/users/${id}/profile`, { method: 'PUT', body: JSON.stringify(b) }),
     updateScannerLookup: (id, allow) => req(`/auth/scanner-pin/${id}/lookup`, { method: 'PATCH', body: JSON.stringify({ allow_lookup: allow }) }),
+    updateScannerPin: (id, b) => req(`/auth/scanner-pin/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
     createScannerPin: b => req('/auth/scanner-pin', { method: 'POST', body: JSON.stringify(b) }),
     getScannerPins: eventId => req(`/auth/scanner-pins/${eventId}`),
     deleteScannerPin: id => req(`/auth/scanner-pin/${id}`, { method: 'DELETE' }),
@@ -96,6 +97,10 @@ const api = {
     },
     bulkStatus: (eventId, b) => req(`/attendees/event/${eventId}/bulk-status`, { method: 'POST', body: JSON.stringify(b) }),
     bulkLevel: (eventId, b) => req(`/attendees/event/${eventId}/bulk-level`, { method: 'POST', body: JSON.stringify(b) }),
+    getPromos: eventId => req(`/sales/event/${eventId}/promos`),
+    createPromo: (eventId, b) => req(`/sales/event/${eventId}/promos`, { method: 'POST', body: JSON.stringify(b) }),
+    updatePromo: (eventId, promoId, b) => req(`/sales/event/${eventId}/promos/${promoId}`, { method: 'PATCH', body: JSON.stringify(b) }),
+    deletePromo: (eventId, promoId) => req(`/sales/event/${eventId}/promos/${promoId}`, { method: 'DELETE' }),
   },
   admin: {
     stats: () => req('/admin/stats'),

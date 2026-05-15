@@ -103,7 +103,13 @@ r.get('/event/:slug', (req, res) => {
 
   // If sales closed AND activation not enabled — nothing to show
   if (!salesOpen && !event.allow_activation) {
-    return res.status(410).json({ error: 'Ticket sales have closed for this event' });
+    if (!event.sale_enabled) {
+      return res.status(410).json({ error: 'Ticket sales are not yet open for this event.' });
+    }
+    if (event.expires_at && new Date(event.expires_at) < new Date()) {
+      return res.status(410).json({ error: 'Ticket sales have closed for this event.' });
+    }
+    return res.status(410).json({ error: 'Ticket sales are not available for this event.' });
   }
 
   // Only show purchasable levels when sales are open
@@ -189,10 +195,36 @@ r.post('/event/:slug/checkout', async (req, res) => {
       totalCents += lvl.price * item.quantity;
     }
 
-    if (totalCents < 50) return res.status(400).json({ error: 'Minimum charge is $0.50' });
+    // Apply promo discount if provided
+    let discountCents = 0;
+    let promoRecord = null;
+    if (req.body.promoCode) {
+      promoRecord = db.prepare('SELECT * FROM promo_codes WHERE event_id=? AND code=? AND active=1').get(event.id, req.body.promoCode.trim().toUpperCase());
+      if (promoRecord) {
+        if (promoRecord.type === 'percent') {
+          discountCents = Math.round(totalCents * promoRecord.value / 100);
+        } else {
+          discountCents = Math.min(promoRecord.value, totalCents);
+        }
+        if (promoRecord.max_money) discountCents = Math.min(discountCents, promoRecord.max_money - promoRecord.money_given);
+        discountCents = Math.max(0, discountCents);
+      }
+    }
+    totalCents = Math.max(0, totalCents - discountCents);
 
     const orderId = uuid();
     const stripe = getStripe(event);
+
+    // Free tickets — fulfill immediately without Stripe
+    if (totalCents === 0) {
+      db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
+        .run(orderId, event.id, 'free-' + orderId, 'pending', email||null, 0, JSON.stringify(items), JSON.stringify(checkoutAttendees||[]));
+      // Fulfill immediately
+      await fulfillOrder({ metadata: { order_id: orderId, event_id: event.id, event_name: event.name, event_slug: event.slug }, payment_intent: null, customer_details: { email }, payment_status: 'paid' });
+      // Update promo usage
+      if (promoRecord) db.prepare('UPDATE promo_codes SET uses=uses+1, tickets_given=tickets_given+?, money_given=money_given+? WHERE id=?').run(items.reduce((s,i)=>s+i.quantity,0), discountCents, promoRecord.id);
+      return res.json({ free: true, orderId });
+    }
 
     // Create PaymentIntent — works with Payment Element, no iframes, no ad-blocker issues
     const paymentIntent = await stripe.paymentIntents.create({
@@ -594,7 +626,16 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
       totalCents += lvl.price * item.quantity;
     }
 
-    if (totalCents < 50) return res.status(400).json({ error: 'Minimum charge is $0.50' });
+    // Free order — fulfill immediately
+    if (totalCents === 0) {
+      const orderId = uuid();
+      db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
+        .run(orderId, ev.id, 'free-' + orderId, 'pending', email||null, 0, JSON.stringify(items), JSON.stringify(checkoutAttendees||[]));
+      await fulfillOrder({ metadata: { order_id: orderId, event_id: ev.id, event_name: ev.name, event_slug: ev.slug||'' }, payment_intent: null, customer_details: { email }, payment_status: 'paid' });
+      return res.json({ free: true, orderId });
+    }
+
+    if (totalCents < 50) return res.status(400).json({ error: 'Total must be at least $0.50' });
 
     const orderId = uuid();
     const stripe = getStripe(ev);
@@ -615,4 +656,117 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
     console.error('[portal/checkout]', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ── Promo code routes ─────────────────────────────────────
+
+// Validate promo code (public — called from sale page)
+r.post('/event/:slug/promo', (req, res) => {
+  const { code, items, email } = req.body;
+  if (!code || !items?.length) return res.status(400).json({ error: 'Code and items required' });
+
+  const event = db.prepare('SELECT * FROM events WHERE slug=? AND deleted_at IS NULL').get(req.params.slug);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  const promo = db.prepare('SELECT * FROM promo_codes WHERE event_id=? AND code=? AND active=1').get(event.id, code.trim().toUpperCase());
+  if (!promo) return res.status(404).json({ error: 'Invalid promo code' });
+  if (promo.expires_at && new Date(promo.expires_at) < new Date()) return res.status(400).json({ error: 'This promo code has expired' });
+
+  // Check email restriction
+  if (promo.allowed_emails) {
+    const allowed = JSON.parse(promo.allowed_emails).map(e => e.toLowerCase().trim());
+    if (email && !allowed.includes(email.toLowerCase().trim())) {
+      return res.status(403).json({ error: 'This promo code is not valid for your email address' });
+    }
+  }
+
+  // Check limits
+  if (promo.max_uses && promo.uses >= promo.max_uses) return res.status(400).json({ error: 'This promo code has reached its usage limit' });
+  if (promo.max_money && promo.money_given >= promo.max_money) return res.status(400).json({ error: 'This promo code has reached its discount limit' });
+
+  const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(event.id);
+  const levelMap = Object.fromEntries(levels.map(l => [l.id, l]));
+  const perLevelLimits = promo.max_tickets_per_level ? JSON.parse(promo.max_tickets_per_level) : {};
+
+  // Calculate discount
+  let originalCents = 0, discountCents = 0;
+  const lineDiscounts = [];
+
+  for (const item of items) {
+    const lvl = levelMap[item.levelId];
+    if (!lvl) continue;
+    const qty = item.quantity;
+    const subtotal = lvl.price * qty;
+    originalCents += subtotal;
+
+    // Check per-level limit
+    if (perLevelLimits[item.levelId]) {
+      const maxForLevel = perLevelLimits[item.levelId];
+      const usedForLevel = db.prepare("SELECT COUNT(*) c FROM attendees WHERE event_id=? AND level_id=? AND source='online' AND deleted_at IS NULL").get(event.id, item.levelId).c;
+      if (usedForLevel >= maxForLevel) {
+        lineDiscounts.push({ levelId: item.levelId, discount: 0, note: 'Level limit reached' });
+        continue;
+      }
+    }
+
+    const lineDiscount = promo.type === 'percent' ? Math.round(subtotal * promo.value / 100) : Math.min(promo.value * qty, subtotal);
+    discountCents += lineDiscount;
+    lineDiscounts.push({ levelId: item.levelId, discount: lineDiscount });
+  }
+
+  // Cap by max_money remaining
+  if (promo.max_money) {
+    const remaining = promo.max_money - promo.money_given;
+    discountCents = Math.min(discountCents, remaining);
+  }
+
+  const finalCents = Math.max(0, originalCents - discountCents);
+  res.json({ valid: true, promo: { id: promo.id, code: promo.code, type: promo.type, value: promo.value }, originalCents, discountCents, finalCents, lineDiscounts });
+});
+
+// List promos for event (auth required)
+r.get('/event/:eventId/promos', auth, (req, res) => {
+  const promos = db.prepare('SELECT * FROM promo_codes WHERE event_id=? ORDER BY created_at DESC').all(req.params.eventId);
+  res.json({ promos });
+});
+
+// Create promo (auth required)
+r.post('/event/:eventId/promos', auth, (req, res) => {
+  const { code, type, value, expires_at, max_uses, max_tickets_per_level, max_money, max_total_tickets, allowed_emails } = req.body;
+  if (!code || !type || value === undefined) return res.status(400).json({ error: 'code, type, and value required' });
+  const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+
+  const existing = db.prepare('SELECT id FROM promo_codes WHERE event_id=? AND code=?').get(ev.id, code.trim().toUpperCase());
+  if (existing) return res.status(400).json({ error: 'Promo code already exists for this event' });
+
+  const id = uuid();
+  db.prepare(`INSERT INTO promo_codes (id,event_id,code,type,value,expires_at,max_uses,max_tickets_per_level,max_money,max_total_tickets,allowed_emails)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, ev.id, code.trim().toUpperCase(), type, parseInt(value), expires_at||null, max_uses||null,
+      max_tickets_per_level ? JSON.stringify(max_tickets_per_level) : null,
+      max_money||null, max_total_tickets||null,
+      allowed_emails ? JSON.stringify(allowed_emails.split(',').map(e=>e.trim()).filter(Boolean)) : null);
+  res.json({ ok: true, id });
+});
+
+// Update promo
+r.patch('/event/:eventId/promos/:promoId', auth, (req, res) => {
+  const { active, expires_at, max_uses, allowed_emails, max_money, max_total_tickets, max_tickets_per_level } = req.body;
+  const promo = db.prepare('SELECT * FROM promo_codes WHERE id=? AND event_id=?').get(req.params.promoId, req.params.eventId);
+  if (!promo) return res.status(404).json({ error: 'Promo not found' });
+  if (active !== undefined) db.prepare('UPDATE promo_codes SET active=? WHERE id=?').run(active?1:0, promo.id);
+  if (expires_at !== undefined) db.prepare('UPDATE promo_codes SET expires_at=? WHERE id=?').run(expires_at||null, promo.id);
+  if (max_uses !== undefined) db.prepare('UPDATE promo_codes SET max_uses=? WHERE id=?').run(max_uses||null, promo.id);
+  if (max_money !== undefined) db.prepare('UPDATE promo_codes SET max_money=? WHERE id=?').run(max_money||null, promo.id);
+  if (max_total_tickets !== undefined) db.prepare('UPDATE promo_codes SET max_total_tickets=? WHERE id=?').run(max_total_tickets||null, promo.id);
+  if (max_tickets_per_level !== undefined) db.prepare('UPDATE promo_codes SET max_tickets_per_level=? WHERE id=?').run(max_tickets_per_level?JSON.stringify(max_tickets_per_level):null, promo.id);
+  if (allowed_emails !== undefined) db.prepare('UPDATE promo_codes SET allowed_emails=? WHERE id=?').run(allowed_emails?JSON.stringify(allowed_emails.split(',').map(e=>e.trim()).filter(Boolean)):null, promo.id);
+  res.json({ ok: true });
+});
+
+// Delete promo
+r.delete('/event/:eventId/promos/:promoId', auth, (req, res) => {
+  db.prepare('DELETE FROM promo_codes WHERE id=? AND event_id=?').run(req.params.promoId, req.params.eventId);
+  res.json({ ok: true });
 });
