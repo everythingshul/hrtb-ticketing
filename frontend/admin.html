@@ -13,7 +13,7 @@
     <div class="ph">
       <div class="ph-left"><h1>Admin Panel</h1><p>Manage all accounts and events</p></div>
       <div class="ph-actions">
-        <input id="search" placeholder="Search…" style="width:180px" oninput="onSearch()" autocomplete="off" type="search">
+        <input id="search" placeholder="Search…" style="width:180px" oninput="onSearch()" autocomplete="new-password" type="text" name="admin-search-x" readonly onfocus="this.removeAttribute('readonly')">
         <button class="btn btn-sm" onclick="openNewEventModal()">+ New Event</button>
         <button class="btn btn-gold" onclick="openInviteModal()">Invite New User</button>
       </div>
@@ -171,6 +171,20 @@
   </div>
 </div>
 
+<!-- Event info popup -->
+<div id="modal-event-popup" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-event-popup')">
+  <div class="modal modal-lg"><div class="modal-hd"><h2 id="event-popup-title">Event Details</h2><button class="modal-x" onclick="hideModal('modal-event-popup')">&#x2715;</button></div>
+    <div id="event-popup-body"></div>
+  </div>
+</div>
+
+<!-- Account events popup -->
+<div id="modal-account-events" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-account-events')">
+  <div class="modal modal-lg"><div class="modal-hd"><h2 id="acc-events-title">Account Events</h2><button class="modal-x" onclick="hideModal('modal-account-events')">&#x2715;</button></div>
+    <div id="acc-events-body"></div>
+  </div>
+</div>
+
 <script src="/js/app.js"></script>
 <script>
 if (!Auth.require()) throw 0;
@@ -233,7 +247,7 @@ function renderAccounts() {
   document.getElementById('tab-accounts-content').innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Events</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
     <tbody>${list.map(a=>`<tr>
-      <td><strong>${esc(a.name)}</strong></td>
+      <td><button class="btn btn-sm btn-ghost" style="font-size:13px;padding:3px 6px;font-weight:700" onclick="showAccountEventsPopup('${a.id}')">${esc(a.name)}</button></td>
       <td class="text2">${esc(a.email)}</td>
       <td>${badgeHTML(a.role)}</td>
       <td>${a.eventCount}</td>
@@ -258,8 +272,8 @@ function renderEvents() {
   document.getElementById('tab-events-content').innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Event</th><th>Account</th><th>Date</th><th>Venue</th><th>Attendees</th><th>Created</th><th></th></tr></thead>
     <tbody>${filteredEvs.map(e=>`<tr style="cursor:pointer" onclick="window.open('/event-detail.html?id=${e.id}','_blank')">
-      <td><strong>${esc(e.name)}</strong></td>
-      <td class="text2">${esc(e.account_name)}</td>
+      <td><strong style="cursor:pointer" onclick="arguments[0].stopPropagation();showEventPopup('${e.id}')">${esc(e.name)}</strong></td>
+      <td class="text2"><button class="btn btn-sm btn-ghost" style="font-size:12px;padding:3px 8px" onclick="arguments[0].stopPropagation();openManageByEvent('${e.id}')">${esc(e.account_name)}</button></td>
       <td class="text2">${esc(e.date||'—')}</td>
       <td class="text2">${esc(e.venue||'—')}</td>
       <td>${e.attendee_count}</td>
@@ -962,6 +976,72 @@ async function createAdminEvent() {
     // Open the event
     window.open('/event-detail.html?id=' + data.event.id, '_blank');
   } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+
+function openManageByEvent(eventId) {
+  const ev = events.find(e => e.id === eventId);
+  if (!ev) return;
+  const acc = accounts.find(a => a.name === ev.account_name);
+  if (acc) openManage(acc.id);
+}
+
+function showEventPopup(eventId) {
+  const ev = events.find(e => e.id === eventId);
+  if (!ev) return;
+  const acc = accounts.find(a => a.name === ev.account_name);
+  document.getElementById('event-popup-title').textContent = ev.name;
+  document.getElementById('event-popup-body').innerHTML = `
+    <div class="card mb12" style="background:var(--bg3);padding:14px">
+      <div class="section-title mb8">Event Info</div>
+      <div class="form-row" style="gap:10px">
+        <div><span class="xs text2">Date</span><div style="font-size:13px">${esc(ev.date||'—')}</div></div>
+        <div><span class="xs text2">Venue</span><div style="font-size:13px">${esc(ev.venue||'—')}</div></div>
+        <div><span class="xs text2">Attendees</span><div style="font-size:13px">${ev.attendee_count}</div></div>
+      </div>
+    </div>
+    ${acc ? `<div class="card mb12" style="background:var(--bg3);padding:14px">
+      <div class="section-title mb8">Account</div>
+      <div class="form-row" style="gap:10px">
+        <div><span class="xs text2">Name</span><div style="font-size:13px;font-weight:600">${esc(acc.name)}</div></div>
+        <div><span class="xs text2">Email</span><div style="font-size:13px">${esc(acc.email)}</div></div>
+        <div><span class="xs text2">Phone</span><div style="font-size:13px">${esc(acc.phone||'—')}</div></div>
+        <div><span class="xs text2">Company</span><div style="font-size:13px">${esc(acc.company||'—')}</div></div>
+      </div>
+      <div class="row mt10" style="gap:8px">
+        <button class="btn btn-sm btn-gold" onclick="hideModal('modal-event-popup');openManage('${acc.id}')">Manage Account</button>
+        <button class="btn btn-sm" onclick="window.open('/event-detail.html?id=${ev.id}','_blank')">Open Event ↗</button>
+      </div>
+    </div>` : ''}`;
+  showModal('modal-event-popup');
+}
+
+function showAccountEventsPopup(accountId) {
+  const acc = accounts.find(a => a.id === accountId);
+  if (!acc) return;
+  const accEvents = events.filter(e => e.account_name === acc.name);
+  document.getElementById('acc-events-title').textContent = acc.name + ' — Events';
+  document.getElementById('acc-events-body').innerHTML = `
+    <div class="row mb12" style="gap:6px;flex-wrap:wrap">
+      <span class="chip">${esc(acc.email)}</span>
+      ${acc.phone ? `<span class="chip">${esc(acc.phone)}</span>` : ''}
+      ${acc.company ? `<span class="chip">${esc(acc.company)}</span>` : ''}
+      ${badgeHTML(acc.role)}
+      <span class="chip">${acc.eventCount} events</span>
+    </div>
+    <div class="row mb14" style="gap:8px">
+      <button class="btn btn-sm btn-gold" onclick="hideModal('modal-account-events');openManage('${acc.id}')">Manage Account →</button>
+    </div>
+    ${accEvents.length ? `<div class="table-wrap"><table>
+      <thead><tr><th>Event</th><th>Date</th><th>Venue</th><th>Attendees</th><th></th></tr></thead>
+      <tbody>${accEvents.map(e => `<tr>
+        <td><strong>${esc(e.name)}</strong></td>
+        <td class="text2">${esc(e.date||'—')}</td>
+        <td class="text2">${esc(e.venue||'—')}</td>
+        <td>${e.attendee_count}</td>
+        <td><button class="btn btn-sm" onclick="window.open('/event-detail.html?id=${e.id}','_blank')">Open ↗</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>` : '<p class="text2 sm">No events for this account.</p>'}`;
+  showModal('modal-account-events');
 }
 </script>
 </body>

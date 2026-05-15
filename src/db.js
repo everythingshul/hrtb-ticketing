@@ -101,6 +101,7 @@ db.exec(`
 // ── Migrations (safe — run every time, no-op if already done) ──
 try { db.exec('ALTER TABLE accounts ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allow_lookup INTEGER NOT NULL DEFAULT 1'); } catch {}
+try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allowed_levels TEXT'); } catch {} // JSON array of level IDs, null = all levels
 try { db.exec('ALTER TABLE accounts ADD COLUMN first_name TEXT'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN last_name TEXT'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN phone TEXT'); } catch {}

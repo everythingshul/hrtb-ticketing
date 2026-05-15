@@ -373,7 +373,7 @@
     <div class="info-box tip mb16">
       Scanner URL: <strong style="color:var(--text);font-family:monospace" id="scanner-url"></strong>
     </div>
-    <div class="form-row mb12">
+    <div class="form-row mb8">
       <div class="fg" style="margin-bottom:0"><label>Label</label><input id="pin-label" placeholder="Main Entrance, Gate B, etc."></div>
       <div class="fg" style="margin-bottom:0">
         <label>Name/Phone Lookup</label>
@@ -382,6 +382,10 @@
           <option value="0">Disabled — ticket ID or QR only</option>
         </select>
       </div>
+    </div>
+    <div class="fg mb12">
+      <label>Restrict to Ticket Levels <span class="hint" style="display:inline">leave empty = allow all levels</span></label>
+      <div id="pin-levels-wrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0"></div>
     </div>
     <button class="btn btn-gold mb4" onclick="createPin()">+ Create PIN</button>
     <div id="pins-list"></div>
@@ -1392,6 +1396,15 @@ function previewTicketPDF() {
 // ── Scanner PIN management ────────────────────────────────
 async function openPins() {
   document.getElementById('scanner-url').textContent = window.location.origin + '/scanner-login.html?event=' + eventId;
+  // Render level restriction checkboxes
+  const wrap = document.getElementById('pin-levels-wrap');
+  if (wrap) {
+    wrap.innerHTML = levels.length
+      ? levels.map(l => `<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid ${l.color}44;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;background:${l.color}11;color:${l.color}">
+          <input type="checkbox" data-level-id="${l.id}" style="width:13px;height:13px;cursor:pointer;accent-color:${l.color}"> ${esc(l.name)}
+        </label>`).join('')
+      : '<span class="xs text2">No ticket levels</span>';
+  }
   showModal('modal-pins');
   await loadPins();
 }
@@ -1405,20 +1418,22 @@ async function loadPins() {
       return;
     }
     list.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Label</th><th>PIN</th><th>Name/Phone Lookup</th><th></th></tr></thead>
-      <tbody>${pins.map(p => `<tr>
+      <thead><tr><th>Label</th><th>PIN</th><th>Lookup</th><th>Level Restriction</th><th></th></tr></thead>
+      <tbody>${pins.map(p => {
+        const allowedLvls = p.allowed_levels ? JSON.parse(p.allowed_levels) : [];
+        const lvlNames = allowedLvls.map(lid => { const l = levels.find(x=>x.id===lid); return l ? `<span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44;font-size:10px">${esc(l.name)}</span>` : ''; }).join(' ');
+        return `<tr>
         <td><strong>${esc(p.label)}</strong></td>
         <td><span style="font-family:monospace;font-size:18px;font-weight:700;letter-spacing:.15em;color:var(--cyan)">${esc(p.pin)}</span></td>
         <td>
           <div class="row" style="gap:6px">
-            ${p.allow_lookup
-              ? '<span class="badge badge-checked">Allowed</span>'
-              : '<span class="badge badge-deactivated">Disabled</span>'}
+            ${p.allow_lookup ? '<span class="badge badge-checked">Allowed</span>' : '<span class="badge badge-deactivated">Off</span>'}
             <button class="btn btn-sm" onclick="togglePinLookup('${p.id}',${p.allow_lookup?0:1})">${p.allow_lookup?'Disable':'Enable'}</button>
           </div>
         </td>
+        <td>${allowedLvls.length ? lvlNames : '<span class="xs text2">All levels</span>'}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deletePin('${p.id}')">Delete</button></td>
-      </tr>`).join('')}</tbody>
+      </tr>`;}).join('')}</tbody>
     </table></div>`;
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -1426,10 +1441,13 @@ async function loadPins() {
 async function createPin() {
   const label = document.getElementById('pin-label').value.trim() || 'Door Scanner';
   const allow_lookup = parseInt(document.getElementById('pin-lookup').value);
+  const checkedLevels = [...document.querySelectorAll('#pin-levels-wrap input[type=checkbox]:checked')].map(cb => cb.dataset.levelId);
+  const allowed_levels = checkedLevels.length ? JSON.stringify(checkedLevels) : null;
   try {
-    const { pin } = await api.auth.createScannerPin({ eventId, label, allow_lookup });
+    const { pin } = await api.auth.createScannerPin({ eventId, label, allow_lookup, allowed_levels });
     toast(`PIN created: ${pin}`);
     document.getElementById('pin-label').value = '';
+    document.querySelectorAll('#pin-levels-wrap input[type=checkbox]').forEach(cb => cb.checked = false);
     await loadPins();
   } catch(e) { toast(e.message, 'error'); }
 }

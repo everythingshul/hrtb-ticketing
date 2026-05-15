@@ -87,13 +87,14 @@ r.post('/pin-login', async (req, res) => {
   try {
     const { pin, eventId } = req.body;
     if (!pin) return res.status(400).json({ error: 'PIN required' });
-    const sc = db.prepare(`SELECT a.*, sp.allow_lookup FROM scanner_pins sp
+    const sc = db.prepare(`SELECT a.*, sp.allow_lookup, sp.id as pin_id, sp.allowed_levels FROM scanner_pins sp
       JOIN accounts a ON a.id = sp.account_id
       WHERE sp.pin = ? AND sp.event_id = ? AND a.is_active = 1`).get(pin, eventId || '');
     if (!sc) return res.status(401).json({ error: 'Invalid PIN' });
-    const token = jwt.sign({ userId: sc.id, scannerEventId: eventId }, JWT_SECRET, { expiresIn: '12h' });
+    const token = jwt.sign({ userId: sc.id, scannerEventId: eventId, pinId: sc.pin_id }, JWT_SECRET, { expiresIn: '12h' });
     const event = db.prepare('SELECT id,name,date,venue FROM events WHERE id=?').get(eventId);
-    res.json({ token, user: { id: sc.id, name: sc.name, email: sc.email, role: 'scanner' }, event, allow_lookup: sc.allow_lookup === 1 });
+    const allowedLevels = sc.allowed_levels ? JSON.parse(sc.allowed_levels) : [];
+    res.json({ token, user: { id: sc.id, name: sc.name, email: sc.email, role: 'scanner' }, event, allow_lookup: sc.allow_lookup === 1, allowed_levels: allowedLevels });
   } catch (e) { res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -214,7 +215,7 @@ r.patch('/scanner-pin/:id/lookup', auth, (req, res) => {
 });
 r.post('/scanner-pin', auth, async (req, res) => {
   try {
-    const { eventId, label, allow_lookup = 1 } = req.body;
+    const { eventId, label, allow_lookup = 1, allowed_levels = null } = req.body;
     if (!eventId) return res.status(400).json({ error: 'eventId required' });
     const event = db.prepare('SELECT * FROM events WHERE id=?').get(eventId);
     if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -232,8 +233,8 @@ r.post('/scanner-pin', auth, async (req, res) => {
     const hash = await bcrypt.hash(pin, 8);
     const accountId = uuid();
     db.prepare('INSERT INTO accounts (id,name,email,password_hash,role) VALUES (?,?,?,?,?)').run(accountId, label || `Scanner — ${event.name}`, scannerEmail, hash, 'scanner');
-    db.prepare('INSERT INTO scanner_pins (id,account_id,event_id,pin,label,allow_lookup,created_by) VALUES (?,?,?,?,?,?,?)').run(id, accountId, eventId, pin, label || 'Door Scanner', allow_lookup ? 1 : 0, req.user.id);
-    res.json({ ok: true, pin, label: label || 'Door Scanner', allow_lookup: !!allow_lookup, id });
+    db.prepare('INSERT INTO scanner_pins (id,account_id,event_id,pin,label,allow_lookup,allowed_levels,created_by) VALUES (?,?,?,?,?,?,?,?)').run(id, accountId, eventId, pin, label || 'Door Scanner', allow_lookup ? 1 : 0, allowed_levels || null, req.user.id);
+    res.json({ ok: true, pin, label: label || 'Door Scanner', allow_lookup: !!allow_lookup, allowed_levels, id });
   } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
 });
 
