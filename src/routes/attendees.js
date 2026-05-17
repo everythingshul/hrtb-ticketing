@@ -212,10 +212,11 @@ r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (re
 r.post('/event/:eventId/commit', requireEvent, (req, res) => {
   try {
     const { newRows=[], resolved=[] } = req.body;
-    const eventLevels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(req.params.eventId);
+    const allLevels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(req.params.eventId);
+    const eventLevels = allLevels.filter(l => !l.is_staff); // only non-staff levels for attendee upload
     const hasLevels = eventLevels.length > 0;
 
-    // If event has ticket levels, validate all rows have a valid level
+    // Only validate levels if there are non-staff levels
     if (hasLevels) {
       const levelNames = eventLevels.map(l => l.name.toLowerCase());
       const missing = newRows.filter(r => (r.first_name||r.last_name) && !levelNames.includes((r.ticket_level||'').toLowerCase()));

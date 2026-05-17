@@ -413,7 +413,7 @@ function debouncedFilter() {
 async function load() {
   const attData = await api.attendees.list(eventId);
   const att = attData.attendees;
-  levels = attData.levels || [];
+  levels = (attData.levels || []).filter(l => !l.is_staff); // staff levels shown on Staff page only
   // Event comes directly from the attendees endpoint — works for all roles including admin
   eventData = attData.event;
   if (!eventData) {
