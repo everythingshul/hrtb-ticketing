@@ -79,8 +79,9 @@ const ticketCard = (a, ev) => `
   </div>
 </div>`;
 
-export function ticketEmail({ attendee, event }) {
+export function ticketEmail({ attendee, event, pdfUrl }) {
   const appUrl = process.env.APP_URL || '';
+  const downloadUrl = pdfUrl || `${appUrl}/api/attendees/ticket-pdf/${attendee.ticket_id}`;
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
@@ -92,7 +93,7 @@ export function ticketEmail({ attendee, event }) {
       A printable PDF version is attached to this email. You can print the attachment and bring it with you, or simply show this email on your phone.
     </div>
     <div style="text-align:center;padding:4px 0 8px">
-      <a href="${appUrl}/api/attendees/ticket-pdf/${attendee.ticket_id}" style="display:inline-block;background:${NAVY};color:#fff;text-decoration:none;padding:10px 22px;border-radius:7px;font-size:13px;font-weight:700">Download Ticket PDF</a>
+      <a href="${downloadUrl}" style="display:inline-block;background:${NAVY};color:#fff;text-decoration:none;padding:10px 22px;border-radius:7px;font-size:13px;font-weight:700">Download Ticket PDF</a>
     </div>
   </div>
   ${emailFooter}

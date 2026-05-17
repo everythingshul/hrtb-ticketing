@@ -2,7 +2,7 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import multer from 'multer';
 import XLSX from 'xlsx';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import db from '../db.js';
@@ -15,12 +15,27 @@ const r = express.Router();
 const tid = () => 'TKT-' + Math.random().toString(36).substr(2,8).toUpperCase();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } });
 
-function getDesignsDir() { return process.env.DATA_DIR ? join(process.env.DATA_DIR,'designs') : join(process.cwd(),'data','designs'); }
+function getDataDir() {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  try { mkdirSync('/data', { recursive: true }); return '/data'; } catch {}
+  return '/tmp/hrtb-data';
+}
 function getEventDesignPath(eventId) {
-  const dir = getDesignsDir();
+  const dir = join(getDataDir(), 'designs');
   for (const ext of ['png','jpg']) { const p = join(dir,`${eventId}.${ext}`); if (existsSync(p)) return p; }
   return null;
 }
+
+// ── Single ticket PDF (no auth — linked from individual email) ─
+r.get('/ticket-pdf/:ticketId', async (req, res) => {
+  const s = db.prepare('SELECT st.*, l.name as level_name, l.color as level_color FROM staff st LEFT JOIN ticket_levels l ON l.id=st.level_id WHERE st.ticket_id=? AND st.deleted_at IS NULL').get(req.params.ticketId.toUpperCase());
+  if (!s) return res.status(404).send('Ticket not found');
+  const event = db.prepare('SELECT * FROM events WHERE id=?').get(s.event_id);
+  const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: getEventDesignPath(s.event_id) });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="ticket-${s.ticket_id}.pdf"`);
+  res.send(Buffer.from(pdfBytes));
+});
 
 // ── Bulk PDF download — NO AUTH — linked from digest email ─
 r.get('/tickets-bulk-pdf', async (req, res) => {
@@ -137,7 +152,7 @@ r.post('/:id/send', async (req, res) => {
   try {
     const designPath = getEventDesignPath(event.id);
     const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: designPath });
-    await sendMail({ to: toEmail, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
+    await sendMail({ to: toEmail, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event, pdfUrl: `${process.env.APP_URL || 'https://tickets.everythingshul.com'}/api/staff/ticket-pdf/${s.ticket_id}` }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
     db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now'),email=?,updated_at=datetime('now') WHERE id=?`).run(toEmail, s.id);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -158,7 +173,7 @@ r.post('/event/:eventId/send-all', requireEvent, async (req, res) => {
     if (!s.email) { failed++; continue; }
     try {
       const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: designPath });
-      await sendMail({ to: s.email, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
+      await sendMail({ to: s.email, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event, pdfUrl: `${process.env.APP_URL || 'https://tickets.everythingshul.com'}/api/staff/ticket-pdf/${s.ticket_id}` }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
       db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now'),updated_at=datetime('now') WHERE id=?`).run(s.id);
       sent++;
     } catch(e) { console.error('[staff/send-all]', e.message); failed++; }
