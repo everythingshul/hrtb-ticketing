@@ -379,7 +379,7 @@ r.post('/:id/send', async (req, res) => {
     let attachments = [];
     try {
       const pdfBytes = isStaff
-        ? await generateStaffTicketPDF({ attendee: a, event })
+        ? await generateStaffTicketPDF({ attendee: a, event, eventDesignPath: designPath })
         : await generateTicketPDF({ attendee: a, event, eventDesignPath: designPath });
       attachments = [{ filename: `ticket-${a.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }];
     } catch(pdfErr) {
@@ -417,8 +417,11 @@ r.post('/event/:eventId/send-all', requireEvent, async (req, res) => {
   for (const a of list) {
     if (!a.email) { failed++; continue; }
     try {
-      const aWithLevel = db.prepare('SELECT att.*, l.name as level_name, l.color as level_color FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(a.id) || a;
-      const pdfBytes = await generateTicketPDF({ attendee: aWithLevel, event, eventDesignPath: designPath });
+      const aWithLevel = db.prepare('SELECT att.*, l.name as level_name, l.color as level_color, l.is_staff FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(a.id) || a;
+      const isStaff = aWithLevel.is_staff === 1;
+      const pdfBytes = isStaff
+        ? await generateStaffTicketPDF({ attendee: aWithLevel, event, eventDesignPath: designPath })
+        : await generateTicketPDF({ attendee: aWithLevel, event, eventDesignPath: designPath });
       await sendMail({
         to: a.email,
         subject: `Your ticket for ${event.name}`,
@@ -445,10 +448,23 @@ r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
     : db.prepare(`SELECT * FROM attendees WHERE event_id=? AND status IN ('pending','preprint')`).all(event.id);
   // Join level info + sort alphabetically by last name
   const list = rawList
-    .map(a => db.prepare('SELECT att.*, l.name as level_name, l.color as level_color FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(a.id) || a)
+    .map(a => db.prepare('SELECT att.*, l.name as level_name, l.color as level_color, l.is_staff FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(a.id) || a)
     .sort((a, b) => (a.last_name||'').localeCompare(b.last_name||'') || (a.first_name||'').localeCompare(b.first_name||''));
   if (!list.length) return res.status(400).json({ error: 'No tickets to send' });
-  await sendMail({ to: toEmail, subject: subject || `${list.length} ticket(s) — ${event.name}`, html: digestEmail({ attendees: list, event }), replyTo });
+
+  // Generate PDF attachments — staff get business card PDF, others get regular ticket PDF
+  const attachments = [];
+  for (const a of list) {
+    try {
+      const isStaff = a.is_staff === 1;
+      const pdfBytes = isStaff
+        ? await generateStaffTicketPDF({ attendee: a, event, eventDesignPath: getEventDesignPath(event.id) })
+        : await generateTicketPDF({ attendee: a, event, eventDesignPath: getEventDesignPath(event.id) });
+      attachments.push({ filename: `ticket-${a.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' });
+    } catch(e) { console.error('[digest pdf]', e.message); }
+  }
+
+  await sendMail({ to: toEmail, subject: subject || `${list.length} ticket(s) — ${event.name}`, html: digestEmail({ attendees: list, event }), attachments, replyTo });
   db.transaction(() => list.forEach(a => db.prepare(`UPDATE attendees SET status='sent',sent_at=datetime('now') WHERE id=?`).run(a.id)))();
   res.json({ ok: true, sent: list.length });
 });
