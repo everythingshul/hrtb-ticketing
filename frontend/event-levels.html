@@ -215,15 +215,18 @@ function renderLevelsPanel() {
   if (!el) return;
   el.innerHTML = `
     <div class="section-title mb8">Ticket Levels</div>
-    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong> per name — it appears on the ticket badge. Add a description so staff know what each level means.</p>
+    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong>. Mark a level as <strong>Staff</strong> to issue staff passes — staff tickets use a business card style PDF and are excluded from guest counts.</p>
     ${levels.map(l => `
       <div class="row mb8" style="gap:8px;align-items:flex-start;padding:9px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
         <div style="width:14px;height:14px;border-radius:3px;background:${l.color};flex-shrink:0;margin-top:2px"></div>
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:700">${esc(l.name)}</div>
+          <div style="font-size:13px;font-weight:700">${esc(l.name)} ${l.is_staff ? '<span class="badge" style="font-size:9px;background:#1a3a6b22;color:#1a3a6b;border:1px solid #1a3a6b44">STAFF</span>' : ''}</div>
           ${l.description ? `<div class="xs text2">${esc(l.description)}</div>` : ''}
           <div class="xs text2">${attendees.filter(a=>a.level_id===l.id).length} tickets</div>
         </div>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap">
+          <input type="checkbox" ${l.is_staff?'checked':''} onchange="toggleStaffLevel('${l.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--navy)"> Staff
+        </label>
         <button class="btn btn-sm btn-danger" onclick="deleteLevel('${l.id}')">Remove</button>
       </div>`).join('')}
     <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
@@ -239,9 +242,12 @@ function renderLevelsPanel() {
         </div>
       </div>
       <div class="fg mb8">
-        <label>Description <span style="font-weight:400;color:var(--text3)">(optional — shown to staff, not on ticket)</span></label>
+        <label>Description <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
         <input id="new-level-desc" placeholder="e.g. Front row seats, complimentary dinner included">
       </div>
+      <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" id="new-level-staff" style="width:15px;height:15px;accent-color:var(--navy)"> Staff level (uses business card PDF, excluded from guest counts)
+      </label>
       <button class="btn btn-gold" onclick="addLevel()">+ Add Level</button>
     </div>`;
 }
@@ -256,15 +262,27 @@ async function addLevel() {
   const name = document.getElementById('new-level-name').value.trim();
   const color = document.getElementById('new-level-color').value;
   const description = document.getElementById('new-level-desc')?.value.trim() || null;
+  const is_staff = document.getElementById('new-level-staff')?.checked ? 1 : 0;
   if (!name) { toast('Enter a level name', 'error'); return; }
   if (name.length > 11) { toast('Level name must be 11 characters or less', 'error'); return; }
   try {
-    const { level } = await api.attendees.addLevel(eventId, { name, color, description });
+    const { level } = await api.attendees.addLevel(eventId, { name, color, description, is_staff });
     levels.push(level);
     document.getElementById('new-level-name').value = '';
     if (document.getElementById('new-level-desc')) document.getElementById('new-level-desc').value = '';
+    if (document.getElementById('new-level-staff')) document.getElementById('new-level-staff').checked = false;
     renderLevelsPanel();
-    toast(`Level "${name}" added`);
+    toast(`Level "${name}" added${is_staff ? ' (Staff)' : ''}`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleStaffLevel(id, isStaff) {
+  try {
+    await api.attendees.updateLevel(eventId, id, { is_staff: isStaff ? 1 : 0 });
+    const lvl = levels.find(l => l.id === id);
+    if (lvl) lvl.is_staff = isStaff ? 1 : 0;
+    renderLevelsPanel();
+    toast(isStaff ? 'Marked as staff level' : 'Removed staff designation');
   } catch(e) { toast(e.message, 'error'); }
 }
 

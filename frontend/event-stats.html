@@ -58,6 +58,13 @@
         <canvas id="chart-source" height="260"></canvas>
         <div id="legend-source" style="margin-top:14px"></div>
       </div>
+
+      <!-- Staff tickets -->
+      <div class="card" id="card-staff" style="display:none">
+        <div class="section-title mb16">Staff Tickets by Level</div>
+        <canvas id="chart-staff" height="260"></canvas>
+        <div id="legend-staff" style="margin-top:14px"></div>
+      </div>
     </div>
 
   </div></main>
@@ -126,7 +133,7 @@ async function load() {
     document.title = `Stats — ${eventData.name}`;
   }
 
-  const { byStatus, confirmed, unconfirmed, byLevel, noLevel, total, online, offline } = statsData;
+  const { byStatus, confirmed, unconfirmed, byLevel, byStaffLevel, noLevel, total, online, offline, totalStaff } = statsData;
 
   // Summary stats
   document.getElementById('stat-grid').innerHTML = `
@@ -168,6 +175,15 @@ async function load() {
     { color:'#27a85f', label:'Online (Stripe)',  value: online||0,  pct: sourceTotal ? Math.round((online||0)/sourceTotal*100) : 0 },
     { color:'#00aadd', label:'Offline (Manual)', value: offline||0, pct: sourceTotal ? Math.round((offline||0)/sourceTotal*100) : 0 },
   ]);
+  // Staff tickets pie
+  if (byStaffLevel && byStaffLevel.length > 0 && totalStaff > 0) {
+    document.getElementById('card-staff').style.display = 'block';
+    const staffColors = byStaffLevel.map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
+    buildPie('chart-staff', byStaffLevel.map(l=>l.name), byStaffLevel.map(l=>l.total), staffColors);
+    document.getElementById('legend-staff').innerHTML = makeLegend(
+      byStaffLevel.map((l,i) => ({ color: staffColors[i], label: l.name, value: l.total, pct: totalStaff ? Math.round(l.total/totalStaff*100) : 0 }))
+    );
+  }
   if (byLevel && byLevel.length > 0) {
     document.getElementById('card-level-checkin').style.display = 'block';
     document.getElementById('card-level-count').style.display = 'block';

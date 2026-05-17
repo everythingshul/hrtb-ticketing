@@ -465,15 +465,21 @@ async function load() {
 }
 
 function renderStats() {
-  const s = { total:0, preprint:0, pending:0, sent:0, checked:0, deactivated:0, confirmed:0 };
-  attendees.forEach(a => { s.total++; s[a.status]=(s[a.status]||0)+1; if(a.confirmed) s.confirmed++; });
+  const s = { total:0, preprint:0, pending:0, sent:0, checked:0, deactivated:0, confirmed:0, staff:0 };
+  attendees.forEach(a => {
+    if (a.source === 'staff') { s.staff++; return; } // exclude staff from main counts
+    s.total++;
+    s[a.status]=(s[a.status]||0)+1;
+    if(a.confirmed) s.confirmed++;
+  });
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="stat-label">Total</div><div class="stat-val">${s.total}</div></div>
     <div class="stat"><div class="stat-label">Confirmed</div><div class="stat-val green">${s.confirmed}</div></div>
     <div class="stat"><div class="stat-label">Pre-printed</div><div class="stat-val purple">${s.preprint}</div></div>
     <div class="stat"><div class="stat-label">Pending</div><div class="stat-val orange">${s.pending}</div></div>
     <div class="stat"><div class="stat-label">Sent</div><div class="stat-val blue">${s.sent}</div></div>
-    <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checked}</div></div>`;
+    <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checked}</div></div>
+    ${s.staff > 0 ? `<div class="stat"><div class="stat-label">Staff</div><div class="stat-val" style="color:var(--navy)">${s.staff}</div></div>` : ''}`;
 }
 
 function clearFilters() {

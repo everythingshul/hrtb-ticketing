@@ -75,6 +75,7 @@ async function loadAdminDashboard() {
         <div class="row-between mb8">
           <strong style="font-family:var(--font-d);font-size:15px">${esc(ev.name)}</strong>
           <span class="chip">${ev.attendee_count || 0} guests</span>
+          ${(ev.staff_count||0) > 0 ? `<span class="chip" style="background:var(--navy)22;color:var(--navy);border:1px solid var(--navy)44">${ev.staff_count} staff</span>` : ''}
         </div>
         <div class="sm text2 mb4" style="color:var(--cyan)">${esc(ev.account_name || '')}</div>
         ${ev.date ? `<div class="sm text2 mb4">${esc(ev.date)}</div>` : ''}

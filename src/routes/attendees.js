@@ -9,6 +9,7 @@ import db from '../db.js';
 import { auth, requireEvent } from '../middleware/auth.js';
 import { sendMail, ticketEmail, digestEmail } from '../services/mail.js';
 import { generateTicketPDF } from '../services/ticketPDF.js';
+import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 function getDataDir() {
@@ -266,9 +267,11 @@ r.post('/event/:eventId/commit', requireEvent, (req, res) => {
 r.post('/event/:eventId', requireEvent, (req, res) => {
   const { first_name, last_name, phone, email, table_number, seat_number, level_id } = req.body;
   if (!first_name || !last_name) return res.status(400).json({ error: 'First and last name required' });
+  const lvl = level_id ? db.prepare('SELECT is_staff FROM ticket_levels WHERE id=?').get(level_id) : null;
+  const source = lvl?.is_staff ? 'staff' : 'offline';
   const id = uuid(), ticketId = tid();
-  db.prepare(`INSERT INTO attendees (id,event_id,account_id,first_name,last_name,phone,email,table_number,seat_number,ticket_id,status,level_id) VALUES (?,?,?,?,?,?,?,?,?,?,'pending',?)`).run(id, req.params.eventId, req.event.account_id, first_name, last_name, phone||null, email||null, table_number||null, seat_number||null, ticketId, level_id||null);
-  const attendee = db.prepare('SELECT att.*, l.name as level_name, l.color as level_color FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(id);
+  db.prepare(`INSERT INTO attendees (id,event_id,account_id,first_name,last_name,phone,email,table_number,seat_number,ticket_id,status,level_id,source) VALUES (?,?,?,?,?,?,?,?,?,?,'pending',?,?)`).run(id, req.params.eventId, req.event.account_id, first_name, last_name, phone||null, email||null, table_number||null, seat_number||null, ticketId, level_id||null, source);
+  const attendee = db.prepare('SELECT att.*, l.name as level_name, l.color as level_color, l.is_staff FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(id);
   res.json({ attendee });
 });
 
@@ -359,7 +362,7 @@ r.delete('/:id', (req, res) => {
 
 // Send individual ticket
 r.post('/:id/send', async (req, res) => {
-  const a = db.prepare('SELECT a.*, l.name as level_name, l.color as level_color FROM attendees a LEFT JOIN ticket_levels l ON l.id=a.level_id WHERE a.id=?').get(req.params.id);
+  const a = db.prepare('SELECT att.*, l.name as level_name, l.color as level_color, l.is_staff FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Not found' });
   if (a.status === 'deactivated') return res.status(400).json({ error: 'Ticket deactivated' });
   const toEmail = req.body.email || a.email;
@@ -367,25 +370,30 @@ r.post('/:id/send', async (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(a.event_id);
   const owner = db.prepare('SELECT email, reply_to, can_send_email, role FROM accounts WHERE id=?').get(event.account_id);
   const replyTo = owner?.reply_to || owner?.email || null;
-  // Only allow sending if account has email permission or is admin
   if (owner?.role !== 'admin' && !owner?.can_send_email) {
     return res.status(403).json({ error: 'EMAIL_NOT_ALLOWED' });
   }
   try {
     const designPath = getEventDesignPath(event.id);
+    const isStaff = a.is_staff === 1;
     let attachments = [];
     try {
-      const pdfBytes = await generateTicketPDF({ attendee: a, event, eventDesignPath: designPath });
+      const pdfBytes = isStaff
+        ? await generateStaffTicketPDF({ attendee: a, event })
+        : await generateTicketPDF({ attendee: a, event, eventDesignPath: designPath });
       attachments = [{ filename: `ticket-${a.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }];
-      console.log(`[send] PDF generated OK for ${a.ticket_id}, size: ${pdfBytes.length} bytes`);
     } catch(pdfErr) {
       console.error('[send] PDF generation failed:', pdfErr.message);
     }
     await sendMail({ to: toEmail, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: a, event }), attachments, replyTo });
-    // Auto-confirm if sending to the attendee's own email (not an overridden address)
     const sentToOwn = toEmail.toLowerCase() === (a.email || '').toLowerCase();
-    db.prepare(`UPDATE attendees SET status='sent',sent_at=datetime('now'),email=?,confirmed=? WHERE id=?`).run(toEmail, sentToOwn ? 1 : a.confirmed, a.id);
-    res.json({ ok: true, hadPdf: attachments.length > 0, autoConfirmed: sentToOwn });
+    // Staff tickets: mark sent but don't auto-confirm (status stays 'sent', source stays 'staff')
+    if (isStaff) {
+      db.prepare(`UPDATE attendees SET status='sent',sent_at=datetime('now'),email=? WHERE id=?`).run(toEmail, a.id);
+    } else {
+      db.prepare(`UPDATE attendees SET status='sent',sent_at=datetime('now'),email=?,confirmed=? WHERE id=?`).run(toEmail, sentToOwn ? 1 : a.confirmed, a.id);
+    }
+    res.json({ ok: true, hadPdf: attachments.length > 0 });
   } catch(e) {
     console.error('[send] Error:', e.message);
     res.status(500).json({ error: 'Failed to send: ' + e.message });
@@ -606,20 +614,21 @@ r.get('/event/:eventId/levels', requireEvent, (req, res) => {
 });
 
 r.post('/event/:eventId/levels', requireEvent, (req, res) => {
-  const { name, color, description } = req.body;
+  const { name, color, description, is_staff } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   if (name.length > 11) return res.status(400).json({ error: 'Level name must be 11 characters or less (fits on ticket badge)' });
   const id = uuid();
-  db.prepare('INSERT INTO ticket_levels (id,event_id,name,color,description) VALUES (?,?,?,?,?)').run(id, req.params.eventId, name.trim(), color || '#6366f1', description||null);
+  db.prepare('INSERT INTO ticket_levels (id,event_id,name,color,description,is_staff) VALUES (?,?,?,?,?,?)').run(id, req.params.eventId, name.trim(), color || '#6366f1', description||null, is_staff?1:0);
   res.json({ level: db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(id) });
 });
 
 r.patch('/event/:eventId/levels/:id', requireEvent, (req, res) => {
-  const { name, color, description } = req.body;
+  const { name, color, description, is_staff } = req.body;
   const lvl = db.prepare('SELECT * FROM ticket_levels WHERE id=? AND event_id=?').get(req.params.id, req.params.eventId);
   if (!lvl) return res.status(404).json({ error: 'Level not found' });
   if (name && name.length > 11) return res.status(400).json({ error: 'Level name must be 11 characters or less' });
-  db.prepare('UPDATE ticket_levels SET name=?,color=?,description=? WHERE id=?').run(name||lvl.name, color||lvl.color, description!==undefined?description:lvl.description, lvl.id);
+  db.prepare('UPDATE ticket_levels SET name=?,color=?,description=?,is_staff=? WHERE id=?')
+    .run(name||lvl.name, color||lvl.color, description!==undefined?description:lvl.description, is_staff!==undefined?is_staff:lvl.is_staff, lvl.id);
   res.json({ level: db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(lvl.id) });
 });
 
@@ -650,7 +659,10 @@ r.patch('/event/:eventId/settings', requireEvent, (req, res) => {
 // ── Stats for event ───────────────────────────────────────
 r.get('/event/:eventId/stats', requireEvent, (req, res) => {
   const eid = req.params.eventId;
-  const attendees = db.prepare("SELECT * FROM attendees WHERE event_id=? AND deleted_at IS NULL").all(eid);
+  // Separate staff from regular attendees
+  const allAttendees = db.prepare("SELECT att.*, l.is_staff FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.event_id=? AND att.deleted_at IS NULL").all(eid);
+  const attendees = allAttendees.filter(a => !a.is_staff);
+  const staffAttendees = allAttendees.filter(a => a.is_staff);
   const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(eid);
 
   const byStatus = {
@@ -664,18 +676,26 @@ r.get('/event/:eventId/stats', requireEvent, (req, res) => {
   const confirmed   = attendees.filter(a => a.confirmed).length;
   const unconfirmed = attendees.filter(a => !a.confirmed && a.status !== 'deactivated').length;
 
-  const byLevel = levels.map(l => ({
+  const staffLevels = levels.filter(l => l.is_staff);
+  const byLevel = levels.filter(l => !l.is_staff).map(l => ({
     id: l.id, name: l.name, color: l.color,
     total:   attendees.filter(a => a.level_id === l.id).length,
     checked: attendees.filter(a => a.level_id === l.id && a.status === 'checked').length,
     sent:    attendees.filter(a => a.level_id === l.id && a.status === 'sent').length,
   }));
 
+  const byStaffLevel = staffLevels.map(l => ({
+    id: l.id, name: l.name, color: l.color,
+    total:   staffAttendees.filter(a => a.level_id === l.id).length,
+    checked: staffAttendees.filter(a => a.level_id === l.id && a.status === 'checked').length,
+  }));
+
   const noLevel = attendees.filter(a => !a.level_id && a.status !== 'deactivated').length;
   const online  = attendees.filter(a => a.source === 'online').length;
-  const offline = attendees.filter(a => a.source !== 'online').length;
+  const offline = attendees.filter(a => a.source === 'offline' || !a.source).length;
+  const totalStaff = staffAttendees.filter(a => a.status !== 'deactivated').length;
 
-  res.json({ byStatus, confirmed, unconfirmed, byLevel, noLevel, total: attendees.length, levels, online, offline });
+  res.json({ byStatus, confirmed, unconfirmed, byLevel, byStaffLevel, noLevel, total: attendees.length, levels, online, offline, totalStaff });
 });
 
 // ── Bulk confirm by ticket ID list (CSV upload) ───────────

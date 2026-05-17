@@ -213,18 +213,18 @@ r.post('/event/:slug/checkout', async (req, res) => {
     totalCents = Math.max(0, totalCents - discountCents);
 
     const orderId = uuid();
-    const stripe = getStripe(event);
 
-    // Free tickets — fulfill immediately without Stripe
+    // Free tickets — fulfill immediately without Stripe (no API key needed)
     if (totalCents === 0) {
       db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
         .run(orderId, event.id, 'free-' + orderId, 'pending', email||null, 0, JSON.stringify(items), JSON.stringify(checkoutAttendees||[]));
-      // Fulfill immediately
       await fulfillOrder({ metadata: { order_id: orderId, event_id: event.id, event_name: event.name, event_slug: event.slug }, payment_intent: null, customer_details: { email }, payment_status: 'paid' });
-      // Update promo usage
       if (promoRecord) db.prepare('UPDATE promo_codes SET uses=uses+1, tickets_given=tickets_given+?, money_given=money_given+? WHERE id=?').run(items.reduce((s,i)=>s+i.quantity,0), discountCents, promoRecord.id);
       return res.json({ free: true, orderId });
     }
+
+    // Paid — need Stripe
+    const stripe = getStripe(event);
 
     // Create PaymentIntent — works with Payment Element, no iframes, no ad-blocker issues
     const paymentIntent = await stripe.paymentIntents.create({

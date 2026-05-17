@@ -205,6 +205,8 @@ try { db.exec("ALTER TABLE ticket_levels ADD COLUMN max_tickets INTEGER"); } cat
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN alert_at INTEGER"); } catch {}
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN show_availability INTEGER"); } catch {}
 try { db.exec("UPDATE ticket_levels SET show_availability=0 WHERE show_availability IS NULL"); } catch {}
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN is_staff INTEGER NOT NULL DEFAULT 0"); } catch {}
+// attendees: add staff as a valid source value (already stored in source field, no migration needed)
 
 // Verify columns exist (log on startup)
 const eventCols = db.prepare("PRAGMA table_info(events)").all().map(c=>c.name);

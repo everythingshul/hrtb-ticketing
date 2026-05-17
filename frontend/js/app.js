@@ -84,6 +84,7 @@ const api = {
     undoUpload: (eventId, batchId) => req(`/attendees/event/${eventId}/undo-upload/${batchId}`, { method: 'DELETE' }),
     getLevels: eventId => req(`/attendees/event/${eventId}/levels`),
     addLevel: (eventId, b) => req(`/attendees/event/${eventId}/levels`, { method: 'POST', body: JSON.stringify(b) }),
+    updateLevel: (eventId, levelId, b) => req(`/attendees/event/${eventId}/levels/${levelId}`, { method: 'PATCH', body: JSON.stringify(b) }),
     updateLevel: (eventId, id, b) => req(`/attendees/event/${eventId}/levels/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
     deleteLevel: (eventId, id) => req(`/attendees/event/${eventId}/levels/${id}`, { method: 'DELETE' }),
     getStats: eventId => req(`/attendees/event/${eventId}/stats`),
