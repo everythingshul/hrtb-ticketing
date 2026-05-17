@@ -184,13 +184,13 @@ r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
       attachments.push({ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' });
     } catch(e) { console.error('[staff/digest pdf]', e.message); }
   }
-  // Use digestEmail for consistent bulk format with download-all link
-  // Override the URL in digestEmail by remapping ticket IDs to staff bulk endpoint
+
   const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
   const batchSize = 100;
   const ticketIds = rawList.map(s => s.ticket_id);
   const batches = [];
   for (let i=0; i<ticketIds.length; i+=batchSize) batches.push(ticketIds.slice(i, i+batchSize));
+
   const batchButtons = batches.map((batch, idx) => {
     const url = `${appUrl}/api/staff/tickets-bulk-pdf?ids=${encodeURIComponent(batch.join(','))}`;
     const label = batches.length === 1
@@ -199,8 +199,39 @@ r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
     return `<a href="${url}" style="display:inline-block;background:#1a3a6b;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;margin:4px 0">${label}</a>`;
   }).join('<br>');
 
-  const html = digestEmail({ attendees: rawList, event })
-    .replace(/\/api\/attendees\/tickets-bulk-pdf\?ids=[^"]+/g, () => `${appUrl}/api/staff/tickets-bulk-pdf?ids=${encodeURIComponent(ticketIds.join(','))}`);
+  const NAVY = '#1a3a6b';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
+<div style="max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+  <div style="background:${NAVY};padding:18px 24px;text-align:center">
+    <div style="color:#fff;font-size:18px;font-weight:700">EverythingShul Ticket System</div>
+  </div>
+  <div style="padding:20px">
+    <div style="background:#f0f4f8;border-radius:8px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:${NAVY};border:1px solid #dde6f0">
+      <strong>${rawList.length} staff ticket(s)</strong> for <strong>${event.name}</strong>
+    </div>
+    <div style="text-align:center;margin-bottom:24px">
+      ${batchButtons}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:#f0f4f8">
+        <th style="padding:8px 10px;text-align:left;color:${NAVY}">Name</th>
+        <th style="padding:8px 10px;text-align:left;color:${NAVY}">Level</th>
+        <th style="padding:8px 10px;text-align:left;color:${NAVY}">Ticket ID</th>
+      </tr></thead>
+      <tbody>
+        ${rawList.map((s,i) => `<tr style="background:${i%2?'#f8f9fb':'#fff'}">
+          <td style="padding:8px 10px">${s.first_name||''} ${s.last_name||''}</td>
+          <td style="padding:8px 10px">${s.level_name||'—'}</td>
+          <td style="padding:8px 10px;font-family:monospace;font-size:11px">${s.ticket_id}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>
+  <div style="background:#f0f4f8;padding:14px 24px;text-align:center;font-size:11px;color:#888">
+    EverythingShul.com · Staff Tickets
+  </div>
+</div></body></html>`;
 
   await sendMail({ to: toEmail, subject: subject||`${rawList.length} staff ticket(s) — ${event.name}`, html, attachments, replyTo: owner?.reply_to||owner?.email });
   db.transaction(() => rawList.forEach(s => db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now') WHERE id=?`).run(s.id)))();
