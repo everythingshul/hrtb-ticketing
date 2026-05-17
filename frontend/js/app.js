@@ -179,13 +179,14 @@ function renderSidebar(activePage) {
     </div>` : '';
 
   // Event submenu — shown when inside an event page
-  const eventPages = ['event-detail.html','event-stats.html','event-levels.html','event-sales.html','event-sell.html'];
+  const eventPages = ['event-detail.html','event-stats.html','event-levels.html','event-sales.html','event-sell.html','event-staff.html'];
   const inEventPage = eventPages.some(p => window.location.pathname.includes(p));
   const eventSubmenuHTML = (inEventPage && currentEventId) ? `
     <div class="sb-group">
       <div class="sb-group-label" style="font-size:9px;letter-spacing:.08em">EVENT</div>
       <div style="padding:4px 12px 6px;font-size:11px;color:rgba(255,255,255,.9);font-weight:700;line-height:1.3">${esc(currentEventName)}</div>
       ${nav(`event-detail.html?id=${currentEventId}`, '↳ Attendees')}
+      ${nav(`event-staff.html?id=${currentEventId}`, '↳ Staff')}
       ${nav(`event-stats.html?id=${currentEventId}`, '↳ Stats')}
       ${nav(`event-levels.html?id=${currentEventId}`, '↳ Ticket Levels')}
       ${nav(`event-sales.html?id=${currentEventId}`, '↳ Online Sales')}

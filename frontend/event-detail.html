@@ -508,6 +508,7 @@ function filterTable() {
   const src = document.getElementById('source-filter')?.value || '';
 
   filtered = attendees.filter(a => {
+    if (a.source === 'staff') return false; // staff shown on Staff page only
     if (sf  && a.status !== sf) return false;
     if (lv  && (lv === '__none' ? a.level_id : a.level_id !== lv)) return false;
     if (cf  && (cf === 'confirmed' ? !a.confirmed : a.confirmed)) return false;

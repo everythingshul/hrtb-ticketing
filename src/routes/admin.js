@@ -394,7 +394,12 @@ r.delete('/accounts/:accountId/members/:userId', (req, res) => {
 
 r.get('/events', (req, res) => {
   try {
-    const events = db.prepare(`SELECT e.*,a.name as account_name,(SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL) as attendee_count FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC`).all();
+    const events = db.prepare(`SELECT e.*, a.name as account_name,
+      (SELECT COUNT(*) FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id
+       WHERE att.event_id=e.id AND att.deleted_at IS NULL AND (l.is_staff IS NULL OR l.is_staff=0)) as attendee_count,
+      (SELECT COUNT(*) FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id
+       WHERE att.event_id=e.id AND att.deleted_at IS NULL AND l.is_staff=1) as staff_count
+      FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC`).all();
     res.json({ events });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
