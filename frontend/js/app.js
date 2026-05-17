@@ -2,7 +2,10 @@
 const API = window.location.hostname === 'localhost' ? '' : '';
 
 async function req(path, opts = {}) {
-  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  const headers = { ...opts.headers };
+  if (!(opts.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
   const token = localStorage.getItem('hrtb_token');
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(API + '/api' + path, { ...opts, headers });
@@ -119,7 +122,7 @@ const api = {
     bulkLevel:   (eventId, b) => req(`/staff/event/${eventId}/bulk-level`, { method:'POST', body:JSON.stringify(b) }),
     bulkDelete:  (eventId, ids) => req(`/staff/event/${eventId}/bulk-delete`, { method:'POST', body:JSON.stringify({ids}) }),
     delete:      id => req(`/staff/${id}`, { method:'DELETE' }),
-    previewUpload:(eventId, file) => { const fd=new FormData(); fd.append('file',file); return req(`/staff/event/${eventId}/preview`, { method:'POST', body:fd, _noJson:true }); },
+    previewUpload:(eventId, file) => { const fd=new FormData(); fd.append('file',file); const h={}; if(Auth.token()) h['Authorization']=`Bearer ${Auth.token()}`; return fetch(`/api/staff/event/${eventId}/preview`,{method:'POST',headers:h,body:fd}).then(r=>r.json()); },
     commit:      (eventId, b) => req(`/staff/event/${eventId}/commit`, { method:'POST', body:JSON.stringify(b) }),
     confirmBulk: (eventId, ticketIds) => req(`/staff/event/${eventId}/confirm-bulk`, { method:'POST', body:JSON.stringify({ticketIds}) }),
     stats:       eventId => req(`/staff/event/${eventId}/stats`),

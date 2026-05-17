@@ -1,7 +1,9 @@
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import multer from 'multer';
-import { existsSync, mkdirSync, readFileSync } from 'fs';
+import XLSX from 'xlsx';
+import { existsSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 import db from '../db.js';
 import { auth, requireEvent } from '../middleware/auth.js';
@@ -213,11 +215,7 @@ r.delete('/:id', (req, res) => {
 // ── Upload preview ────────────────────────────────────────
 r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
-  // Reuse attendees upload preview logic via dynamic import
-  const { default: attendeeRouter } = await import('./attendees.js').catch(() => ({ default: null }));
-  // Simple CSV parse inline
   try {
-    const XLSX = (await import('xlsx')).default;
     const wb = XLSX.read(req.file.buffer, { type:'buffer' });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
