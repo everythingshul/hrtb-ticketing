@@ -279,13 +279,15 @@ r.post('/event/:eventId', requireEvent, (req, res) => {
 r.post('/event/:eventId/preprint', requireEvent, (req, res) => {
   const { count=1, table_number, seat_start, level_id } = req.body;
   const qty = Math.min(parseInt(count)||1, 500);
-  const ins = db.prepare(`INSERT INTO attendees (id,event_id,account_id,first_name,last_name,ticket_id,status,table_number,seat_number,level_id) VALUES (?,?,?,?,?,?,'preprint',?,?,?)`);
+  const lvl = level_id ? db.prepare('SELECT is_staff FROM ticket_levels WHERE id=?').get(level_id) : null;
+  const source = lvl?.is_staff ? 'staff' : 'offline';
+  const ins = db.prepare(`INSERT INTO attendees (id,event_id,account_id,first_name,last_name,ticket_id,status,table_number,seat_number,level_id,source) VALUES (?,?,?,?,?,?,'preprint',?,?,?,?)`);
   const tickets = [];
   db.transaction(() => {
     for (let i=0; i<qty; i++) {
       const id = uuid(), ticketId = tid();
       const seat = seat_start ? String(parseInt(seat_start)+i) : null;
-      ins.run(id, req.params.eventId, req.event.account_id, '', '', ticketId, table_number||null, seat, level_id||null);
+      ins.run(id, req.params.eventId, req.event.account_id, '', '', ticketId, table_number||null, seat, level_id||null, source);
       tickets.push({ id, ticket_id: ticketId, table_number: table_number||null, seat_number: seat });
     }
   })();
