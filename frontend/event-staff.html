@@ -19,7 +19,6 @@
       </div>
       <div class="ph-actions">
         <button class="btn btn-sm" onclick="doExport()">Export</button>
-        <button class="btn btn-sm" id="btn-design" onclick="document.getElementById('design-input').click()">Ticket Design</button>
         <button class="btn btn-sm" onclick="previewTicketPDF()">Preview PDF</button>
         <button class="btn btn-sm btn-primary" onclick="openPins()">Door Scanner</button>
       </div>
@@ -87,7 +86,6 @@
     </div>
 
     <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleUpload(event)">
-    <input type="file" id="design-input" accept="image/png,image/jpeg" style="display:none" onchange="handleDesignUpload(event)">
     <div id="table-wrap"></div>
 
   </div></main>
@@ -225,21 +223,7 @@
   </div>
 </div>
 
-<!-- Design confirm modal -->
-<div id="modal-design-confirm" class="backdrop" style="display:none">
-  <div class="modal">
-    <div class="modal-hd"><h2>Upload Staff Ticket Design</h2><button class="modal-x" onclick="hideModal('modal-design-confirm')">&#x2715;</button></div>
-    <p class="text2 sm mb16">Set the event image shown on staff tickets.</p>
-    <div id="design-preview-wrap" style="margin-bottom:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;max-height:200px;display:flex;align-items:center;justify-content:center;padding:10px">
-      <img id="design-preview-img" style="max-width:100%;max-height:180px;object-fit:contain;border-radius:6px" src="" alt="Preview">
-    </div>
-    <div id="design-file-name" class="sm text2 mb16" style="text-align:center"></div>
-    <div class="modal-ft">
-      <button class="btn" onclick="cancelDesignUpload()">Cancel</button>
-      <button class="btn btn-gold" onclick="doUploadDesign()">Save Design</button>
-    </div>
-  </div>
-</div>
+
 
 <!-- Scanner PINs Modal -->
 <div id="modal-pins" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-pins')">
@@ -293,7 +277,6 @@ async function load() {
   localStorage.setItem('hrtb_current_event_name', eventData.name);
   renderSidebar();
 
-  try { const d = await api.attendees.hasDesign(eventId); if (d.hasDesign) document.getElementById('btn-design').textContent = 'Update Ticket Design'; } catch {}
 
   const lf = document.getElementById('level-filter');
   lf.innerHTML = '<option value="">All levels</option><option value="__none">No level</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
@@ -659,20 +642,7 @@ function doExport() {
   toast(`Exported ${filtered.length} staff`);
 }
 
-// ── Design upload ─────────────────────────────────────────
-let _pendingDesignFile = null;
-function handleDesignUpload(ev) {
-  const file=ev.target.files[0]; ev.target.value=''; if(!file) return;
-  _pendingDesignFile=file;
-  const reader=new FileReader(); reader.onload=e=>{document.getElementById('design-preview-img').src=e.target.result;};reader.readAsDataURL(file);
-  document.getElementById('design-file-name').textContent=file.name; showModal('modal-design-confirm');
-}
-function cancelDesignUpload() { _pendingDesignFile=null; hideModal('modal-design-confirm'); }
-async function doUploadDesign() {
-  if(!_pendingDesignFile) return;
-  try { await api.attendees.uploadDesign(eventId,_pendingDesignFile); toast('Design uploaded'); document.getElementById('btn-design').textContent='Update Ticket Design'; hideModal('modal-design-confirm'); _pendingDesignFile=null; }
-  catch(e) { toast(e.message,'error'); }
-}
+
 function previewTicketPDF() {
   if (!attendees||attendees.length===0) { toast('Add at least one staff member first','error'); return; }
   window.open(`/api/attendees/event/${eventId}/ticket-preview?token=${Auth.token()}&t=${Date.now()}`, '_blank');

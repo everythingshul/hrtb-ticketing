@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import db from '../db.js';
 import { auth, requireEvent } from '../middleware/auth.js';
-import { sendMail, ticketEmail } from '../services/mail.js';
+import { sendMail, ticketEmail, digestEmail } from '../services/mail.js';
 import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
 
 const r = express.Router();
@@ -154,7 +154,25 @@ r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
       attachments.push({ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' });
     } catch(e) { console.error('[staff/digest pdf]', e.message); }
   }
-  await sendMail({ to: toEmail, subject: subject||`${rawList.length} staff ticket(s) — ${event.name}`, html: ticketEmail({ attendee: rawList[0], event }), attachments, replyTo: owner?.reply_to||owner?.email });
+  // Use digestEmail for consistent bulk format with download-all link
+  // Override the URL in digestEmail by remapping ticket IDs to staff bulk endpoint
+  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const batchSize = 100;
+  const ticketIds = rawList.map(s => s.ticket_id);
+  const batches = [];
+  for (let i=0; i<ticketIds.length; i+=batchSize) batches.push(ticketIds.slice(i, i+batchSize));
+  const batchButtons = batches.map((batch, idx) => {
+    const url = `${appUrl}/api/staff/tickets-bulk-pdf?ids=${encodeURIComponent(batch.join(','))}`;
+    const label = batches.length === 1
+      ? `Download All ${batch.length} Staff Ticket(s) — One PDF`
+      : `Download Staff Tickets ${idx*batchSize+1}–${idx*batchSize+batch.length} (PDF ${idx+1} of ${batches.length})`;
+    return `<a href="${url}" style="display:inline-block;background:#1a3a6b;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;margin:4px 0">${label}</a>`;
+  }).join('<br>');
+
+  const html = digestEmail({ attendees: rawList, event })
+    .replace(/\/api\/attendees\/tickets-bulk-pdf\?ids=[^"]+/g, () => `${appUrl}/api/staff/tickets-bulk-pdf?ids=${encodeURIComponent(ticketIds.join(','))}`);
+
+  await sendMail({ to: toEmail, subject: subject||`${rawList.length} staff ticket(s) — ${event.name}`, html, attachments, replyTo: owner?.reply_to||owner?.email });
   db.transaction(() => rawList.forEach(s => db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now') WHERE id=?`).run(s.id)))();
   res.json({ ok: true, sent: rawList.length });
 });
@@ -286,6 +304,34 @@ r.get('/ticket-pdf/:ticketId', async (req, res) => {
   const designPath = getEventDesignPath(event.id);
   const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: designPath });
   res.setHeader('Content-Type','application/pdf').setHeader('Content-Disposition',`attachment;filename=ticket-${s.ticket_id}.pdf`).send(Buffer.from(pdfBytes));
+});
+
+// ── Bulk PDF download (linked from digest email) ──────────
+r.get('/tickets-bulk-pdf', async (req, res) => {
+  const { createRequire } = await import('module');
+  const require2 = createRequire(import.meta.url);
+  const { PDFDocument } = require2('pdf-lib');
+  const rawIds = (req.query.ids || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (!rawIds.length) return res.status(400).send('No ticket IDs provided');
+  try {
+    const merged = await PDFDocument.create();
+    for (const ticketId of rawIds) {
+      const s = db.prepare('SELECT st.*, l.name as level_name, l.color as level_color FROM staff st LEFT JOIN ticket_levels l ON l.id=st.level_id WHERE st.ticket_id=? AND st.deleted_at IS NULL').get(ticketId);
+      if (!s) continue;
+      const event = db.prepare('SELECT * FROM events WHERE id=?').get(s.event_id);
+      try {
+        const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: getEventDesignPath(s.event_id) });
+        const src = await PDFDocument.load(pdfBytes);
+        const [page] = await merged.copyPages(src, [0]);
+        merged.addPage(page);
+      } catch(e) { console.warn('[staff-bulk-pdf] skip', ticketId, e.message); }
+    }
+    const finalBytes = await merged.save();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="staff-tickets.pdf"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(finalBytes));
+  } catch(e) { res.status(500).send('Could not generate PDF: ' + e.message); }
 });
 
 // ── Stats for event (for dashboard/stats page) ────────────
