@@ -27,18 +27,10 @@ r.get('/', (req, res) => {
         WHERE e.account_id=? OR e.account_id IN (SELECT account_id FROM account_members WHERE user_id=?)
         ORDER BY e.created_at DESC`).all(req.user.id, req.user.id);
   events = events.map(e => {
-    const rows = db.prepare(`
-      SELECT att.status, l.is_staff, COUNT(*) c
-      FROM attendees att
-      LEFT JOIN ticket_levels l ON l.id=att.level_id
-      WHERE att.event_id=? AND att.deleted_at IS NULL
-      GROUP BY att.status, l.is_staff
-    `).all(e.id);
-    const guestRows = rows.filter(r => !r.is_staff);
-    const staffRows = rows.filter(r => r.is_staff);
-    const s = Object.fromEntries(guestRows.map(r => [r.status, r.c]));
-    const attendee_count = guestRows.reduce((a,r)=>a+r.c,0);
-    const staff_count = staffRows.reduce((a,r)=>a+r.c,0);
+    const rows = db.prepare(`SELECT status, COUNT(*) c FROM attendees WHERE event_id=? AND deleted_at IS NULL GROUP BY status`).all(e.id);
+    const s = Object.fromEntries(rows.map(r => [r.status, r.c]));
+    const attendee_count = rows.reduce((a,r)=>a+r.c,0);
+    const staff_count = db.prepare(`SELECT COUNT(*) c FROM staff WHERE event_id=? AND deleted_at IS NULL AND status!='deactivated'`).get(e.id).c;
     return { ...e, attendee_count, staff_count, stats: { total: attendee_count, ...s } };
   });
   res.json({ events });

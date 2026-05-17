@@ -103,7 +103,27 @@ try { db.exec('ALTER TABLE accounts ADD COLUMN token_version INTEGER NOT NULL DE
 try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allow_lookup INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allowed_levels TEXT'); } catch {}
 
-// Promo codes
+// Staff table — completely separate from attendees
+db.exec(`CREATE TABLE IF NOT EXISTS staff (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  first_name TEXT NOT NULL DEFAULT '',
+  last_name TEXT NOT NULL DEFAULT '',
+  phone TEXT,
+  email TEXT,
+  ticket_id TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  confirmed INTEGER NOT NULL DEFAULT 0,
+  level_id TEXT,
+  sent_at TEXT,
+  checked_in_at TEXT,
+  checkout_data TEXT,
+  deleted_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);`);
 db.exec(`CREATE TABLE IF NOT EXISTS promo_codes (
   id TEXT PRIMARY KEY,
   event_id TEXT NOT NULL,

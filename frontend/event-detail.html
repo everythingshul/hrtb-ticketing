@@ -424,7 +424,7 @@ async function load() {
     } catch {}
   }
   if (!eventData) { window.location = '/events.html'; return; }
-  attendees = att.filter(a => a.source !== 'staff'); // staff shown on Staff page only
+  attendees = att;
   document.getElementById('ev-title').textContent = eventData.name;
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
   document.title = `EverythingShul — ${eventData.name}`;
@@ -467,7 +467,6 @@ async function load() {
 function renderStats() {
   const s = { total:0, preprint:0, pending:0, sent:0, checked:0, deactivated:0, confirmed:0, staff:0 };
   attendees.forEach(a => {
-    if (a.source === 'staff') { s.staff++; return; } // exclude staff from main counts
     s.total++;
     s[a.status]=(s[a.status]||0)+1;
     if(a.confirmed) s.confirmed++;
@@ -479,7 +478,7 @@ function renderStats() {
     <div class="stat"><div class="stat-label">Pending</div><div class="stat-val orange">${s.pending}</div></div>
     <div class="stat"><div class="stat-label">Sent</div><div class="stat-val blue">${s.sent}</div></div>
     <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checked}</div></div>
-    ${s.staff > 0 ? `<div class="stat"><div class="stat-label">Staff</div><div class="stat-val" style="color:var(--navy)">${s.staff}</div></div>` : ''}`;
+`;
 }
 
 function clearFilters() {
@@ -496,9 +495,8 @@ function filterTable() {
   const lf = document.getElementById('level-filter');
   if (lf) {
     const cur = lf.value;
-    const nonStaff = levels.filter(l => !l.is_staff);
     lf.innerHTML = '<option value="">All levels</option><option value="__none">No level</option>' +
-      nonStaff.map(l => `<option value="${l.id}" ${cur===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+      levels.map(l => `<option value="${l.id}" ${cur===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
     lf.value = cur;
   }
 
@@ -509,7 +507,6 @@ function filterTable() {
   const src = document.getElementById('source-filter')?.value || '';
 
   filtered = attendees.filter(a => {
-    if (a.source === 'staff') return false; // staff shown on Staff page only
     if (sf  && a.status !== sf) return false;
     if (lv  && (lv === '__none' ? a.level_id : a.level_id !== lv)) return false;
     if (cf  && (cf === 'confirmed' ? !a.confirmed : a.confirmed)) return false;
@@ -611,8 +608,7 @@ function toggleOne(id, cb) { cb.checked ? selected.add(id) : selected.delete(id)
 function openPreprint() {
   const sel = document.getElementById('pp-level');
   if (sel) {
-    const nonStaff = levels.filter(l => !l.is_staff);
-    sel.innerHTML = '<option value="">— No level —</option>' + nonStaff.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+    sel.innerHTML = '<option value="">— No level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   }
   showModal('modal-preprint');
 }
@@ -621,9 +617,8 @@ function openAddModal() {
   // Populate level dropdown — exclude staff levels
   const sel = document.getElementById('a-level');
   if (sel) {
-    const nonStaff = levels.filter(l => !l.is_staff);
     sel.innerHTML = '<option value="">— No level —</option>' +
-      nonStaff.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+      levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   }
   showModal('modal-add');
 }
@@ -1558,7 +1553,7 @@ load();
 // Auto-refresh stats and attendee list every 20 seconds
 RealtimeSync.register(() => {
   api.attendees.list(eventId).then(d => {
-    attendees = (d.attendees || []).filter(a => a.source !== 'staff');
+    attendees = d.attendees;
     renderStats(); filterTable();
   }).catch(()=>{});
 }, 20000);

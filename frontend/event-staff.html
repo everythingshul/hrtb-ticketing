@@ -280,7 +280,7 @@ let _searchTimer = null;
 function debouncedFilter() { clearTimeout(_searchTimer); _searchTimer = setTimeout(filterTable, 150); }
 
 async function load() {
-  const data = await api.attendees.list(eventId);
+  const data = await api.staff.list(eventId);
   eventData = data.event;
   allLevels = data.levels || [];
   levels = allLevels.filter(l => l.is_staff);
@@ -425,7 +425,7 @@ async function addStaff() {
   if (!fn || !ln) { toast('First and last name required', 'error'); return; }
   if (!level_id) { toast('Select a staff level', 'error'); return; }
   try {
-    const { attendee } = await api.attendees.create(eventId, { first_name:fn, last_name:ln, phone:ph||undefined, email:em||undefined, level_id });
+    const { attendee } = await api.staff.create(eventId, { first_name:fn, last_name:ln, phone:ph||undefined, email:em||undefined, level_id });
     attendees.push(attendee); hideModal('modal-add'); toast(`${fn} ${ln} added`); renderStats(); filterTable();
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -441,13 +441,13 @@ async function doPrint() {
   const level_id = document.getElementById('pp-level')?.value || undefined;
   const sendEmail = document.getElementById('pp-email')?.value.trim() || '';
   try {
-    const r = await api.attendees.preprint(eventId, { count, level_id });
+    const r = await api.staff.preprint(eventId, { count, level_id });
     toast(`Generated ${count} pre-printed ticket(s)`);
     hideModal('modal-preprint'); await load();
     if (sendEmail) {
       const emails = sendEmail.split(',').map(e=>e.trim()).filter(e=>e.includes('@'));
       const newIds = (r.tickets||[]).map(t=>t.id);
-      for (const email of emails) await api.attendees.digest(eventId, { toEmail:email, ids:newIds.length?newIds:undefined }).catch(()=>{});
+      for (const email of emails) await api.staff.digest(eventId, { toEmail:email, ids:newIds.length?newIds:undefined }).catch(()=>{});
       if (emails.length) toast(`Sent to ${emails.join(', ')}`);
     }
     document.getElementById('pp-email').value = '';
@@ -461,7 +461,7 @@ async function lookupTicket() {
   const id = document.getElementById('as-tid').value.trim().toUpperCase();
   if (!id) return;
   try {
-    const { attendee } = await api.attendees.lookup(id);
+    const { attendee } = await api.staff.lookup(id);
     currentAssignId = id;
     document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket — fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
     document.getElementById('as-status').className = `info-box mb12 ${attendee.status==='preprint'?'tip':'ok'}`;
@@ -473,7 +473,7 @@ async function doAssign() {
   const fn=document.getElementById('as-fn').value.trim(), ln=document.getElementById('as-ln').value.trim();
   if (!fn||!ln) { toast('First and last name required','error'); return; }
   try {
-    await api.attendees.assign({ ticketId:currentAssignId, first_name:fn, last_name:ln, phone:document.getElementById('as-ph').value, email:document.getElementById('as-em').value });
+    await api.staff.assign({ ticketId:currentAssignId, first_name:fn, last_name:ln, phone:document.getElementById('as-ph').value, email:document.getElementById('as-em').value });
     toast(`Assigned to ${fn} ${ln}`); hideModal('modal-assign'); await load();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -483,7 +483,7 @@ function openSend(id) { const a=attendees.find(x=>x.id===id); if(!a)return; curr
 async function confirmSend() {
   const email = document.getElementById('send-email').value.trim();
   if (!email) { toast('Enter an email address','error'); return; }
-  try { await api.attendees.send(currentSendId, { email }); toast('Staff ticket sent!'); hideModal('modal-send'); await load(); }
+  try { await api.staff.send(currentSendId, { email }); toast('Staff ticket sent!'); hideModal('modal-send'); await load(); }
   catch(e) { if (e.message==='EMAIL_NOT_ALLOWED') toast('Email not enabled for this account.','error'); else toast(e.message,'error'); }
 }
 
@@ -493,7 +493,7 @@ async function sendAll() {
   const eligible = ids ? attendees.filter(a=>ids.includes(a.id)&&a.status==='pending') : attendees.filter(a=>a.status==='pending'&&a.email);
   if (!eligible.length) { toast('No eligible staff (need email + pending status)','error'); return; }
   if (!confirm(`Send staff tickets to ${eligible.length} person(s)?`)) return;
-  try { const r=await api.attendees.sendAll(eventId,{ids}); toast(`Sent: ${r.sent}${r.failed?`, failed: ${r.failed}`:''}`); selected.clear(); await load(); }
+  try { const r=await api.staff.sendAll(eventId,{ids}); toast(`Sent: ${r.sent}${r.failed?`, failed: ${r.failed}`:''}`); selected.clear(); await load(); }
   catch(e) { if (e.message==='EMAIL_NOT_ALLOWED') toast('Email not enabled.','error'); else toast(e.message,'error'); }
 }
 
@@ -508,7 +508,7 @@ async function sendDigest() {
   if (!confirm(`Send ${eligible.length} ticket(s) to ${emails.length} email(s)?`)) return;
   try {
     let total = 0;
-    for (const email of emails) { const r = await api.attendees.digest(eventId, { toEmail:email, ids, subject:document.getElementById('dg-subject').value }); total += r.sent||0; }
+    for (const email of emails) { const r = await api.staff.digest(eventId, { toEmail:email, ids, subject:document.getElementById('dg-subject').value }); total += r.sent||0; }
     toast(`${total} ticket(s) sent to ${emails.length} recipient(s)`);
     hideModal('modal-digest'); selected.clear(); await load();
   } catch(e) { toast(e.message,'error'); }
@@ -516,12 +516,12 @@ async function sendDigest() {
 
 // ── Status / Confirm ──────────────────────────────────────
 async function setStatus(id, status) {
-  try { await api.attendees.update(id,{status}); const a=attendees.find(x=>x.id===id); if(a) a.status=status; renderStats(); filterTable(); }
+  try { await api.staff.setStatus(id, status); const a=attendees.find(x=>x.id===id); if(a) a.status=status; renderStats(); filterTable(); }
   catch(e) { toast(e.message,'error'); }
 }
 function confirmUncheck(id, name) { if (!confirm(`Remove check-in for ${name}?`)) return; setStatus(id, 'sent'); }
 async function toggleConfirm(id, val) {
-  try { await api.attendees.confirm(id, val); const a=attendees.find(x=>x.id===id); if(a) a.confirmed=val; renderStats(); filterTable(); }
+  try { await api.staff.confirm(id, val); const a=attendees.find(x=>x.id===id); if(a) a.confirmed=val; renderStats(); filterTable(); }
   catch(e) { toast(e.message,'error'); }
 }
 
@@ -538,7 +538,7 @@ async function saveEdit() {
   const err = document.getElementById('ed-err'); err.style.display='none'; if (!editingId) return;
   try {
     const body = { first_name:document.getElementById('ed-first').value.trim(), last_name:document.getElementById('ed-last').value.trim(), phone:document.getElementById('ed-phone').value.trim(), email:document.getElementById('ed-email').value.trim(), level_id:document.getElementById('ed-level').value||null };
-    const { attendee: updated } = await api.attendees.update(editingId, body);
+    const { attendee: updated } = await api.staff.update(editingId, body);
     const idx = attendees.findIndex(x=>x.id===editingId); if (idx!==-1) attendees[idx]={...attendees[idx],...updated};
     hideModal('modal-edit'); toast('Updated'); renderStats(); filterTable();
   } catch(e) { err.textContent=e.message; err.style.display='block'; }
@@ -549,7 +549,7 @@ async function bulkDelete() {
   if (!selected.size) return;
   if (!confirm(`Delete ${selected.size} selected staff? They can be restored from Admin → Trash within 30 days.`)) return;
   try {
-    await api.attendees.bulkDelete(eventId, [...selected]);
+    await api.staff.bulkDelete(eventId, [...selected]);
     attendees = attendees.filter(a => !selected.has(a.id)); selected.clear(); toast('Deleted'); renderStats(); filterTable();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -558,7 +558,7 @@ async function bulkChangeLevel(levelId) {
   const lvl = levels.find(l=>l.id===levelId), label = levelId==='__none'?'no level':(lvl?.name||levelId);
   if (!confirm(`Change level to "${label}" for ${selected.size} selected?`)) { document.getElementById('bulk-level-select').value=''; return; }
   try {
-    await api.attendees.bulkLevel(eventId, { ids:[...selected], level_id:levelId });
+    await api.staff.bulkLevel(eventId, { ids:[...selected], level_id:levelId });
     toast(`${selected.size} updated to ${label}`); document.getElementById('bulk-level-select').value=''; selected.clear(); await load();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -566,20 +566,20 @@ async function bulkStatusChange(status) {
   if (!status || !selected.size) { document.getElementById('bulk-status-select').value=''; return; }
   if (!confirm(`Change status of ${selected.size} selected to "${status}"?`)) { document.getElementById('bulk-status-select').value=''; return; }
   try {
-    await api.attendees.bulkStatus(eventId, { ids:[...selected], status });
+    await api.staff.bulkStatus(eventId, { ids:[...selected], status });
     toast(`${selected.size} updated`); document.getElementById('bulk-status-select').value=''; selected.clear(); await load();
   } catch(e) { toast(e.message,'error'); }
 }
 async function delAttendee(id) {
   const a=attendees.find(x=>x.id===id); if(!confirm(`Remove ${a?.first_name||'this staff member'}? Restorable from Admin.`)) return;
-  try { await api.attendees.delete(id); attendees=attendees.filter(x=>x.id!==id); toast('Removed'); renderStats(); filterTable(); } catch(e) { toast(e.message,'error'); }
+  try { await api.staff.delete(id); attendees=attendees.filter(x=>x.id!==id); toast('Removed'); renderStats(); filterTable(); } catch(e) { toast(e.message,'error'); }
 }
 
 // ── Upload ────────────────────────────────────────────────
 async function handleUpload(ev) {
   const file = ev.target.files[0]; ev.target.value=''; if (!file) return;
   hideModal('modal-upload-list'); toast('Parsing file…','info');
-  const data = await api.attendees.previewUpload(eventId, file);
+  const data = await api.staff.previewUpload(eventId, file);
   if (data.error) { toast(data.error,'error'); return; }
   if (data.conflicts?.length) {
     pendingUpload = data; data.conflicts.forEach(c => c.action='update');
@@ -608,7 +608,7 @@ async function commitUpload() {
 }
 async function commitData(newRows, resolved) {
   try {
-    const r = await api.attendees.commit(eventId, { newRows, resolved });
+    const r = await api.staff.commit(eventId, { newRows, resolved });
     await load();
     const user = Auth.user();
     if (r.batchId && r.added>0 && user?.role==='admin') showUndoBar(r.batchId, r.added);
@@ -628,7 +628,7 @@ async function processConfirmUpload(e) {
     const text=await file.text();
     const ids=text.split(/[\r\n]+/).map(l=>l.trim().toUpperCase()).filter(l=>l&&!l.startsWith('#')&&l!=='TICKET ID'&&l!=='TICKET_ID');
     if (!ids.length) { resultEl.innerHTML='<div class="info-box warn">No ticket IDs found.</div>'; return; }
-    const result=await api.attendees.confirmBulk(eventId, ids);
+    const result=await api.staff.confirmBulk(eventId, ids);
     resultEl.innerHTML=`<div class="info-box ok">Done! <strong>${result.confirmed}</strong> confirmed.${result.notFound>0?`<br>${result.notFound} not found.`:''}</div>`;
     await load(); toast(`${result.confirmed} ticket(s) confirmed`);
   } catch(err) { resultEl.innerHTML=`<div class="info-box warn">Error: ${esc(err.message)}</div>`; }
@@ -750,7 +750,7 @@ async function deletePin(id){if(!confirm('Delete this PIN?'))return;try{await ap
 
 load();
 RealtimeSync.register(()=>{
-  api.attendees.list(eventId).then(d=>{
+  api.staff.list(eventId).then(d=>{
     attendees=(d.attendees||[]).filter(a=>a.source==='staff');
     renderStats();filterTable();
   }).catch(()=>{});

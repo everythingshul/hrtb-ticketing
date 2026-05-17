@@ -120,9 +120,10 @@ function buildPie(canvasId, labels, data, colors) {
 }
 
 async function load() {
-  const [eventData, statsData] = await Promise.all([
+  const [eventData, statsData, staffStats] = await Promise.all([
     api.events.list().then(d => d.events?.find(e => e.id === eventId)),
-    api.attendees.getStats(eventId)
+    api.attendees.getStats(eventId),
+    api.staff.stats(eventId).catch(() => ({ total: 0, byLevel: [] }))
   ]);
 
   if (eventData) {
@@ -175,13 +176,13 @@ async function load() {
     { color:'#27a85f', label:'Online (Stripe)',  value: online||0,  pct: sourceTotal ? Math.round((online||0)/sourceTotal*100) : 0 },
     { color:'#00aadd', label:'Offline (Manual)', value: offline||0, pct: sourceTotal ? Math.round((offline||0)/sourceTotal*100) : 0 },
   ]);
-  // Staff tickets pie
-  if (byStaffLevel && byStaffLevel.length > 0 && totalStaff > 0) {
+  // Staff tickets pie — from staff table
+  if (staffStats.byLevel && staffStats.byLevel.length > 0 && staffStats.total > 0) {
     document.getElementById('card-staff').style.display = 'block';
-    const staffColors = byStaffLevel.map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
-    buildPie('chart-staff', byStaffLevel.map(l=>l.name), byStaffLevel.map(l=>l.total), staffColors);
+    const staffColors = staffStats.byLevel.map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
+    buildPie('chart-staff', staffStats.byLevel.map(l=>l.name), staffStats.byLevel.map(l=>l.total), staffColors);
     document.getElementById('legend-staff').innerHTML = makeLegend(
-      byStaffLevel.map((l,i) => ({ color: staffColors[i], label: l.name, value: l.total, pct: totalStaff ? Math.round(l.total/totalStaff*100) : 0 }))
+      staffStats.byLevel.map((l,i) => ({ color: staffColors[i], label: l.name, value: l.total, pct: staffStats.total ? Math.round(l.total/staffStats.total*100) : 0 }))
     );
   }
   if (byLevel && byLevel.length > 0) {

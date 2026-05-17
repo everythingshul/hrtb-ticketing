@@ -7,6 +7,7 @@ import { initMail } from './services/mail.js';
 import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
 import attendeeRoutes from './routes/attendees.js';
+import staffRoutes from './routes/staff.js';
 import adminRoutes from './routes/admin.js';
 import salesRoutes from './routes/sales.js';
 import { sendDailyReports } from './services/dailyReport.js';
@@ -45,6 +46,7 @@ app.use('/api/sales/webhook', express.raw({ type: 'application/json' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/attendees', attendeeRoutes);
+app.use('/api/staff', staffRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/sales', salesRoutes);
 

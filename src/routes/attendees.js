@@ -471,48 +471,65 @@ r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
   res.json({ ok: true, sent: list.length });
 });
 
-// Validate / scan ticket — also used by scanner kiosk
+// Validate / scan ticket — checks both attendees and staff tables
 r.post('/scan', (req, res) => {
   const { ticketId } = req.body;
   if (!ticketId) return res.status(400).json({ error: 'ticketId required' });
-  const a = db.prepare(`SELECT att.*, l.name as level_name, l.color as level_color
+  const tid = ticketId.trim().toUpperCase();
+
+  // Check attendees table first
+  let a = db.prepare(`SELECT att.*, l.name as level_name, l.color as level_color, 0 as is_staff_ticket
     FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id
-    WHERE att.ticket_id=? AND att.deleted_at IS NULL`).get(ticketId.trim().toUpperCase());
+    WHERE att.ticket_id=? AND att.deleted_at IS NULL`).get(tid);
+
+  // Check staff table if not found in attendees
+  let isStaffTicket = false;
+  if (!a) {
+    a = db.prepare(`SELECT s.*, l.name as level_name, l.color as level_color, 1 as is_staff_ticket
+      FROM staff s LEFT JOIN ticket_levels l ON l.id=s.level_id
+      WHERE s.ticket_id=? AND s.deleted_at IS NULL`).get(tid);
+    if (a) isStaffTicket = true;
+  }
+
   if (!a) return res.json({ valid: false, reason: 'Ticket not found' });
 
-  // If scanner role, restrict to their assigned event and check allowed_levels
+  // Scanner role restrictions
   if (req.user.role === 'scanner') {
     const token = req.headers.authorization?.replace('Bearer ','');
     try {
       const jwt = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
       if (jwt.scannerEventId && a.event_id !== jwt.scannerEventId)
         return res.json({ valid: false, reason: 'Ticket is for a different event' });
-      // Check allowed levels restriction
       if (jwt.pinId) {
         const pin = db.prepare('SELECT allowed_levels FROM scanner_pins WHERE id=?').get(jwt.pinId);
         if (pin?.allowed_levels) {
           const allowed = JSON.parse(pin.allowed_levels);
-          if (allowed.length && !allowed.includes(a.level_id)) {
+          if (allowed.length && !allowed.includes(a.level_id))
             return res.json({ valid: false, reason: `Level "${a.level_name||'Unknown'}" not allowed at this entrance`, attendee: a });
-          }
         }
       }
     } catch {}
   }
 
   if (a.status === 'deactivated') return res.json({ valid: false, reason: 'Ticket is deactivated', attendee: a });
-  // Staff: always grant access, never block for "already checked in"
-  const isStaff = a.source === 'staff';
-  if (!isStaff && a.status === 'checked') return res.json({ valid: false, reason: 'Already checked in', attendee: a, checkedAt: a.checked_in_at });
+
+  // Staff: always grant access — never block for "already checked in"
+  if (isStaffTicket) {
+    db.prepare(`UPDATE staff SET status='checked',checked_in_at=datetime('now') WHERE id=?`).run(a.id);
+    const updated = db.prepare(`SELECT s.*, l.name as level_name, l.color as level_color FROM staff s LEFT JOIN ticket_levels l ON l.id=s.level_id WHERE s.id=?`).get(a.id);
+    const event = db.prepare('SELECT * FROM events WHERE id=?').get(a.event_id);
+    return res.json({ valid: true, isStaff: true, attendee: { ...updated, source: 'staff' }, event });
+  }
+
+  // Regular attendee
+  if (a.status === 'checked') return res.json({ valid: false, reason: 'Already checked in', attendee: a, checkedAt: a.checked_in_at });
   if (a.status === 'preprint') return res.json({ valid: false, reason: 'Not yet assigned', attendee: a, needsAssignment: true });
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(a.event_id);
-  if (!a.confirmed && event.allow_unconfirmed_checkin === 0) {
+  if (!a.confirmed && event.allow_unconfirmed_checkin === 0)
     return res.json({ valid: false, reason: 'Guest has not confirmed attendance', attendee: a, needsConfirm: true });
-  }
   db.prepare(`UPDATE attendees SET status='checked',checked_in_at=datetime('now') WHERE id=?`).run(a.id);
-  const updated = db.prepare(`SELECT att.*, l.name as level_name, l.color as level_color
-    FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?`).get(a.id);
-  res.json({ valid: true, attendee: updated, event });
+  const updated = db.prepare(`SELECT att.*, l.name as level_name, l.color as level_color FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.id=?`).get(a.id);
+  res.json({ valid: true, isStaff: false, attendee: updated, event });
 });
 
 // Export CSV

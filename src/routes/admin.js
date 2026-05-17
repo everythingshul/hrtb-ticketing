@@ -281,9 +281,9 @@ r.get('/stats', (req, res) => {
     res.json({ stats: {
       accounts: db.prepare("SELECT COUNT(*) c FROM accounts WHERE role != 'scanner'").get().c,
       events: db.prepare('SELECT COUNT(*) c FROM events').get().c,
-      attendees: db.prepare(`SELECT COUNT(*) c FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE (l.is_staff IS NULL OR l.is_staff=0)`).get().c,
-      sent: db.prepare(`SELECT COUNT(*) c FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.status='sent' AND (l.is_staff IS NULL OR l.is_staff=0)`).get().c,
-      checkedIn: db.prepare(`SELECT COUNT(*) c FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.status='checked' AND (l.is_staff IS NULL OR l.is_staff=0)`).get().c,
+      attendees: db.prepare('SELECT COUNT(*) c FROM attendees').get().c,
+      sent: db.prepare("SELECT COUNT(*) c FROM attendees WHERE status='sent'").get().c,
+      checkedIn: db.prepare("SELECT COUNT(*) c FROM attendees WHERE status='checked'").get().c,
     }});
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -395,16 +395,21 @@ r.delete('/accounts/:accountId/members/:userId', (req, res) => {
 r.get('/events', (req, res) => {
   try {
     const events = db.prepare(`SELECT e.*, a.name as account_name,
-      (SELECT COUNT(*) FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id
-       WHERE att.event_id=e.id AND att.deleted_at IS NULL AND (l.is_staff IS NULL OR l.is_staff=0)) as attendee_count,
-      (SELECT COUNT(*) FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id
-       WHERE att.event_id=e.id AND att.deleted_at IS NULL AND l.is_staff=1) as staff_count
+      (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL) as attendee_count,
+      (SELECT COUNT(*) FROM staff WHERE event_id=e.id AND deleted_at IS NULL AND status!='deactivated') as staff_count
       FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC`).all();
     res.json({ events });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-export default r;
+// Debug: check staff data
+r.get('/debug-staff/:eventId', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).end();
+  const levels = db.prepare('SELECT id, name, is_staff FROM ticket_levels WHERE event_id=?').all(req.params.eventId);
+  const staffLevelIds = levels.filter(l=>l.is_staff).map(l=>l.id);
+  const allAtt = db.prepare('SELECT id, first_name, last_name, source, level_id, status FROM attendees WHERE event_id=? AND deleted_at IS NULL').all(req.params.eventId);
+  res.json({ levels, staffLevelIds, attendees: allAtt, staffAttendees: allAtt.filter(a=>a.source==='staff'), offlineWithStaffLevel: allAtt.filter(a=>a.source!=='staff'&&staffLevelIds.includes(a.level_id)) });
+});
 
 // Toggle can_send_email
 r.patch('/accounts/:id/can-send-email', (req, res) => {
