@@ -283,8 +283,8 @@ async function load() {
   const data = await api.staff.list(eventId);
   eventData = data.event;
   allLevels = data.levels || [];
-  levels = allLevels.filter(l => l.is_staff);
-  attendees = (data.attendees || []).filter(a => a.source === 'staff');
+  levels = allLevels;
+  attendees = data.staff || [];
 
   if (!eventData) { window.location = '/events.html'; return; }
   document.getElementById('ev-title').textContent = eventData.name + ' — Staff';
@@ -751,7 +751,7 @@ async function deletePin(id){if(!confirm('Delete this PIN?'))return;try{await ap
 load();
 RealtimeSync.register(()=>{
   api.staff.list(eventId).then(d=>{
-    attendees=(d.attendees||[]).filter(a=>a.source==='staff');
+    attendees=d.staff||[];
     renderStats();filterTable();
   }).catch(()=>{});
 },20000);
