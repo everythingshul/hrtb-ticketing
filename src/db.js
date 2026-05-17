@@ -145,7 +145,7 @@ try { db.exec('ALTER TABLE events ADD COLUMN expires_at TEXT'); } catch {}
 // Source column — add without NOT NULL constraint first (safer for migration)
 try { db.exec("ALTER TABLE attendees ADD COLUMN source TEXT DEFAULT 'offline'"); } catch {}
 // Fix any bad values from previous migration attempts
-try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR source='' OR (source!='online' AND source!='offline')"); } catch {}
+try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR source='' OR (source NOT IN ('online','offline','staff'))"); } catch {}
 try { db.exec('ALTER TABLE attendees ADD COLUMN checkout_data TEXT'); } catch {} // JSON: billing info
 
 // Online orders table
@@ -213,7 +213,9 @@ const eventCols = db.prepare("PRAGMA table_info(events)").all().map(c=>c.name);
 const attendeeCols = db.prepare("PRAGMA table_info(attendees)").all().map(c=>c.name);
 console.log('[DB] events cols with capacity:', eventCols.filter(c=>c.includes('capacity')||c.includes('max_ticket')));
 console.log('[DB] attendees has source:', attendeeCols.includes('source'));
-// Fix source values on startup
-try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR (source!='online' AND source!='offline')"); } catch {}
+// Fix source values on startup — preserve 'staff', only reset truly invalid values
+try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR (source NOT IN ('online','offline','staff'))"); } catch {}
+// Backfill: any attendee with a staff level should have source='staff'
+try { db.exec("UPDATE attendees SET source='staff' WHERE deleted_at IS NULL AND source!='staff' AND level_id IN (SELECT id FROM ticket_levels WHERE is_staff=1)"); } catch {}
 
 export default db;
