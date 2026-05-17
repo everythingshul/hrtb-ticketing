@@ -499,7 +499,9 @@ r.post('/scan', (req, res) => {
   }
 
   if (a.status === 'deactivated') return res.json({ valid: false, reason: 'Ticket is deactivated', attendee: a });
-  if (a.status === 'checked') return res.json({ valid: false, reason: 'Already checked in', attendee: a, checkedAt: a.checked_in_at });
+  // Staff: always grant access, never block for "already checked in"
+  const isStaff = a.source === 'staff';
+  if (!isStaff && a.status === 'checked') return res.json({ valid: false, reason: 'Already checked in', attendee: a, checkedAt: a.checked_in_at });
   if (a.status === 'preprint') return res.json({ valid: false, reason: 'Not yet assigned', attendee: a, needsAssignment: true });
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(a.event_id);
   if (!a.confirmed && event.allow_unconfirmed_checkin === 0) {

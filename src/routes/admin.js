@@ -281,9 +281,9 @@ r.get('/stats', (req, res) => {
     res.json({ stats: {
       accounts: db.prepare("SELECT COUNT(*) c FROM accounts WHERE role != 'scanner'").get().c,
       events: db.prepare('SELECT COUNT(*) c FROM events').get().c,
-      attendees: db.prepare('SELECT COUNT(*) c FROM attendees').get().c,
-      sent: db.prepare("SELECT COUNT(*) c FROM attendees WHERE status='sent'").get().c,
-      checkedIn: db.prepare("SELECT COUNT(*) c FROM attendees WHERE status='checked'").get().c,
+      attendees: db.prepare(`SELECT COUNT(*) c FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE (l.is_staff IS NULL OR l.is_staff=0)`).get().c,
+      sent: db.prepare(`SELECT COUNT(*) c FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.status='sent' AND (l.is_staff IS NULL OR l.is_staff=0)`).get().c,
+      checkedIn: db.prepare(`SELECT COUNT(*) c FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.status='checked' AND (l.is_staff IS NULL OR l.is_staff=0)`).get().c,
     }});
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

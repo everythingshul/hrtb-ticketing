@@ -424,7 +424,7 @@ async function load() {
     } catch {}
   }
   if (!eventData) { window.location = '/events.html'; return; }
-  attendees = att;
+  attendees = att.filter(a => a.source !== 'staff'); // staff shown on Staff page only
   document.getElementById('ev-title').textContent = eventData.name;
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
   document.title = `EverythingShul — ${eventData.name}`;
@@ -492,12 +492,13 @@ function clearFilters() {
 }
 
 function filterTable() {
-  // Keep level filter options in sync
+  // Keep level filter options in sync — exclude staff levels
   const lf = document.getElementById('level-filter');
   if (lf) {
     const cur = lf.value;
+    const nonStaff = levels.filter(l => !l.is_staff);
     lf.innerHTML = '<option value="">All levels</option><option value="__none">No level</option>' +
-      levels.map(l => `<option value="${l.id}" ${cur===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+      nonStaff.map(l => `<option value="${l.id}" ${cur===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
     lf.value = cur;
   }
 
@@ -609,16 +610,20 @@ function toggleOne(id, cb) { cb.checked ? selected.add(id) : selected.delete(id)
 
 function openPreprint() {
   const sel = document.getElementById('pp-level');
-  if (sel) sel.innerHTML = '<option value="">— No level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  if (sel) {
+    const nonStaff = levels.filter(l => !l.is_staff);
+    sel.innerHTML = '<option value="">— No level —</option>' + nonStaff.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  }
   showModal('modal-preprint');
 }
 
 function openAddModal() {
-  // Populate level dropdown
+  // Populate level dropdown — exclude staff levels
   const sel = document.getElementById('a-level');
   if (sel) {
+    const nonStaff = levels.filter(l => !l.is_staff);
     sel.innerHTML = '<option value="">— No level —</option>' +
-      levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+      nonStaff.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   }
   showModal('modal-add');
 }
@@ -1553,7 +1558,7 @@ load();
 // Auto-refresh stats and attendee list every 20 seconds
 RealtimeSync.register(() => {
   api.attendees.list(eventId).then(d => {
-    attendees = d.attendees;
+    attendees = (d.attendees || []).filter(a => a.source !== 'staff');
     renderStats(); filterTable();
   }).catch(()=>{});
 }, 20000);

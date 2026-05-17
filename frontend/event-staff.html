@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Staff List</title>
+<title>Staff</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -19,71 +19,249 @@
       </div>
       <div class="ph-actions">
         <button class="btn btn-sm" onclick="doExport()">Export</button>
-        <button class="btn btn-sm btn-primary" onclick="openAddStaff()">+ Add Staff</button>
+        <button class="btn btn-sm" id="btn-design" onclick="document.getElementById('design-input').click()">Ticket Design</button>
+        <button class="btn btn-sm" onclick="previewTicketPDF()">Preview PDF</button>
+        <button class="btn btn-sm btn-primary" onclick="openPins()">Door Scanner</button>
       </div>
     </div>
 
-    <!-- Stats bar -->
     <div class="stat-pills mb16" id="stats"></div>
 
     <!-- Toolbar -->
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">
-      <input id="search" placeholder="Search name, email, ID…" style="width:220px" oninput="debouncedFilter()">
-      <select id="level-filter" style="width:130px" onchange="filterTable()">
-        <option value="">All levels</option>
-      </select>
+      <input id="search" placeholder="Search name, phone, email, ID…" style="width:220px;flex-shrink:0" oninput="debouncedFilter()">
       <select id="status-filter" style="width:130px" onchange="filterTable()">
         <option value="">All statuses</option>
+        <option value="preprint">Pre-printed</option>
         <option value="pending">Pending</option>
         <option value="sent">Sent</option>
         <option value="checked">Checked In</option>
         <option value="deactivated">Deactivated</option>
       </select>
+      <select id="level-filter" style="width:120px" onchange="filterTable()">
+        <option value="">All levels</option>
+        <option value="__none">No level</option>
+      </select>
+      <select id="confirm-filter" style="width:130px" onchange="filterTable()">
+        <option value="">Activated?</option>
+        <option value="confirmed">Activated</option>
+        <option value="unconfirmed">Not activated</option>
+      </select>
       <button class="btn btn-sm btn-ghost" onclick="clearFilters()" style="font-size:11px;opacity:.7">✕ Clear</button>
       <div style="flex:1"></div>
-      <span id="filter-count" class="chip" style="display:none"></span>
+      <span id="sel-count" class="chip" style="display:none"></span>
+      <select id="bulk-status-select" style="width:150px;font-size:12px;display:none" onchange="bulkStatusChange(this.value)">
+        <option value="">Change status…</option>
+        <option value="checked">Mark Checked In</option>
+        <option value="pending">Mark Pending</option>
+        <option value="sent">Mark Sent</option>
+        <option value="deactivated">Deactivate</option>
+      </select>
+      <select id="bulk-level-select" style="width:140px;font-size:12px;display:none" onchange="bulkChangeLevel(this.value)">
+        <option value="">Change level…</option>
+        <option value="__none">— Remove level —</option>
+      </select>
+      <button id="bulk-delete-btn" class="btn btn-sm btn-danger" style="display:none" onclick="bulkDelete()">Delete</button>
+      <button class="btn btn-sm" onclick="sendAll()">Send All</button>
+      <button class="btn btn-sm" onclick="showModal('modal-digest')">Bulk Email</button>
+      <!-- Add ▾ -->
+      <div style="position:relative;display:inline-block" id="add-menu-wrap">
+        <button class="btn btn-sm btn-primary" onclick="toggleAddMenu()">+ Add ▾</button>
+        <div id="add-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-lg);min-width:200px;z-index:200">
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideAddMenu();openAddModal()">+ Add Staff Member</button>
+          <div style="height:1px;background:var(--border);margin:0 10px"></div>
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideAddMenu();openPreprint()">Pre-print Tickets</button>
+          <div style="height:1px;background:var(--border);margin:0 10px"></div>
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideAddMenu();showModal('modal-assign')">Assign Ticket</button>
+        </div>
+      </div>
+      <!-- Upload ▾ -->
+      <div style="position:relative;display:inline-block" id="upload-menu-wrap">
+        <button class="btn btn-sm" onclick="toggleUploadMenu()">Upload ▾</button>
+        <div id="upload-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-lg);min-width:210px;z-index:200">
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideUploadMenu();showModal('modal-upload-list')">Upload Staff List</button>
+          <div style="height:1px;background:var(--border);margin:0 10px"></div>
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideUploadMenu();showModal('modal-confirm-bulk')">Upload Activated List</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Table -->
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleUpload(event)">
+    <input type="file" id="design-input" accept="image/png,image/jpeg" style="display:none" onchange="handleDesignUpload(event)">
     <div id="table-wrap"></div>
 
   </div></main>
 </div>
 
+<!-- Undo Upload Bar -->
+<div id="undo-bar" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a3a6b;color:#fff;border-radius:10px;padding:14px 22px;box-shadow:0 4px 20px rgba(0,0,0,.25);align-items:center;gap:16px;z-index:9999;font-size:14px;font-weight:500">
+  <span id="undo-msg"></span>
+  <button id="undo-btn" class="btn btn-sm" style="background:#fff;color:#1a3a6b;padding:6px 16px;margin:0" onclick="doUndoUpload()">Undo Upload</button>
+  <button style="background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:0 4px" onclick="hideUndoBar()">&#x2715;</button>
+</div>
+
 <!-- Add Staff Modal -->
 <div id="modal-add" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-add')">
-  <div class="modal">
-    <div class="modal-hd"><h2>Add Staff Member</h2><button class="modal-x" onclick="hideModal('modal-add')">&#x2715;</button></div>
-    <div class="form-row">
-      <div class="fg"><label>First Name *</label><input id="s-fn" placeholder="Jane"></div>
-      <div class="fg"><label>Last Name *</label><input id="s-ln" placeholder="Doe"></div>
+  <div class="modal"><div class="modal-hd"><h2>Add Staff Member</h2><button class="modal-x" onclick="hideModal('modal-add')">&#x2715;</button></div>
+    <div class="form-row"><div class="fg"><label>First name *</label><input id="a-fn" placeholder="Jane"></div><div class="fg"><label>Last name *</label><input id="a-ln" placeholder="Doe"></div></div>
+    <div class="form-row"><div class="fg"><label>Phone</label><input id="a-ph" placeholder="+1 555 000 0000"></div><div class="fg"><label>Email</label><input id="a-em" type="email" placeholder="jane@example.com"></div></div>
+    <div class="fg"><label>Staff Level *</label><select id="a-level"><option value="">— Select level —</option></select></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-add')">Cancel</button><button class="btn btn-gold" onclick="addStaff()">Add Staff Member</button></div>
+  </div>
+</div>
+
+<!-- Pre-print Modal -->
+<div id="modal-preprint" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-preprint')">
+  <div class="modal"><div class="modal-hd"><h2>Generate Pre-printed Staff Tickets</h2><button class="modal-x" onclick="hideModal('modal-preprint')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Creates blank staff passes with unique QR codes. Assign names later by scanning or entering the ticket ID.</p>
+    <div class="fg"><label>Number of tickets</label><input id="pp-count" type="number" value="10" min="1" max="500"></div>
+    <div class="fg"><label>Staff Level (optional)</label><select id="pp-level"><option value="">— No level —</option></select></div>
+    <div class="fg"><label>Send to email (optional) <span class="hint" style="display:inline">comma-separated for multiple</span></label><input id="pp-email" placeholder="coordinator@example.com"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-preprint')">Cancel</button><button class="btn btn-gold" onclick="doPrint()">Generate Tickets</button></div>
+  </div>
+</div>
+
+<!-- Assign Modal -->
+<div id="modal-assign" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-assign')">
+  <div class="modal"><div class="modal-hd"><h2>Assign Ticket to Staff</h2><button class="modal-x" onclick="hideModal('modal-assign')">&#x2715;</button></div>
+    <div class="fg"><label>Ticket ID</label>
+      <div class="row" style="gap:8px"><input id="as-tid" value="TKT-" placeholder="TKT-XXXXXXXX" style="flex:1;font-family:monospace;text-transform:uppercase" oninput="enforceTktPrefix(this)" onkeydown="if(event.key==='Enter')lookupTicket()"><button class="btn" onclick="lookupTicket()">Look up</button></div>
+      <div class="hint">Type the ticket ID or scan the QR code</div>
     </div>
-    <div class="form-row">
-      <div class="fg"><label>Phone</label><input id="s-ph" placeholder="+1 555 000 0000" type="tel"></div>
-      <div class="fg"><label>Email</label><input id="s-em" type="email" placeholder="jane@example.com"></div>
+    <div id="as-found" style="display:none">
+      <div id="as-status" class="info-box ok mb12"></div>
+      <div class="form-row"><div class="fg"><label>First name *</label><input id="as-fn"></div><div class="fg"><label>Last name *</label><input id="as-ln"></div></div>
+      <div class="form-row"><div class="fg"><label>Phone</label><input id="as-ph"></div><div class="fg"><label>Email</label><input id="as-em" type="email"></div></div>
     </div>
-    <div class="fg">
-      <label>Staff Level *</label>
-      <select id="s-level"><option value="">— Select level —</option></select>
-    </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="hideModal('modal-add')">Cancel</button>
-      <button class="btn btn-gold" onclick="addStaff()">Add Staff</button>
-    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-assign')">Cancel</button><button class="btn btn-gold" id="as-btn" style="display:none" onclick="doAssign()">Assign Ticket</button></div>
   </div>
 </div>
 
 <!-- Send Modal -->
 <div id="modal-send" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-send')">
+  <div class="modal"><div class="modal-hd"><h2>Send Staff Ticket</h2><button class="modal-x" onclick="hideModal('modal-send')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Sending to: <strong id="send-name"></strong></p>
+    <div class="fg"><label>Email address</label><input id="send-email" type="email" placeholder="staff@example.com"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-send')">Cancel</button><button class="btn btn-gold" onclick="confirmSend()">Send Ticket ↗</button></div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="modal-edit" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-edit')">
   <div class="modal">
-    <div class="modal-hd"><h2>Send Staff Ticket</h2><button class="modal-x" onclick="hideModal('modal-send')">&#x2715;</button></div>
-    <p class="text2 sm mb12">Sends the staff business card PDF to the email below.</p>
-    <label>Send To *</label>
-    <input id="send-email" type="email" placeholder="staff@example.com">
-    <div class="modal-ft">
-      <button class="btn" onclick="hideModal('modal-send')">Cancel</button>
-      <button class="btn btn-gold" onclick="doSend()">Send Ticket</button>
+    <div class="modal-hd"><h2>Edit Staff Member</h2><button class="modal-x" onclick="hideModal('modal-edit')">&#x2715;</button></div>
+    <div class="form-row"><div class="fg"><label>First Name</label><input id="ed-first" placeholder="First name"></div><div class="fg"><label>Last Name</label><input id="ed-last" placeholder="Last name"></div></div>
+    <div class="form-row"><div class="fg"><label>Phone</label><input id="ed-phone"></div><div class="fg"><label>Email</label><input id="ed-email" type="email"></div></div>
+    <div class="fg"><label>Staff Level</label><select id="ed-level"><option value="">No level</option></select></div>
+    <div id="ed-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-edit')">Cancel</button><button class="btn btn-gold" onclick="saveEdit()">Save Changes</button></div>
+  </div>
+</div>
+
+<!-- Digest Modal -->
+<div id="modal-digest" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-digest')">
+  <div class="modal"><div class="modal-hd"><h2>Bulk Email Staff Tickets</h2><button class="modal-x" onclick="hideModal('modal-digest')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Bundle all selected (or all pending) staff tickets into one email. Separate multiple addresses with commas.</p>
+    <div class="fg"><label>Send to * <span class="hint" style="display:inline">comma-separated</span></label><input id="dg-email" placeholder="coordinator@example.com"></div>
+    <div class="fg"><label>Subject (optional)</label><input id="dg-subject" placeholder="Auto-generated if blank"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-digest')">Cancel</button><button class="btn btn-gold" onclick="sendDigest()">Send ↗</button></div>
+  </div>
+</div>
+
+<!-- Upload Staff List Modal -->
+<div id="modal-upload-list" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-upload-list')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Upload Staff List</h2><button class="modal-x" onclick="hideModal('modal-upload-list')">&#x2715;</button></div>
+    <div class="info-box tip mb16">Upload a CSV or Excel file. <strong>First Name</strong> and <strong>Last Name</strong> are required. Use a staff-level name in the Ticket Level column.</div>
+    <div class="row mb16" style="gap:10px">
+      <button class="btn btn-sm" onclick="dlTemplate()">Download Template</button>
+      <span class="xs text2">EverythingShul-Staff-Template.csv</span>
     </div>
+    <div class="upload-zone" onclick="document.getElementById('file-input').click()" style="padding:22px">
+      <div style="font-size:20px;margin-bottom:6px">📄</div>
+      <h3 style="font-size:14px;margin-bottom:4px">Click to select your staff list</h3>
+      <p style="font-size:12px">.csv, .xlsx or .xls file</p>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-upload-list')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- Conflict Modal -->
+<div id="modal-conflict" class="backdrop" style="display:none">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><h2>⚠️ Duplicate Staff Found</h2></div>
+    <div class="info-box tip mb12" style="font-size:13px;line-height:1.6">
+      The file contains people whose phone or email already exists. Choose what to do for each.
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-gold" onclick="setAllOverride('update')">Set All → Update</button>
+      <button class="btn btn-sm btn-success" onclick="setAllOverride('keep')">Set All → Keep</button>
+      <button class="btn btn-sm" style="background:#7c5cbe;color:#fff" onclick="setAllOverride('duplicate')">Set All → Add Duplicate</button>
+    </div>
+    <div id="conflict-list" style="max-height:400px;overflow-y:auto"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-conflict');pendingUpload=null">Cancel</button>
+      <button class="btn btn-gold" onclick="commitUpload()">Apply &amp; Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Activated Modal -->
+<div id="modal-confirm-bulk" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-confirm-bulk')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Upload Activated List</h2><button class="modal-x" onclick="hideModal('modal-confirm-bulk')">&#x2715;</button></div>
+    <div class="info-box tip mb16">Upload a CSV with ticket IDs to mark as activated.</div>
+    <div class="row mb16" style="gap:10px">
+      <button class="btn btn-sm" onclick="dlConfirmTemplate()">Download Template</button>
+    </div>
+    <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
+      <div style="font-size:20px;margin-bottom:6px">📋</div>
+      <h3 style="font-size:14px;margin-bottom:4px">Click to select your list</h3>
+      <p style="font-size:12px">.csv or .txt — one ticket ID per row</p>
+    </div>
+    <input type="file" id="confirm-file-input" accept=".csv,.txt" style="display:none" onchange="processConfirmUpload(event)">
+    <div id="confirm-result" style="display:none;margin-top:12px"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-confirm-bulk')">Close</button></div>
+  </div>
+</div>
+
+<!-- Design confirm modal -->
+<div id="modal-design-confirm" class="backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-hd"><h2>Upload Staff Ticket Design</h2><button class="modal-x" onclick="hideModal('modal-design-confirm')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Set the event image shown on staff tickets.</p>
+    <div id="design-preview-wrap" style="margin-bottom:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;max-height:200px;display:flex;align-items:center;justify-content:center;padding:10px">
+      <img id="design-preview-img" style="max-width:100%;max-height:180px;object-fit:contain;border-radius:6px" src="" alt="Preview">
+    </div>
+    <div id="design-file-name" class="sm text2 mb16" style="text-align:center"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="cancelDesignUpload()">Cancel</button>
+      <button class="btn btn-gold" onclick="doUploadDesign()">Save Design</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scanner PINs Modal -->
+<div id="modal-pins" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-pins')">
+  <div class="modal modal-lg"><div class="modal-hd"><h2>Door Scanner PINs</h2><button class="modal-x" onclick="hideModal('modal-pins')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Create PINs for door staff to log into the scanner kiosk.</p>
+    <div class="info-box tip mb16">Scanner URL: <strong style="color:var(--text);font-family:monospace" id="scanner-url"></strong></div>
+    <div class="form-row mb8">
+      <div class="fg" style="margin-bottom:0"><label>Label</label><input id="pin-label" placeholder="Main Entrance, Gate B, etc."></div>
+      <div class="fg" style="margin-bottom:0">
+        <label>Name/Phone Lookup</label>
+        <select id="pin-lookup">
+          <option value="1">Allowed — staff can search by name or phone</option>
+          <option value="0">Disabled — ticket ID or QR only</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg mb12">
+      <label>Restrict to Levels <span class="hint" style="display:inline">leave empty = all levels</span></label>
+      <div id="pin-levels-wrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0"></div>
+    </div>
+    <button class="btn btn-gold mb4" onclick="createPin()">+ Create PIN</button>
+    <div id="pins-list"></div>
   </div>
 </div>
 
@@ -96,216 +274,487 @@ const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
 if (!eventId) window.location = '/events.html';
 
-let eventData = null, allStaff = [], filtered = [], levels = [];
-let sortCol = null, sortDir = 1;
-let currentSendId = null;
+let eventData = null, attendees = [], filtered = [], selected = new Set(), pendingUpload = null, currentSendId = null, levels = [], allLevels = [];
+let sortCol = null, sortDir = 1, editingId = null, currentAssignId = '';
 let _searchTimer = null;
-
 function debouncedFilter() { clearTimeout(_searchTimer); _searchTimer = setTimeout(filterTable, 150); }
 
 async function load() {
   const data = await api.attendees.list(eventId);
   eventData = data.event;
-  levels = (data.levels || []).filter(l => l.is_staff);
-  allStaff = (data.attendees || []).filter(a => a.source === 'staff');
+  allLevels = data.levels || [];
+  levels = allLevels.filter(l => l.is_staff);
+  attendees = (data.attendees || []).filter(a => a.source === 'staff');
 
+  if (!eventData) { window.location = '/events.html'; return; }
   document.getElementById('ev-title').textContent = eventData.name + ' — Staff';
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
   document.title = `Staff — ${eventData.name}`;
   localStorage.setItem('hrtb_current_event_name', eventData.name);
   renderSidebar();
 
-  // Populate level filter
-  const lf = document.getElementById('level-filter');
-  lf.innerHTML = '<option value="">All levels</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  try { const d = await api.attendees.hasDesign(eventId); if (d.hasDesign) document.getElementById('btn-design').textContent = 'Update Ticket Design'; } catch {}
 
-  renderStats();
-  filterTable();
+  const lf = document.getElementById('level-filter');
+  lf.innerHTML = '<option value="">All levels</option><option value="__none">No level</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+
+  const bls = document.getElementById('bulk-level-select');
+  bls.innerHTML = '<option value="">Change level…</option><option value="__none">— Remove level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+
+  renderStats(); filterTable();
 }
 
 function renderStats() {
-  const active = allStaff.filter(a => a.status !== 'deactivated');
-  const checked = allStaff.filter(a => a.status === 'checked').length;
-  const sent = allStaff.filter(a => a.status === 'sent').length;
-
-  const byLevel = levels.map(l => ({
-    name: l.name, color: l.color,
-    count: allStaff.filter(a => a.level_id === l.id && a.status !== 'deactivated').length
-  })).filter(l => l.count > 0);
-
+  const active = attendees.filter(a => a.status !== 'deactivated');
+  const checked = attendees.filter(a => a.status === 'checked').length;
+  const sent = attendees.filter(a => a.status === 'sent').length;
+  const pending = attendees.filter(a => a.status === 'pending').length;
+  const byLevel = levels.map(l => ({ name: l.name, color: l.color, count: attendees.filter(a => a.level_id === l.id && a.status !== 'deactivated').length })).filter(l => l.count > 0);
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="stat-label">Total Staff</div><div class="stat-val">${active.length}</div></div>
+    <div class="stat"><div class="stat-label">Total</div><div class="stat-val">${active.length}</div></div>
     <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${checked}</div></div>
     <div class="stat"><div class="stat-label">Sent</div><div class="stat-val blue">${sent}</div></div>
+    <div class="stat"><div class="stat-label">Pending</div><div class="stat-val orange">${pending}</div></div>
     ${byLevel.map(l => `<div class="stat"><div class="stat-label" style="color:${l.color}">${esc(l.name)}</div><div class="stat-val">${l.count}</div></div>`).join('')}`;
-}
-
-function filterTable() {
-  const q   = document.getElementById('search').value.toLowerCase().trim();
-  const sf  = document.getElementById('status-filter').value;
-  const lv  = document.getElementById('level-filter').value;
-
-  filtered = allStaff.filter(a => {
-    if (sf && a.status !== sf) return false;
-    if (lv && a.level_id !== lv) return false;
-    if (q && !`${a.first_name} ${a.last_name} ${a.email||''} ${a.phone||''} ${a.ticket_id}`.toLowerCase().includes(q)) return false;
-    return true;
-  });
-
-  const fc = document.getElementById('filter-count');
-  if (filtered.length < allStaff.length) {
-    fc.style.display = 'inline-flex';
-    fc.textContent = `${filtered.length} of ${allStaff.length}`;
-  } else { fc.style.display = 'none'; }
-
-  if (sortCol !== null) applySort(); else renderTable();
-}
-
-function renderTable() {
-  if (!filtered.length) {
-    document.getElementById('table-wrap').innerHTML = `<div class="empty"><div class="ico"></div>
-      <h3>${allStaff.length ? 'No results' : 'No staff yet'}</h3>
-      <p>${allStaff.length ? 'Try a different filter' : 'Add staff members using the button above. Make sure to first create a Staff level in Ticket Levels.'}</p>
-    </div>`;
-    return;
-  }
-  const cols = ['Name','Phone','Email','Level','Status','Ticket ID'];
-  const arrow = i => sortCol===i ? (sortDir>0?' ↑':' ↓') : '';
-  document.getElementById('table-wrap').innerHTML = `<div class="table-wrap"><table>
-    <thead><tr>
-      ${cols.map((c,i) => `<th style="cursor:pointer;user-select:none;white-space:nowrap" onclick="sortByCol(${i})">${c}${arrow(i)}</th>`).join('')}
-      <th>Actions</th>
-    </tr></thead>
-    <tbody>${filtered.map(a => {
-      const lvl = levels.find(l => l.id === a.level_id);
-      return `<tr>
-        <td style="white-space:nowrap"><strong>${esc(a.first_name||'')} ${esc(a.last_name||'')}</strong></td>
-        <td class="text2 mono" style="font-size:12px">${esc(a.phone||'—')}</td>
-        <td class="text2" style="font-size:12px">${esc(a.email||'—')}</td>
-        <td>${lvl ? `<span class="badge" style="background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44;font-size:11px">${esc(lvl.name)}</span>` : '<span class="text3">—</span>'}</td>
-        <td>${badgeHTML(a.status)}</td>
-        <td class="mono" style="font-size:11px;color:var(--text2)">${esc(a.ticket_id)}</td>
-        <td><div class="row" style="gap:3px;flex-wrap:nowrap">
-          <button class="btn btn-sm" onclick="openSend('${a.id}','${esc(a.email||'')}')" title="Send ticket">Send</button>
-          ${a.status==='pending'||a.status==='sent' ? `<button class="btn btn-sm btn-primary" onclick="checkIn('${a.id}')" title="Check In">✓ In</button>` : ''}
-          ${a.status==='checked' ? `<button class="btn btn-sm" onclick="setStatus('${a.id}','pending')" title="Undo">↺</button>` : ''}
-          <button class="btn btn-sm btn-danger" onclick="delStaff('${a.id}')" title="Delete">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>
-        </div></td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table></div>`;
-}
-
-function sortByCol(i) { sortDir = (sortCol===i) ? -sortDir : 1; sortCol = i; applySort(); }
-function applySort() {
-  const get = (a,i) => {
-    const lvl = levels.find(l=>l.id===a.level_id);
-    return [a.last_name+' '+a.first_name, a.phone||'', a.email||'', lvl?.name||'', a.status, a.ticket_id][i];
-  };
-  filtered.sort((a,b) => { const va=get(a,sortCol),vb=get(b,sortCol); return va<vb?-sortDir:va>vb?sortDir:0; });
-  renderTable();
 }
 
 function clearFilters() {
   document.getElementById('search').value = '';
   document.getElementById('status-filter').value = '';
   document.getElementById('level-filter').value = '';
+  document.getElementById('confirm-filter').value = '';
   filterTable();
 }
 
-function openAddStaff() {
-  const sel = document.getElementById('s-level');
+function filterTable() {
+  const q  = document.getElementById('search').value.toLowerCase().trim();
+  const sf = document.getElementById('status-filter').value;
+  const lv = document.getElementById('level-filter').value;
+  const cf = document.getElementById('confirm-filter').value;
+  filtered = attendees.filter(a => {
+    if (sf && a.status !== sf) return false;
+    if (lv && (lv === '__none' ? a.level_id : a.level_id !== lv)) return false;
+    if (cf && (cf === 'confirmed' ? !a.confirmed : a.confirmed)) return false;
+    if (q  && !`${a.first_name} ${a.last_name} ${a.email||''} ${a.phone||''} ${a.ticket_id}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (sortCol !== null) applySort(); else renderTable();
+}
+
+function renderTable() {
+  const selCount = document.getElementById('sel-count');
+  const bulkSel  = document.getElementById('bulk-status-select');
+  const bulkLvl  = document.getElementById('bulk-level-select');
+  const bulkDel  = document.getElementById('bulk-delete-btn');
+  if (selected.size) {
+    selCount.style.display='inline-flex'; selCount.textContent=`${selected.size} selected`;
+    if(bulkSel) bulkSel.style.display='';
+    if(bulkLvl) bulkLvl.style.display='';
+    if(bulkDel) bulkDel.style.display='';
+  } else {
+    selCount.style.display='none';
+    if(bulkSel){bulkSel.style.display='none';bulkSel.value='';}
+    if(bulkLvl){bulkLvl.style.display='none';bulkLvl.value='';}
+    if(bulkDel) bulkDel.style.display='none';
+  }
+  if (!filtered.length) {
+    document.getElementById('table-wrap').innerHTML = `<div class="empty"><div class="ico"></div>
+      <h3>${attendees.length ? 'No results' : 'No staff yet'}</h3>
+      <p>${attendees.length ? 'Try adjusting your filters' : 'Add staff using the + Add button. First create a Staff level in Ticket Levels.'}</p>
+    </div>`;
+    return;
+  }
+  const allSel = filtered.length > 0 && filtered.every(a => selected.has(a.id));
+  const cols = ['Name','Phone','Email','Level','Activated','Status','ID'];
+  const arrow = i => sortCol===i ? (sortDir>0?' ↑':' ↓') : '';
+  document.getElementById('table-wrap').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr>
+      <th style="width:32px"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)"></th>
+      ${cols.map((c,i)=>`<th style="cursor:pointer;user-select:none;white-space:nowrap" onclick="sortByCol(${i})">${c}${arrow(i)}</th>`).join('')}
+      <th>Actions</th>
+    </tr></thead>
+    <tbody>${filtered.map(a => {
+      const lvl = levels.find(l => l.id === a.level_id);
+      return `<tr class="${selected.has(a.id)?'selected-row':''}">
+        <td><input type="checkbox" ${selected.has(a.id)?'checked':''} onchange="toggleOne('${a.id}',this)"></td>
+        <td style="white-space:nowrap"><strong>${esc(a.first_name||'')} ${esc(a.last_name||'')}</strong></td>
+        <td class="text2 mono" style="font-size:12px">${esc(a.phone||'—')}</td>
+        <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'—')}</td>
+        <td>${lvl ? `<span class="badge" style="background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44;font-size:11px">${esc(lvl.name)}</span>` : '<span class="text3" style="font-size:11px">—</span>'}</td>
+        <td><button class="btn btn-sm ${a.confirmed?'btn-success':'btn-ghost'}" style="min-width:88px;font-size:11px" onclick="toggleConfirm('${a.id}',${a.confirmed?0:1})">${a.confirmed?'✓ Activated':'Activate'}</button></td>
+        <td>${badgeHTML(a.status)}</td>
+        <td class="mono" style="font-size:11px;color:var(--text2)">${esc(a.ticket_id)}</td>
+        <td><div class="row" style="gap:3px;flex-wrap:nowrap">
+          <button class="btn btn-sm" onclick="openEdit('${a.id}')">Edit</button>
+          ${a.status==='preprint'
+            ? `<button class="btn btn-sm btn-primary" onclick="openAssign('${a.ticket_id}')">Assign</button>`
+            : `<button class="btn btn-sm" onclick="openSend('${a.id}')">Send</button>`}
+          ${(a.status==='sent'||a.status==='pending')?`<button class="btn btn-sm btn-primary" onclick="setStatus('${a.id}','checked')" title="Check In">✓</button>`:''}
+          ${a.status==='checked'?`<button class="btn btn-sm" onclick="confirmUncheck('${a.id}','${esc(a.first_name)} ${esc(a.last_name)}')" title="Undo">↺</button>`:''}
+          ${a.status!=='deactivated'
+            ?`<button class="btn btn-sm btn-danger" onclick="setStatus('${a.id}','deactivated')" title="Deactivate">✕</button>`
+            :`<button class="btn btn-sm btn-success" onclick="setStatus('${a.id}','pending')" title="Reactivate">↺</button>`}
+          <button class="btn btn-sm btn-danger" onclick="delAttendee('${a.id}')" title="Delete"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function toggleAll(cb) { filtered.forEach(a => cb.checked ? selected.add(a.id) : selected.delete(a.id)); renderTable(); }
+function toggleOne(id, cb) { cb.checked ? selected.add(id) : selected.delete(id); renderTable(); }
+function sortByCol(i) { sortDir = (sortCol===i) ? -sortDir : 1; sortCol = i; applySort(); }
+function applySort() {
+  const get = (a,i) => { const lvl=levels.find(l=>l.id===a.level_id); return [a.last_name+' '+a.first_name,a.phone||'',a.email||'',lvl?.name||'',a.confirmed?1:0,a.status,a.ticket_id][i]; };
+  filtered.sort((a,b)=>{const va=get(a,sortCol),vb=get(b,sortCol);return va<vb?-sortDir:va>vb?sortDir:0;});
+  renderTable();
+}
+
+// ── Add ──────────────────────────────────────────────────
+function openAddModal() {
+  const sel = document.getElementById('a-level');
   sel.innerHTML = '<option value="">— Select level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
-  ['s-fn','s-ln','s-ph','s-em'].forEach(id => document.getElementById(id).value = '');
+  ['a-fn','a-ln','a-ph','a-em'].forEach(id => document.getElementById(id).value = '');
   showModal('modal-add');
 }
 
 async function addStaff() {
-  const fn = document.getElementById('s-fn').value.trim();
-  const ln = document.getElementById('s-ln').value.trim();
-  const ph = document.getElementById('s-ph').value.trim();
-  const em = document.getElementById('s-em').value.trim();
-  const level_id = document.getElementById('s-level').value;
+  const fn = document.getElementById('a-fn').value.trim(), ln = document.getElementById('a-ln').value.trim();
+  const ph = document.getElementById('a-ph').value.trim(), em = document.getElementById('a-em').value.trim();
+  const level_id = document.getElementById('a-level').value;
   if (!fn || !ln) { toast('First and last name required', 'error'); return; }
   if (!level_id) { toast('Select a staff level', 'error'); return; }
   try {
-    const { attendee } = await api.attendees.create(eventId, { first_name: fn, last_name: ln, phone: ph||undefined, email: em||undefined, level_id });
-    allStaff.push(attendee);
-    hideModal('modal-add');
-    toast(`${fn} ${ln} added`);
-    renderStats(); filterTable();
+    const { attendee } = await api.attendees.create(eventId, { first_name:fn, last_name:ln, phone:ph||undefined, email:em||undefined, level_id });
+    attendees.push(attendee); hideModal('modal-add'); toast(`${fn} ${ln} added`); renderStats(); filterTable();
   } catch(e) { toast(e.message, 'error'); }
 }
 
-function openSend(id, email) {
-  currentSendId = id;
-  document.getElementById('send-email').value = email || '';
-  showModal('modal-send');
+// ── Pre-print ─────────────────────────────────────────────
+function openPreprint() {
+  const sel = document.getElementById('pp-level');
+  if (sel) sel.innerHTML = '<option value="">— No level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  showModal('modal-preprint');
+}
+async function doPrint() {
+  const count = parseInt(document.getElementById('pp-count').value)||1;
+  const level_id = document.getElementById('pp-level')?.value || undefined;
+  const sendEmail = document.getElementById('pp-email')?.value.trim() || '';
+  try {
+    const r = await api.attendees.preprint(eventId, { count, level_id });
+    toast(`Generated ${count} pre-printed ticket(s)`);
+    hideModal('modal-preprint'); await load();
+    if (sendEmail) {
+      const emails = sendEmail.split(',').map(e=>e.trim()).filter(e=>e.includes('@'));
+      const newIds = (r.tickets||[]).map(t=>t.id);
+      for (const email of emails) await api.attendees.digest(eventId, { toEmail:email, ids:newIds.length?newIds:undefined }).catch(()=>{});
+      if (emails.length) toast(`Sent to ${emails.join(', ')}`);
+    }
+    document.getElementById('pp-email').value = '';
+  } catch(e) { toast(e.message,'error'); }
 }
 
-async function doSend() {
+// ── Assign ────────────────────────────────────────────────
+function enforceTktPrefix(input) { if (!input.value.startsWith('TKT-')) input.value = 'TKT-'; }
+function openAssign(ticketId) { document.getElementById('as-tid').value = ticketId || 'TKT-'; document.getElementById('as-found').style.display='none'; document.getElementById('as-btn').style.display='none'; currentAssignId=''; showModal('modal-assign'); if(ticketId && ticketId !== 'TKT-') lookupTicket(); }
+async function lookupTicket() {
+  const id = document.getElementById('as-tid').value.trim().toUpperCase();
+  if (!id) return;
+  try {
+    const { attendee } = await api.attendees.lookup(id);
+    currentAssignId = id;
+    document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket — fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
+    document.getElementById('as-status').className = `info-box mb12 ${attendee.status==='preprint'?'tip':'ok'}`;
+    document.getElementById('as-found').style.display='block';
+    document.getElementById('as-btn').style.display='inline-flex';
+  } catch(e) { toast('Ticket not found','error'); }
+}
+async function doAssign() {
+  const fn=document.getElementById('as-fn').value.trim(), ln=document.getElementById('as-ln').value.trim();
+  if (!fn||!ln) { toast('First and last name required','error'); return; }
+  try {
+    await api.attendees.assign({ ticketId:currentAssignId, first_name:fn, last_name:ln, phone:document.getElementById('as-ph').value, email:document.getElementById('as-em').value });
+    toast(`Assigned to ${fn} ${ln}`); hideModal('modal-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Send ─────────────────────────────────────────────────
+function openSend(id) { const a=attendees.find(x=>x.id===id); if(!a)return; currentSendId=id; document.getElementById('send-name').textContent=`${a.first_name} ${a.last_name}`; document.getElementById('send-email').value=a.email||''; showModal('modal-send'); }
+async function confirmSend() {
   const email = document.getElementById('send-email').value.trim();
-  if (!email) { toast('Enter an email address', 'error'); return; }
-  try {
-    await api.attendees.send(currentSendId, email);
-    const a = allStaff.find(x => x.id === currentSendId);
-    if (a) { a.status = 'sent'; a.email = email; }
-    hideModal('modal-send');
-    toast('Staff ticket sent');
-    renderStats(); filterTable();
-  } catch(e) { toast(e.message, 'error'); }
+  if (!email) { toast('Enter an email address','error'); return; }
+  try { await api.attendees.send(currentSendId, { email }); toast('Staff ticket sent!'); hideModal('modal-send'); await load(); }
+  catch(e) { if (e.message==='EMAIL_NOT_ALLOWED') toast('Email not enabled for this account.','error'); else toast(e.message,'error'); }
 }
 
-async function checkIn(id) {
-  try {
-    await api.attendees.setStatus(id, 'checked');
-    const a = allStaff.find(x => x.id === id);
-    if (a) a.status = 'checked';
-    renderStats(); filterTable();
-  } catch(e) { toast(e.message, 'error'); }
+// ── Send All ──────────────────────────────────────────────
+async function sendAll() {
+  const ids = selected.size ? [...selected] : null;
+  const eligible = ids ? attendees.filter(a=>ids.includes(a.id)&&a.status==='pending') : attendees.filter(a=>a.status==='pending'&&a.email);
+  if (!eligible.length) { toast('No eligible staff (need email + pending status)','error'); return; }
+  if (!confirm(`Send staff tickets to ${eligible.length} person(s)?`)) return;
+  try { const r=await api.attendees.sendAll(eventId,{ids}); toast(`Sent: ${r.sent}${r.failed?`, failed: ${r.failed}`:''}`); selected.clear(); await load(); }
+  catch(e) { if (e.message==='EMAIL_NOT_ALLOWED') toast('Email not enabled.','error'); else toast(e.message,'error'); }
 }
 
+// ── Digest ────────────────────────────────────────────────
+async function sendDigest() {
+  const raw = document.getElementById('dg-email').value.trim();
+  if (!raw) { toast('Enter at least one email','error'); return; }
+  const emails = raw.split(',').map(e=>e.trim()).filter(e=>e.includes('@'));
+  if (!emails.length) { toast('Enter a valid email','error'); return; }
+  const ids = selected.size ? [...selected] : undefined;
+  const eligible = ids ? attendees.filter(a=>ids.includes(a.id)) : attendees.filter(a=>a.status==='pending');
+  if (!confirm(`Send ${eligible.length} ticket(s) to ${emails.length} email(s)?`)) return;
+  try {
+    let total = 0;
+    for (const email of emails) { const r = await api.attendees.digest(eventId, { toEmail:email, ids, subject:document.getElementById('dg-subject').value }); total += r.sent||0; }
+    toast(`${total} ticket(s) sent to ${emails.length} recipient(s)`);
+    hideModal('modal-digest'); selected.clear(); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Status / Confirm ──────────────────────────────────────
 async function setStatus(id, status) {
-  try {
-    await api.attendees.setStatus(id, status);
-    const a = allStaff.find(x => x.id === id);
-    if (a) a.status = status;
-    renderStats(); filterTable();
-  } catch(e) { toast(e.message, 'error'); }
+  try { await api.attendees.update(id,{status}); const a=attendees.find(x=>x.id===id); if(a) a.status=status; renderStats(); filterTable(); }
+  catch(e) { toast(e.message,'error'); }
+}
+function confirmUncheck(id, name) { if (!confirm(`Remove check-in for ${name}?`)) return; setStatus(id, 'sent'); }
+async function toggleConfirm(id, val) {
+  try { await api.attendees.confirm(id, val); const a=attendees.find(x=>x.id===id); if(a) a.confirmed=val; renderStats(); filterTable(); }
+  catch(e) { toast(e.message,'error'); }
 }
 
-async function delStaff(id) {
-  const a = allStaff.find(x => x.id === id);
-  if (!confirm(`Remove ${a?.first_name||'this staff member'}?`)) return;
+// ── Edit ─────────────────────────────────────────────────
+function openEdit(id) {
+  const a = attendees.find(x=>x.id===id); if (!a) return; editingId = id;
+  document.getElementById('ed-first').value = a.first_name||''; document.getElementById('ed-last').value = a.last_name||'';
+  document.getElementById('ed-phone').value = a.phone||''; document.getElementById('ed-email').value = a.email||'';
+  const lvlSel = document.getElementById('ed-level');
+  lvlSel.innerHTML = '<option value="">No level</option>' + levels.map(l=>`<option value="${l.id}" ${a.level_id===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+  document.getElementById('ed-err').style.display='none'; showModal('modal-edit');
+}
+async function saveEdit() {
+  const err = document.getElementById('ed-err'); err.style.display='none'; if (!editingId) return;
   try {
-    await api.attendees.delete(id);
-    allStaff = allStaff.filter(x => x.id !== id);
-    toast('Removed');
-    renderStats(); filterTable();
-  } catch(e) { toast(e.message, 'error'); }
+    const body = { first_name:document.getElementById('ed-first').value.trim(), last_name:document.getElementById('ed-last').value.trim(), phone:document.getElementById('ed-phone').value.trim(), email:document.getElementById('ed-email').value.trim(), level_id:document.getElementById('ed-level').value||null };
+    const { attendee: updated } = await api.attendees.update(editingId, body);
+    const idx = attendees.findIndex(x=>x.id===editingId); if (idx!==-1) attendees[idx]={...attendees[idx],...updated};
+    hideModal('modal-edit'); toast('Updated'); renderStats(); filterTable();
+  } catch(e) { err.textContent=e.message; err.style.display='block'; }
 }
 
+// ── Bulk ops ──────────────────────────────────────────────
+async function bulkDelete() {
+  if (!selected.size) return;
+  if (!confirm(`Delete ${selected.size} selected staff? They can be restored from Admin → Trash within 30 days.`)) return;
+  try {
+    await api.attendees.bulkDelete(eventId, [...selected]);
+    attendees = attendees.filter(a => !selected.has(a.id)); selected.clear(); toast('Deleted'); renderStats(); filterTable();
+  } catch(e) { toast(e.message,'error'); }
+}
+async function bulkChangeLevel(levelId) {
+  if (!levelId || !selected.size) { document.getElementById('bulk-level-select').value=''; return; }
+  const lvl = levels.find(l=>l.id===levelId), label = levelId==='__none'?'no level':(lvl?.name||levelId);
+  if (!confirm(`Change level to "${label}" for ${selected.size} selected?`)) { document.getElementById('bulk-level-select').value=''; return; }
+  try {
+    await api.attendees.bulkLevel(eventId, { ids:[...selected], level_id:levelId });
+    toast(`${selected.size} updated to ${label}`); document.getElementById('bulk-level-select').value=''; selected.clear(); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+async function bulkStatusChange(status) {
+  if (!status || !selected.size) { document.getElementById('bulk-status-select').value=''; return; }
+  if (!confirm(`Change status of ${selected.size} selected to "${status}"?`)) { document.getElementById('bulk-status-select').value=''; return; }
+  try {
+    await api.attendees.bulkStatus(eventId, { ids:[...selected], status });
+    toast(`${selected.size} updated`); document.getElementById('bulk-status-select').value=''; selected.clear(); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+async function delAttendee(id) {
+  const a=attendees.find(x=>x.id===id); if(!confirm(`Remove ${a?.first_name||'this staff member'}? Restorable from Admin.`)) return;
+  try { await api.attendees.delete(id); attendees=attendees.filter(x=>x.id!==id); toast('Removed'); renderStats(); filterTable(); } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Upload ────────────────────────────────────────────────
+async function handleUpload(ev) {
+  const file = ev.target.files[0]; ev.target.value=''; if (!file) return;
+  hideModal('modal-upload-list'); toast('Parsing file…','info');
+  const data = await api.attendees.previewUpload(eventId, file);
+  if (data.error) { toast(data.error,'error'); return; }
+  if (data.conflicts?.length) {
+    pendingUpload = data; data.conflicts.forEach(c => c.action='update');
+    function renderConflicts() {
+      document.getElementById('conflict-list').innerHTML = pendingUpload.conflicts.map((c,i) => `
+        <div style="margin-bottom:12px;padding:14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><strong>${esc(c.existing.first_name)} ${esc(c.existing.last_name)}</strong><span class="xs text2">already in list</span></div>
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm ${c.action==='update'?'btn-gold':''}" onclick="setConflictAction(${i},'update')">✏️ Update</button>
+            <button class="btn btn-sm ${c.action==='keep'?'btn-success':''}" onclick="setConflictAction(${i},'keep')">✓ Keep</button>
+            <button class="btn btn-sm ${c.action==='duplicate'?'btn-primary':''}" onclick="setConflictAction(${i},'duplicate')">＋ Add Duplicate</button>
+          </div>
+        </div>`).join('');
+    }
+    renderConflicts(); window._renderConflicts = renderConflicts; showModal('modal-conflict');
+  } else await commitData(data.new, [], []);
+}
+function setConflictAction(i, action) { pendingUpload.conflicts[i].action=action; if(window._renderConflicts)window._renderConflicts(); }
+function setAllOverride(action) { pendingUpload.conflicts.forEach(c=>c.action=action); if(window._renderConflicts)window._renderConflicts(); }
+async function commitUpload() {
+  if (!pendingUpload) return;
+  const toUpdate = pendingUpload.conflicts.filter(c=>c.action==='update').map(c=>({...c,override:true}));
+  const toDup = pendingUpload.conflicts.filter(c=>c.action==='duplicate').map(c=>c.incoming);
+  await commitData([...pendingUpload.new,...toDup], toUpdate);
+  hideModal('modal-conflict'); pendingUpload=null;
+}
+async function commitData(newRows, resolved) {
+  try {
+    const r = await api.attendees.commit(eventId, { newRows, resolved });
+    await load();
+    const user = Auth.user();
+    if (r.batchId && r.added>0 && user?.role==='admin') showUndoBar(r.batchId, r.added);
+    else toast(`Imported: ${r.added} added${r.updated?', '+r.updated+' updated':''}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Confirm bulk upload ───────────────────────────────────
+function dlConfirmTemplate() {
+  const csv = `Ticket ID\nTKT-EXAMPLE1\nTKT-EXAMPLE2\n# One ticket ID per row`;
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='Confirm-Template.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+async function processConfirmUpload(e) {
+  const file=e.target.files[0]; e.target.value=''; if(!file) return;
+  const resultEl=document.getElementById('confirm-result'); resultEl.style.display='block'; resultEl.innerHTML='<div class="info-box tip">Reading file…</div>';
+  try {
+    const text=await file.text();
+    const ids=text.split(/[\r\n]+/).map(l=>l.trim().toUpperCase()).filter(l=>l&&!l.startsWith('#')&&l!=='TICKET ID'&&l!=='TICKET_ID');
+    if (!ids.length) { resultEl.innerHTML='<div class="info-box warn">No ticket IDs found.</div>'; return; }
+    const result=await api.attendees.confirmBulk(eventId, ids);
+    resultEl.innerHTML=`<div class="info-box ok">Done! <strong>${result.confirmed}</strong> confirmed.${result.notFound>0?`<br>${result.notFound} not found.`:''}</div>`;
+    await load(); toast(`${result.confirmed} ticket(s) confirmed`);
+  } catch(err) { resultEl.innerHTML=`<div class="info-box warn">Error: ${esc(err.message)}</div>`; }
+}
+
+// ── Template download ─────────────────────────────────────
+function dlTemplate() {
+  const levelNames = levels.map(l=>l.name);
+  const lvlNote = levelNames.length ? `\n# Valid staff levels: ${levelNames.join(', ')}` : '';
+  const lvlCol  = levelNames.length ? ',Ticket Level' : '';
+  const lvlEx1  = levelNames.length ? `,${levelNames[0]||'Security'}` : '';
+  const csv = `First Name,Last Name,Phone,Email${lvlCol}${lvlNote}\nJane,Doe,+1 555 000 0001,jane@example.com${lvlEx1}`;
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='EverythingShul-Staff-Template.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── Export ────────────────────────────────────────────────
 function doExport() {
   const rows = [
-    ['Ticket ID','First Name','Last Name','Phone','Email','Level','Status','Sent At','Checked In At'],
+    ['Ticket ID','First Name','Last Name','Phone','Email','Level','Activated','Status','Sent At','Checked In At'],
     ...filtered.map(a => {
-      const lvl = levels.find(l => l.id === a.level_id);
-      return [a.ticket_id, a.first_name||'', a.last_name||'', a.phone||'', a.email||'',
-        lvl?.name||'', a.status, a.sent_at||'', a.checked_in_at||''];
+      const lvl=levels.find(l=>l.id===a.level_id);
+      return [a.ticket_id,a.first_name||'',a.last_name||'',a.phone||'',a.email||'',lvl?.name||'',a.confirmed?'Yes':'No',a.status,a.sent_at||'',a.checked_in_at||''];
     })
   ];
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'staff.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='staff.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast(`Exported ${filtered.length} staff`);
 }
 
+// ── Design upload ─────────────────────────────────────────
+let _pendingDesignFile = null;
+function handleDesignUpload(ev) {
+  const file=ev.target.files[0]; ev.target.value=''; if(!file) return;
+  _pendingDesignFile=file;
+  const reader=new FileReader(); reader.onload=e=>{document.getElementById('design-preview-img').src=e.target.result;};reader.readAsDataURL(file);
+  document.getElementById('design-file-name').textContent=file.name; showModal('modal-design-confirm');
+}
+function cancelDesignUpload() { _pendingDesignFile=null; hideModal('modal-design-confirm'); }
+async function doUploadDesign() {
+  if(!_pendingDesignFile) return;
+  try { await api.attendees.uploadDesign(eventId,_pendingDesignFile); toast('Design uploaded'); document.getElementById('btn-design').textContent='Update Ticket Design'; hideModal('modal-design-confirm'); _pendingDesignFile=null; }
+  catch(e) { toast(e.message,'error'); }
+}
+function previewTicketPDF() {
+  if (!attendees||attendees.length===0) { toast('Add at least one staff member first','error'); return; }
+  window.open(`/api/attendees/event/${eventId}/ticket-preview?token=${Auth.token()}&t=${Date.now()}`, '_blank');
+}
+
+// ── Undo Upload ───────────────────────────────────────────
+let undoBatchId=null, undoTimer=null;
+function showUndoBar(batchId, count) {
+  undoBatchId=batchId; document.getElementById('undo-msg').textContent=`${count} staff added`;
+  const bar=document.getElementById('undo-bar'); bar.style.display='flex'; clearTimeout(undoTimer);
+  undoTimer=setTimeout(hideUndoBar, 15000);
+}
+function hideUndoBar() { document.getElementById('undo-bar').style.display='none'; clearTimeout(undoTimer); }
+async function doUndoUpload() {
+  if(!undoBatchId) return;
+  try { await api.attendees.undoUpload(undoBatchId); toast('Upload undone'); hideUndoBar(); await load(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── Dropdown menus ────────────────────────────────────────
+function toggleAddMenu() { const m=document.getElementById('add-menu'); const open=m.style.display!=='none'; hideAddMenu();hideUploadMenu(); if(!open)m.style.display='block'; }
+function hideAddMenu() { document.getElementById('add-menu').style.display='none'; }
+function toggleUploadMenu() { const m=document.getElementById('upload-menu'); m.style.display=m.style.display==='none'?'block':'none'; }
+function hideUploadMenu() { const m=document.getElementById('upload-menu'); if(m)m.style.display='none'; }
+document.addEventListener('click',e=>{
+  const aw=document.getElementById('add-menu-wrap'); if(aw&&!aw.contains(e.target))hideAddMenu();
+  const uw=document.getElementById('upload-menu-wrap'); if(uw&&!uw.contains(e.target))hideUploadMenu();
+});
+
+// ── Scanner PINs ──────────────────────────────────────────
+async function openPins() {
+  document.getElementById('scanner-url').textContent=window.location.origin+'/scanner-login.html?event='+eventId;
+  const wrap=document.getElementById('pin-levels-wrap');
+  if(wrap) wrap.innerHTML=allLevels.length?allLevels.map(l=>`<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid ${l.color}44;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;background:${l.color}11;color:${l.color}"><input type="checkbox" data-level-id="${l.id}" style="width:13px;height:13px;cursor:pointer;accent-color:${l.color}"> ${esc(l.name)}</label>`).join(''):'<span class="xs text2">No levels</span>';
+  showModal('modal-pins'); await loadPins();
+}
+async function loadPins() {
+  try {
+    const { pins }=await api.auth.getScannerPins(eventId);
+    const list=document.getElementById('pins-list');
+    if(!pins.length){list.innerHTML=`<div class="empty" style="padding:24px 0"><div class="ico"></div><h3>No PINs yet</h3><p>Create a PIN for each entrance</p></div>`;return;}
+    list.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Label</th><th>PIN</th><th>Lookup</th><th>Level Restriction</th><th></th></tr></thead><tbody>${pins.map(p=>{
+      const allowedLvls=p.allowed_levels?JSON.parse(p.allowed_levels):[];
+      const lvlNames=allowedLvls.map(lid=>{const l=allLevels.find(x=>x.id===lid);return l?`<span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44;font-size:10px">${esc(l.name)}</span>`:''}).join(' ');
+      return `<tr><td><strong>${esc(p.label)}</strong></td><td><span style="font-family:monospace;font-size:18px;font-weight:700;letter-spacing:.15em;color:var(--cyan)">${esc(p.pin)}</span></td>
+        <td><div class="row" style="gap:6px">${p.allow_lookup?'<span class="badge badge-checked">Allowed</span>':'<span class="badge badge-deactivated">Off</span>'}<button class="btn btn-sm" onclick="togglePinLookup('${p.id}',${p.allow_lookup?0:1})">${p.allow_lookup?'Disable':'Enable'}</button></div></td>
+        <td>${allowedLvls.length?lvlNames:'<span class="xs text2">All levels</span>'} <button class="btn btn-sm" style="margin-left:4px;font-size:11px" onclick="editPinLevels('${p.id}')">Edit</button></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deletePin('${p.id}')">Delete</button></td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  } catch(e){toast(e.message,'error');}
+}
+async function createPin() {
+  const label=document.getElementById('pin-label').value.trim()||'Door Scanner';
+  const allow_lookup=parseInt(document.getElementById('pin-lookup').value);
+  const checkedLevels=[...document.querySelectorAll('#pin-levels-wrap input[type=checkbox]:checked')].map(cb=>cb.dataset.levelId);
+  const allowed_levels=checkedLevels.length?JSON.stringify(checkedLevels):null;
+  try { const {pin}=await api.auth.createScannerPin({eventId,label,allow_lookup,allowed_levels}); toast(`PIN created: ${pin}`); document.getElementById('pin-label').value=''; document.querySelectorAll('#pin-levels-wrap input[type=checkbox]').forEach(cb=>cb.checked=false); await loadPins(); }
+  catch(e){toast(e.message,'error');}
+}
+async function togglePinLookup(id,newVal){try{await api.auth.updateScannerLookup(id,newVal);toast(newVal?'Lookup enabled':'Lookup disabled');await loadPins();}catch(e){toast(e.message,'error');}}
+async function editPinLevels(pinId){
+  const pin=(await api.auth.getScannerPins(eventId)).pins.find(p=>p.id===pinId);if(!pin)return;
+  const current=pin.allowed_levels?JSON.parse(pin.allowed_levels):[];
+  const checks=allLevels.map(l=>`<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer"><input type="checkbox" value="${l.id}" ${current.includes(l.id)?'checked':''} style="width:15px;height:15px"><span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span></label>`).join('');
+  const div=document.createElement('div');
+  div.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center"><div style="background:#fff;border-radius:12px;padding:24px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)"><h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3><p class="xs text2 mb12">Leave all unchecked = allow all levels</p><div>${checks||'<p class="text2 sm">No levels</p>'}</div><div class="row mt16" style="gap:8px;justify-content:flex-end"><button class="btn" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="this.closest('[style*=fixed]').remove()">Cancel</button><button class="btn btn-gold" onclick="savePinLevels('${pinId}',this)">Save</button></div></div></div>`;
+  document.body.appendChild(div);
+}
+async function savePinLevels(pinId,btn){
+  const overlay=btn.closest('[style*=fixed]');
+  const checked=[...overlay.querySelectorAll('input[type=checkbox]:checked')].map(cb=>cb.value);
+  try{await api.auth.updateScannerPin(pinId,{allowed_levels:checked.length?JSON.stringify(checked):null});toast('Saved');overlay.remove();await loadPins();}catch(e){toast(e.message,'error');}
+}
+async function deletePin(id){if(!confirm('Delete this PIN?'))return;try{await api.auth.deleteScannerPin(id);toast('PIN deleted');await loadPins();}catch(e){toast(e.message,'error');}}
+
 load();
+RealtimeSync.register(()=>{
+  api.attendees.list(eventId).then(d=>{
+    attendees=(d.attendees||[]).filter(a=>a.source==='staff');
+    renderStats();filterTable();
+  }).catch(()=>{});
+},20000);
 </script>
 </body>
 </html>
