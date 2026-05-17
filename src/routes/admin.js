@@ -503,3 +503,15 @@ r.delete('/trash/accounts/:id', (req, res) => {
   db.prepare('DELETE FROM accounts WHERE id=? AND deleted_at IS NOT NULL').run(req.params.id);
   res.json({ ok: true });
 });
+
+// Debug: check staff data
+r.get('/debug-staff/:eventId', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).end();
+  const levels = db.prepare('SELECT id, name, is_staff FROM ticket_levels WHERE event_id=?').all(req.params.eventId);
+  const staffLevelIds = levels.filter(l=>l.is_staff).map(l=>l.id);
+  const allAtt = db.prepare('SELECT id, first_name, last_name, source, level_id, status FROM attendees WHERE event_id=? AND deleted_at IS NULL').all(req.params.eventId);
+  const staffRows = db.prepare('SELECT id, first_name, last_name, level_id, status FROM staff WHERE event_id=? AND deleted_at IS NULL').all(req.params.eventId);
+  res.json({ levels, staffLevelIds, attendees: allAtt, staffRows });
+});
+
+export default r;
