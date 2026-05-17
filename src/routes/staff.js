@@ -11,7 +11,6 @@ import { sendMail, ticketEmail, digestEmail } from '../services/mail.js';
 import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
 
 const r = express.Router();
-r.use(auth);
 
 const tid = () => 'TKT-' + Math.random().toString(36).substr(2,8).toUpperCase();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } });
@@ -22,6 +21,37 @@ function getEventDesignPath(eventId) {
   for (const ext of ['png','jpg']) { const p = join(dir,`${eventId}.${ext}`); if (existsSync(p)) return p; }
   return null;
 }
+
+// ── Bulk PDF download — NO AUTH — linked from digest email ─
+r.get('/tickets-bulk-pdf', async (req, res) => {
+  const { createRequire } = await import('module');
+  const require2 = createRequire(import.meta.url);
+  const { PDFDocument } = require2('pdf-lib');
+  const rawIds = (req.query.ids || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (!rawIds.length) return res.status(400).send('No ticket IDs provided');
+  try {
+    const merged = await PDFDocument.create();
+    for (const ticketId of rawIds) {
+      const s = db.prepare('SELECT st.*, l.name as level_name, l.color as level_color FROM staff st LEFT JOIN ticket_levels l ON l.id=st.level_id WHERE st.ticket_id=? AND st.deleted_at IS NULL').get(ticketId);
+      if (!s) continue;
+      const event = db.prepare('SELECT * FROM events WHERE id=?').get(s.event_id);
+      try {
+        const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: getEventDesignPath(s.event_id) });
+        const src = await PDFDocument.load(pdfBytes);
+        const [page] = await merged.copyPages(src, [0]);
+        merged.addPage(page);
+      } catch(e) { console.warn('[staff-bulk-pdf] skip', ticketId, e.message); }
+    }
+    const finalBytes = await merged.save();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="staff-tickets.pdf"');
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(Buffer.from(finalBytes));
+  } catch(e) { res.status(500).send('Could not generate PDF: ' + e.message); }
+});
+
+// All routes below require auth
+r.use(auth);
 
 // ── List staff for event ─────────────────────────────────
 r.get('/event/:eventId', requireEvent, (req, res) => {
@@ -304,34 +334,6 @@ r.get('/ticket-pdf/:ticketId', async (req, res) => {
   const designPath = getEventDesignPath(event.id);
   const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: designPath });
   res.setHeader('Content-Type','application/pdf').setHeader('Content-Disposition',`attachment;filename=ticket-${s.ticket_id}.pdf`).send(Buffer.from(pdfBytes));
-});
-
-// ── Bulk PDF download (linked from digest email) ──────────
-r.get('/tickets-bulk-pdf', async (req, res) => {
-  const { createRequire } = await import('module');
-  const require2 = createRequire(import.meta.url);
-  const { PDFDocument } = require2('pdf-lib');
-  const rawIds = (req.query.ids || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-  if (!rawIds.length) return res.status(400).send('No ticket IDs provided');
-  try {
-    const merged = await PDFDocument.create();
-    for (const ticketId of rawIds) {
-      const s = db.prepare('SELECT st.*, l.name as level_name, l.color as level_color FROM staff st LEFT JOIN ticket_levels l ON l.id=st.level_id WHERE st.ticket_id=? AND st.deleted_at IS NULL').get(ticketId);
-      if (!s) continue;
-      const event = db.prepare('SELECT * FROM events WHERE id=?').get(s.event_id);
-      try {
-        const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: getEventDesignPath(s.event_id) });
-        const src = await PDFDocument.load(pdfBytes);
-        const [page] = await merged.copyPages(src, [0]);
-        merged.addPage(page);
-      } catch(e) { console.warn('[staff-bulk-pdf] skip', ticketId, e.message); }
-    }
-    const finalBytes = await merged.save();
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="staff-tickets.pdf"');
-    res.setHeader('Cache-Control', 'no-store');
-    res.send(Buffer.from(finalBytes));
-  } catch(e) { res.status(500).send('Could not generate PDF: ' + e.message); }
 });
 
 // ── Stats for event (for dashboard/stats page) ────────────
