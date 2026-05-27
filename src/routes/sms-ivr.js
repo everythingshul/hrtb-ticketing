@@ -439,8 +439,85 @@ r.post('/event/:id/toggle-sms', (req, res) => {
 
 r.post('/ivr/status', (_req, res) => res.sendStatus(204));
 
-// ── Admin: manage accounts' phone numbers ─────────────────
-// Assign phone number to event
+// ── Twilio number purchase/release/search (from portal) ──
+
+function getTwilioClient() {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const tok = process.env.TWILIO_AUTH_TOKEN;
+  if (!sid || !tok) throw new Error('Set TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN in Render env vars.');
+  return twilio(sid, tok);
+}
+
+// Search available numbers
+r.get('/numbers/search', async (req, res) => {
+  try {
+    const client = getTwilioClient();
+    const { areaCode, country='US', contains } = req.query;
+    const params = { voiceEnabled:true, smsEnabled:true, limit:20 };
+    if (areaCode) params.areaCode = areaCode;
+    if (contains) params.contains = contains;
+    const nums = await client.availablePhoneNumbers(country).local.list(params);
+    res.json({ numbers: nums.map(n => ({
+      phoneNumber: n.phoneNumber, friendlyName: n.friendlyName,
+      locality: n.locality, region: n.region,
+      capabilities: n.capabilities, monthly_cost: '$1.15'
+    })) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Buy a number — auto-sets webhooks and optionally assigns to event
+r.post('/numbers/purchase', async (req, res) => {
+  try {
+    const { phoneNumber, eventId, expiresAt } = req.body;
+    if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber required' });
+    const client = getTwilioClient();
+    const appUrl = process.env.APP_URL || '';
+    const p = await client.incomingPhoneNumbers.create({
+      phoneNumber,
+      smsUrl:    `${appUrl}/api/phone/sms/inbound`, smsMethod: 'POST',
+      voiceUrl:  `${appUrl}/api/phone/ivr/inbound`, voiceMethod: 'POST',
+    });
+    try { db.exec("ALTER TABLE events ADD COLUMN twilio_sid TEXT"); } catch {}
+    if (eventId) {
+      db.prepare('UPDATE events SET phone_number=?,phone_number_expires=?,phone_number_notified=0,sms_ivr_enabled=1,twilio_sid=? WHERE id=?')
+        .run(p.phoneNumber, expiresAt||null, p.sid, eventId);
+    }
+    res.json({ ok:true, phoneNumber:p.phoneNumber, sid:p.sid });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Release a number back to Twilio
+r.post('/numbers/release', async (req, res) => {
+  try {
+    const { eventId } = req.body;
+    const ev = db.prepare('SELECT phone_number, twilio_sid FROM events WHERE id=?').get(eventId);
+    if (!ev?.phone_number) return res.status(404).json({ error: 'No number on this event' });
+    if (ev.twilio_sid) {
+      await getTwilioClient().incomingPhoneNumbers(ev.twilio_sid).remove().catch(e => console.warn('[release]', e.message));
+    }
+    db.prepare('UPDATE events SET phone_number=NULL,phone_number_expires=NULL,sms_ivr_enabled=0,phone_number_notified=0,twilio_sid=NULL WHERE id=?').run(eventId);
+    res.json({ ok:true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// List all Twilio numbers you own
+r.get('/numbers/owned', async (req, res) => {
+  try {
+    const client = getTwilioClient();
+    const nums = await client.incomingPhoneNumbers.list({ limit:100 });
+    const appUrl = process.env.APP_URL || '';
+    const events = db.prepare('SELECT id,name,phone_number FROM events WHERE phone_number IS NOT NULL').all();
+    const byNum = Object.fromEntries(events.map(e => [e.phone_number, e]));
+    res.json({ numbers: nums.map(n => ({
+      sid:n.sid, phoneNumber:n.phoneNumber, friendlyName:n.friendlyName,
+      configured: !!(n.smsUrl?.includes(appUrl) && n.voiceUrl?.includes(appUrl)),
+      assignedEvent: byNum[n.phoneNumber]||null,
+    })) });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Admin: manage event phone numbers ─────────────────────
+// Manual assign (if number was bought outside the portal)
 r.post('/event/:id/assign-number', (req, res) => {
   const { phoneNumber, expiresAt } = req.body;
   if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber required' });

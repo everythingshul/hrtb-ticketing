@@ -189,23 +189,57 @@
 
 <!-- Phone Number Assignment Modal -->
 <div id="modal-phone-assign" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-phone-assign')">
-  <div class="modal"><div class="modal-hd"><h2>SMS/IVR Phone Number</h2><button class="modal-x" onclick="hideModal('modal-phone-assign')">&#x2715;</button></div>
-    <p class="text2 sm mb12" id="phone-assign-acct"></p>
-    <div class="fg"><label>Twilio Phone Number <span class="tip-icon" data-tip="Format: +12125551234. Get this from your Twilio console under Phone Numbers.">i</span></label><input id="pa-number" placeholder="+12125551234"></div>
-    <div class="fg"><label>Expires On <span class="tip-icon" data-tip="Account is notified 24 hours before expiry. On expiry the number is automatically deactivated and cleared. Leave blank for no expiry.">i</span></label><input id="pa-expires" type="date"></div>
-    <div id="pa-status-wrap" style="display:none;margin-bottom:12px">
-      <div class="section-title mb8" style="font-size:12px">Status</div>
-      <div class="row" style="gap:8px;align-items:center">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><h2>📞 SMS/IVR Phone Number</h2><button class="modal-x" onclick="hideModal('modal-phone-assign')">&#x2715;</button></div>
+    <p class="text2 sm mb8" id="phone-assign-acct"></p>
+    <!-- Current number status -->
+    <div id="pa-current" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-size:14px;font-weight:700;font-family:monospace" id="pa-current-number"></div><div class="xs text2" id="pa-current-expiry"></div></div>
         <span id="pa-status-badge"></span>
-        <button id="pa-toggle-btn" class="btn btn-sm" onclick="toggleSmsEnabled()"></button>
-        <span class="xs text2">Toggle without cancelling the number</span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-sm" id="pa-toggle-btn" onclick="toggleSmsEnabled()"></button>
+          <button class="btn btn-sm btn-danger" onclick="releaseNumber()">Release Number</button>
+        </div>
       </div>
     </div>
-    <div class="modal-ft">
-      <button class="btn" onclick="hideModal('modal-phone-assign')">Close</button>
-      <button class="btn btn-danger" onclick="removePhoneNumber()" id="btn-remove-phone" style="display:none">Cancel Number</button>
+    <!-- Tabs -->
+    <div class="row mb12" style="gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <button class="btn btn-sm btn-gold" id="tab-ph-search" onclick="phoneTab('search')">🔍 Search &amp; Buy</button>
+      <button class="btn btn-sm btn-ghost" id="tab-ph-owned" onclick="phoneTab('owned')">📋 Your Numbers</button>
+      <button class="btn btn-sm btn-ghost" id="tab-ph-manual" onclick="phoneTab('manual')">✏️ Manual Entry</button>
+    </div>
+    <!-- Search & Buy -->
+    <div id="ph-tab-search">
+      <div class="form-row mb10" style="gap:8px">
+        <div class="fg" style="margin:0"><label style="font-size:12px">Area Code</label><input id="ph-area" placeholder="212" maxlength="3"></div>
+        <div class="fg" style="margin:0"><label style="font-size:12px">Country</label><select id="ph-country"><option value="US">United States</option><option value="CA">Canada</option><option value="GB">United Kingdom</option><option value="IL">Israel</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-sm btn-primary" onclick="searchNumbers()">Search</button></div>
+      </div>
+      <div id="ph-results" style="min-height:50px"></div>
+    </div>
+    <!-- Owned numbers -->
+    <div id="ph-tab-owned" style="display:none">
+      <button class="btn btn-sm mb10" onclick="loadOwnedNumbers()">↺ Refresh</button>
+      <div id="ph-owned-list" class="text2 sm">Click Refresh to load your Twilio numbers.</div>
+    </div>
+    <!-- Manual entry -->
+    <div id="ph-tab-manual" style="display:none">
+      <p class="text2 sm mb10">Enter a number you bought directly in Twilio. You must set the webhooks manually in the Twilio console.</p>
+      <div class="fg"><label>Phone Number</label><input id="pa-number" placeholder="+12125551234"></div>
+      <div class="fg"><label>Expires On</label><input id="pa-expires" type="date"></div>
       <button class="btn btn-gold" onclick="savePhoneNumber()">Save</button>
     </div>
+    <!-- Buy expiry picker (shown when a number is selected from search) -->
+    <div id="ph-buy-section" style="display:none;margin-top:14px;padding:12px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Buying: <span id="ph-buying-number" style="font-family:monospace"></span> — ~$1.15/month</div>
+      <div class="fg mb8"><label style="font-size:12px">Expiry Date <span class="tip-icon" data-tip="Number auto-cancels and account is notified 24h before. Leave blank = never expires.">i</span></label><input id="ph-buy-expires" type="date"></div>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-gold" onclick="confirmPurchase()">Buy &amp; Assign →</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('ph-buy-section').style.display='none'">Cancel</button>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-phone-assign')">Close</button></div>
   </div>
 </div>
 
@@ -305,7 +339,7 @@ function renderEvents() {
       <td class="text2">${esc(e.venue||'—')}</td>
       <td>${e.attendee_count}</td>
       <td class="text2 sm">${new Date(e.created_at).toLocaleDateString()}</td>
-      <td><div class="row" style="gap:4px"><button class="btn btn-sm" onclick="arguments[0].stopPropagation();window.open('/event-detail.html?id=${e.id}','_blank')">Open</button><button class="btn btn-sm btn-blue" onclick="arguments[0].stopPropagation();openEditEvent('${e.id}','${esc(e.name)}','${esc(e.date||'')}','${esc(e.venue||'')}','${esc(e.description||'')}','${esc(e.account_name||'')}')">Edit</button></div></td>
+      <td><div class="row" style="gap:4px"><button class="btn btn-sm" onclick="arguments[0].stopPropagation();window.open('/event-detail.html?id=${e.id}','_blank')">Open</button><button class="btn btn-sm btn-blue" onclick="arguments[0].stopPropagation();openEditEvent('${e.id}','${esc(e.name)}','${esc(e.date||'')}','${esc(e.venue||'')}','${esc(e.description||'')}','${esc(e.account_name||'')}')">Edit</button><button class="btn btn-sm" title="SMS/IVR phone number" onclick="arguments[0].stopPropagation();openPhoneAssign('${e.id}','${esc(e.name)}','${esc(e.phone_number||'')}','${esc(e.phone_number_expires||'')}',${e.sms_ivr_enabled||0})">📞</button></div></td>
     </tr>`).join('')}</tbody>
   </table></div>`;
   makeSortable(document.querySelector('#tab-events-content table'));
@@ -355,7 +389,7 @@ function renderManageBody(a) {
         ${a.is_active ? 'Disable Account' : 'Enable Account'}
       </button>
       <button class="btn btn-sm btn-danger" onclick="deleteAccount('${a.id}','${esc(a.name)}')">Delete Account</button>
-      <button class="btn btn-sm" onclick="openPhoneAssign('${a.id}','${esc(a.name)}','${esc(a.phone_number||'')}','${esc(a.phone_number_expires||'')}',${a.sms_ivr_enabled||0})">📞 SMS/IVR Number</button>
+      <button class="btn btn-sm" onclick="openPhoneAssign('${a.id}','${esc(a.name)}','','',0)" title="Phone numbers are assigned per-event, not per-account. Open an event below to assign.">📞 SMS/IVR</button>
       ` : '<span class="xs text2">Cannot modify your own account here</span>'}
     </div>
     <div class="section-title">Online Sales Permission</div>
@@ -1262,44 +1296,148 @@ async function savePlatformSettings() {
 }
 
 let _phoneAssignAccountId = null;
-let _phoneSmsEnabled = false;
+let _phoneAssignEventId   = null;
+let _phoneSmsEnabled      = false;
+let _pendingBuyNumber     = null;
 
-function openPhoneAssign(accountId, name, currentNumber, currentExpiry, smsEnabled) {
-  _phoneAssignAccountId = accountId;
+function openPhoneAssign(eventId, eventName, currentNumber, currentExpiry, smsEnabled) {
+  _phoneAssignEventId = eventId;
   _phoneSmsEnabled = smsEnabled == '1' || smsEnabled === true;
-  document.getElementById('phone-assign-acct').textContent = 'Account: ' + name;
-  document.getElementById('pa-number').value = currentNumber || '';
-  document.getElementById('pa-expires').value = currentExpiry ? currentExpiry.slice(0,10) : '';
-  const hasNumber = !!currentNumber;
-  document.getElementById('btn-remove-phone').style.display = hasNumber ? 'inline-flex' : 'none';
-  const statusWrap = document.getElementById('pa-status-wrap');
-  if (hasNumber) {
-    statusWrap.style.display = 'block';
+  document.getElementById('phone-assign-acct').textContent = 'Event: ' + eventName;
+  // Current number section
+  const hasCurrent = !!currentNumber;
+  const cur = document.getElementById('pa-current');
+  cur.style.display = hasCurrent ? 'block' : 'none';
+  if (hasCurrent) {
+    document.getElementById('pa-current-number').textContent = currentNumber;
+    document.getElementById('pa-current-expiry').textContent = currentExpiry
+      ? 'Expires: ' + new Date(currentExpiry).toLocaleDateString() : 'No expiry set';
     document.getElementById('pa-status-badge').innerHTML = _phoneSmsEnabled
-      ? '<span class="badge badge-checked">Enabled</span>'
+      ? '<span class="badge badge-checked">Active</span>'
       : '<span class="badge badge-deactivated">Disabled</span>';
     document.getElementById('pa-toggle-btn').textContent = _phoneSmsEnabled ? 'Disable' : 'Enable';
-  } else {
-    statusWrap.style.display = 'none';
   }
+  // Pre-fill manual tab
+  document.getElementById('pa-number').value = currentNumber || '';
+  document.getElementById('pa-expires').value = currentExpiry ? currentExpiry.slice(0,10) : '';
+  document.getElementById('ph-results').innerHTML = '';
+  document.getElementById('ph-buy-section').style.display = 'none';
+  phoneTab('search');
   showModal('modal-phone-assign');
+}
+
+function phoneTab(tab) {
+  ['search','owned','manual'].forEach(t => {
+    document.getElementById('ph-tab-'+t).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('tab-ph-'+t).className = 'btn btn-sm ' + (t===tab ? 'btn-gold' : 'btn-ghost');
+  });
+  if (tab === 'owned') loadOwnedNumbers();
+}
+
+async function searchNumbers() {
+  const area = document.getElementById('ph-area').value.trim();
+  const country = document.getElementById('ph-country').value;
+  const res = document.getElementById('ph-results');
+  res.innerHTML = '<div class="text2 sm">Searching…</div>';
+  try {
+    const params = new URLSearchParams({ country });
+    if (area) params.set('areaCode', area);
+    const data = await fetch(`/api/phone/numbers/search?${params}`, { headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    if (!data.numbers?.length) { res.innerHTML = '<div class="text2 sm">No numbers found. Try a different area code.</div>'; return; }
+    res.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Number</th><th>Location</th><th>Monthly Cost</th><th></th></tr></thead><tbody>
+      ${data.numbers.map(n=>`<tr>
+        <td style="font-family:monospace;font-weight:700">${esc(n.phoneNumber)}</td>
+        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+        <td class="text2 sm">${esc(n.monthly_cost)}</td>
+        <td><button class="btn btn-sm btn-primary" onclick="selectNumberToBuy('${esc(n.phoneNumber)}')">Buy →</button></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  } catch(e) { res.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+function selectNumberToBuy(phoneNumber) {
+  _pendingBuyNumber = phoneNumber;
+  document.getElementById('ph-buying-number').textContent = phoneNumber;
+  document.getElementById('ph-buy-section').style.display = 'block';
+  document.getElementById('ph-buy-section').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+async function confirmPurchase() {
+  if (!_pendingBuyNumber) return;
+  const expiresAt = document.getElementById('ph-buy-expires').value || null;
+  const btn = document.querySelector('#ph-buy-section .btn-gold');
+  btn.disabled = true; btn.textContent = 'Purchasing…';
+  try {
+    const data = await fetch('/api/phone/numbers/purchase', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ phoneNumber: _pendingBuyNumber, eventId: _phoneAssignEventId, expiresAt })
+    }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast(`✓ ${data.phoneNumber} purchased and assigned!`);
+    hideModal('modal-phone-assign');
+    _pendingBuyNumber = null;
+    await load();
+  } catch(e) {
+    toast(e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Buy & Assign →';
+  }
+}
+
+async function loadOwnedNumbers() {
+  const wrap = document.getElementById('ph-owned-list');
+  wrap.innerHTML = '<div class="text2 sm">Loading…</div>';
+  try {
+    const data = await fetch('/api/phone/numbers/owned', { headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    if (!data.numbers?.length) { wrap.innerHTML = '<div class="text2 sm">No numbers purchased yet.</div>'; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Number</th><th>Webhooks</th><th>Assigned To</th><th></th></tr></thead><tbody>
+      ${data.numbers.map(n=>`<tr>
+        <td style="font-family:monospace;font-weight:600">${esc(n.phoneNumber)}</td>
+        <td>${n.configured ? '<span class="badge badge-checked" style="font-size:10px">✓ Configured</span>' : '<span class="badge badge-warn" style="font-size:10px">⚠ Not configured</span>'}</td>
+        <td class="text2 sm">${n.assignedEvent ? esc(n.assignedEvent.name) : '<span style="opacity:.5">Unassigned</span>'}</td>
+        <td>${!n.assignedEvent ? `<button class="btn btn-sm" onclick="assignOwnedNumber('${esc(n.phoneNumber)}')">Assign to this event</button>` : ''}</td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function assignOwnedNumber(phoneNumber) {
+  const expiresAt = prompt('Expiry date? (YYYY-MM-DD, or leave blank for none)');
+  try {
+    await fetch(`/api/phone/event/${_phoneAssignEventId}/assign-number`, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ phoneNumber, expiresAt: expiresAt||null })
+    });
+    toast(`${phoneNumber} assigned`); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
 }
 
 async function toggleSmsEnabled() {
   const newVal = !_phoneSmsEnabled;
   try {
-    await fetch(`/api/phone/account/${_phoneAssignAccountId}/toggle-sms`, {
+    await fetch(`/api/phone/event/${_phoneAssignEventId}/toggle-sms`, {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
       body: JSON.stringify({ enabled: newVal })
     });
     _phoneSmsEnabled = newVal;
     document.getElementById('pa-status-badge').innerHTML = newVal
-      ? '<span class="badge badge-checked">Enabled</span>'
+      ? '<span class="badge badge-checked">Active</span>'
       : '<span class="badge badge-deactivated">Disabled</span>';
     document.getElementById('pa-toggle-btn').textContent = newVal ? 'Disable' : 'Enable';
-    toast(newVal ? 'SMS/IVR enabled' : 'SMS/IVR disabled — number kept');
+    toast(newVal ? 'SMS/IVR enabled' : 'Disabled — number kept');
     await load();
-  } catch(e) { toast(e.message, 'error'); }
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function releaseNumber() {
+  if (!confirm('Release this number back to Twilio? This cancels the number permanently. ~$1.15/month billing stops.')) return;
+  try {
+    const data = await fetch('/api/phone/numbers/release', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ eventId: _phoneAssignEventId })
+    }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast('Number released'); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
 }
 
 async function savePhoneNumber() {
@@ -1307,21 +1445,11 @@ async function savePhoneNumber() {
   const expires = document.getElementById('pa-expires').value;
   if (!number || !number.startsWith('+')) { toast('Enter a valid number starting with +','error'); return; }
   try {
-    await fetch(`/api/phone/account/${_phoneAssignAccountId}/assign-number`, {
+    await fetch(`/api/phone/event/${_phoneAssignEventId}/assign-number`, {
       method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
       body: JSON.stringify({ phoneNumber:number, expiresAt:expires||null })
     });
     toast('Phone number saved'); hideModal('modal-phone-assign'); await load();
-  } catch(e) { toast(e.message,'error'); }
-}
-
-async function removePhoneNumber() {
-  if (!confirm('Permanently cancel and remove this phone number from the account? This cannot be undone — the number will stop accepting calls and SMS immediately.')) return;
-  try {
-    await fetch(`/api/phone/account/${_phoneAssignAccountId}/remove-number`, {
-      method:'POST', headers:{'Authorization':`Bearer ${Auth.token()}`}
-    });
-    toast('Number cancelled and removed'); hideModal('modal-phone-assign'); await load();
   } catch(e) { toast(e.message,'error'); }
 }
   const ev = events.find(e => e.id === eventId);

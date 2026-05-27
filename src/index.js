@@ -139,17 +139,31 @@ app.listen(PORT, () => {
       const now  = new Date().toISOString();
       const in24 = new Date(Date.now() + 24*60*60*1000).toISOString();
 
-      // Auto-cancel expired event phone numbers
+      // Auto-cancel AND release expired event phone numbers back to Twilio (stops billing)
       const expiredEvents = db.prepare(
         "SELECT e.*, a.email as owner_email, a.name as owner_name FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.phone_number IS NOT NULL AND e.phone_number_expires IS NOT NULL AND e.phone_number_expires < ?"
       ).all(now);
       for (const ev of expiredEvents) {
         const num = ev.phone_number;
-        db.prepare("UPDATE events SET phone_number=NULL,phone_number_expires=NULL,sms_ivr_enabled=0,phone_number_notified=0 WHERE id=?").run(ev.id);
+        // Release from Twilio first so billing stops
+        if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+          try {
+            const twilioMod = await import('twilio');
+            const client = twilioMod.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+            const sid = ev.twilio_sid || (await client.incomingPhoneNumbers.list({ phoneNumber: num, limit:1 }).then(r => r[0]?.sid).catch(() => null));
+            if (sid) {
+              await client.incomingPhoneNumbers(sid).remove();
+              console.log(`[expiry] Released ${num} (${sid}) back to Twilio`);
+            }
+          } catch(twilioErr) {
+            console.warn(`[expiry] Could not release ${num} from Twilio:`, twilioErr.message);
+          }
+        }
+        db.prepare("UPDATE events SET phone_number=NULL,phone_number_expires=NULL,sms_ivr_enabled=0,phone_number_notified=0,twilio_sid=NULL WHERE id=?").run(ev.id);
         sendMail({
           to: ev.owner_email,
-          subject: `Phone number for "${ev.name}" has expired and been deactivated`,
-          html: `<p>Hi ${ev.owner_name},</p><p>The SMS/IVR phone number <strong>${num}</strong> for your event <strong>${ev.name}</strong> has expired and been automatically deactivated. Customers can no longer purchase tickets by phone or SMS for this event.</p><p>Contact us to renew.</p>`
+          subject: `Phone number for "${ev.name}" has expired and been released`,
+          html: `<p>Hi ${ev.owner_name},</p><p>The SMS/IVR phone number <strong>${num}</strong> for your event <strong>${ev.name}</strong> has expired. The number has been automatically released — Twilio billing for it has stopped. Contact us to get a new number.</p>`
         }).catch(() => {});
         console.log(`[expiry] Cancelled number ${num} for event ${ev.id} (${ev.name})`);
       }
