@@ -459,3 +459,5 @@ const smsDefaults = {
 for (const [k,v] of Object.entries(smsDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
+
+export default db;
