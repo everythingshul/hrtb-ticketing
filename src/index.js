@@ -4,6 +4,7 @@ import rateLimit from 'express-rate-limit';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, writeFileSync } from 'fs';
+import twilio from 'twilio';
 import { initMail } from './services/mail.js';
 import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
@@ -148,8 +149,7 @@ app.listen(PORT, () => {
         // Release from Twilio first so billing stops
         if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
           try {
-            const twilioMod = await import('twilio');
-            const client = twilioMod.default(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+            const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
             const sid = ev.twilio_sid || (await client.incomingPhoneNumbers.list({ phoneNumber: num, limit:1 }).then(r => r[0]?.sid).catch(() => null));
             if (sid) {
               await client.incomingPhoneNumbers(sid).remove();
