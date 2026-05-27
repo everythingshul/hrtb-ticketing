@@ -411,7 +411,15 @@ function debouncedFilter() {
 }
 
 async function load() {
-  const attData = await api.attendees.list(eventId);
+  let attData;
+  try { attData = await api.attendees.list(eventId); }
+  catch(e) {
+    if (e.message === 'EVENT_CLOSED') {
+      document.querySelector('.page').innerHTML = `<div class="empty"><div class="ico">🔒</div><h3>Event Closed</h3><p>This event has been archived and is no longer accessible. Contact your administrator for access.</p><a href="/events.html" class="btn btn-gold mt16" style="display:inline-flex">← Back to Events</a></div>`;
+      return;
+    }
+    throw e;
+  }
   const att = attData.attendees;
   levels = (attData.levels || []).filter(l => !l.is_staff); // staff levels shown on Staff page only
   // Event comes directly from the attendees endpoint — works for all roles including admin
@@ -441,6 +449,18 @@ async function load() {
     const d = await api.attendees.hasDesign(eventId);
     if (d.hasDesign) document.getElementById('btn-design').textContent = 'Update Ticket Design';
   } catch {}
+
+  // Show read-only banner for closed events
+  if (eventData.closed_at) {
+    const banner = document.createElement('div');
+    banner.className = 'info-box warn mb16';
+    banner.innerHTML = `🔒 <strong>This event has ended and is now read-only.</strong> You can view all data but cannot make changes. Contact your administrator to reopen.`;
+    const ph = document.querySelector('.ph');
+    ph.parentNode.insertBefore(banner, ph.nextSibling);
+    document.querySelectorAll('.ph-actions button, .ph-actions a').forEach(b => {
+      b.disabled = true; b.style.opacity = '.4'; b.style.pointerEvents = 'none';
+    });
+  }
 
   renderStats(); filterTable();
 
@@ -472,12 +492,12 @@ function renderStats() {
     if(a.confirmed) s.confirmed++;
   });
   document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="stat-label">Total</div><div class="stat-val">${s.total}</div></div>
-    <div class="stat"><div class="stat-label">Confirmed</div><div class="stat-val green">${s.confirmed}</div></div>
-    <div class="stat"><div class="stat-label">Pre-printed</div><div class="stat-val purple">${s.preprint}</div></div>
+    <div class="stat"><div class="stat-label">Total <span class="tip-icon" data-tip="All attendees added to this event, excluding staff and deactivated tickets.">i</span></div><div class="stat-val">${s.total}</div></div>
+    <div class="stat"><div class="stat-label">Confirmed <span class="tip-icon" data-tip="Attendees who have confirmed their attendance, either by clicking their activation link or being marked confirmed manually.">i</span></div><div class="stat-val green">${s.confirmed}</div></div>
+    <div class="stat"><div class="stat-label">Pre-printed <span class="tip-icon" data-tip="Blank tickets with QR codes printed in advance, not yet assigned to a specific person.">i</span></div><div class="stat-val purple">${s.preprint}</div></div>
     <div class="stat"><div class="stat-label">Pending</div><div class="stat-val orange">${s.pending}</div></div>
-    <div class="stat"><div class="stat-label">Sent</div><div class="stat-val blue">${s.sent}</div></div>
-    <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checked}</div></div>
+    <div class="stat"><div class="stat-label">Sent <span class="tip-icon" data-tip="Attendees whose tickets have been emailed to them.">i</span></div><div class="stat-val blue">${s.sent}</div></div>
+    <div class="stat"><div class="stat-label">Checked In <span class="tip-icon" data-tip="Attendees who have been scanned at the door.">i</span></div><div class="stat-val green">${s.checked}</div></div>
 `;
 }
 

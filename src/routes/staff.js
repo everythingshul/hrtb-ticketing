@@ -6,7 +6,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import db from '../db.js';
-import { auth, requireEvent } from '../middleware/auth.js';
+import { auth, requireEvent, blockIfClosed } from '../middleware/auth.js';
 import { sendMail, ticketEmail, digestEmail } from '../services/mail.js';
 import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
 
@@ -83,7 +83,7 @@ r.get('/event/:eventId', requireEvent, (req, res) => {
 });
 
 // ── Create staff member ──────────────────────────────────
-r.post('/event/:eventId', requireEvent, (req, res) => {
+r.post('/event/:eventId', requireEvent, blockIfClosed, (req, res) => {
   const { first_name, last_name, phone, email, level_id } = req.body;
   if (!first_name || !last_name) return res.status(400).json({ error: 'First and last name required' });
   const id = uuid(), ticketId = tid();
@@ -94,7 +94,7 @@ r.post('/event/:eventId', requireEvent, (req, res) => {
 });
 
 // ── Pre-print blank staff tickets ────────────────────────
-r.post('/event/:eventId/preprint', requireEvent, (req, res) => {
+r.post('/event/:eventId/preprint', requireEvent, blockIfClosed, (req, res) => {
   const { count=1, level_id } = req.body;
   const qty = Math.min(parseInt(count)||1, 500);
   const ins = db.prepare(`INSERT INTO staff (id,event_id,account_id,first_name,last_name,ticket_id,status,level_id) VALUES (?,?,?,?,?,?,'preprint',?)`);
@@ -159,7 +159,7 @@ r.post('/:id/send', async (req, res) => {
 });
 
 // ── Send all ─────────────────────────────────────────────
-r.post('/event/:eventId/send-all', requireEvent, async (req, res) => {
+r.post('/event/:eventId/send-all', requireEvent, blockIfClosed, async (req, res) => {
   const { ids } = req.body;
   const event = req.event;
   const owner = db.prepare('SELECT email,reply_to,can_send_email,role FROM accounts WHERE id=?').get(event.account_id);
@@ -182,7 +182,7 @@ r.post('/event/:eventId/send-all', requireEvent, async (req, res) => {
 });
 
 // ── Digest (bulk to one email) ────────────────────────────
-r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
+r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) => {
   const { toEmail, ids, subject } = req.body;
   if (!toEmail) return res.status(400).json({ error: 'toEmail required' });
   const event = req.event;
@@ -272,7 +272,7 @@ r.get('/lookup/:ticketId', (req, res) => {
 });
 
 // ── Bulk status ───────────────────────────────────────────
-r.post('/event/:eventId/bulk-status', requireEvent, (req, res) => {
+r.post('/event/:eventId/bulk-status', requireEvent, blockIfClosed, (req, res) => {
   const { ids, status } = req.body;
   const allowed = ['pending','sent','checked','deactivated','preprint'];
   if (!ids?.length || !allowed.includes(status)) return res.status(400).json({ error: 'Invalid' });
@@ -282,7 +282,7 @@ r.post('/event/:eventId/bulk-status', requireEvent, (req, res) => {
 });
 
 // ── Bulk level ────────────────────────────────────────────
-r.post('/event/:eventId/bulk-level', requireEvent, (req, res) => {
+r.post('/event/:eventId/bulk-level', requireEvent, blockIfClosed, (req, res) => {
   const { ids, level_id } = req.body;
   if (!ids?.length) return res.status(400).json({ error: 'No IDs' });
   const lvl = (level_id && level_id !== '__none') ? level_id : null;
@@ -292,7 +292,7 @@ r.post('/event/:eventId/bulk-level', requireEvent, (req, res) => {
 });
 
 // ── Bulk delete ───────────────────────────────────────────
-r.post('/event/:eventId/bulk-delete', requireEvent, (req, res) => {
+r.post('/event/:eventId/bulk-delete', requireEvent, blockIfClosed, (req, res) => {
   const { ids } = req.body;
   if (!ids?.length) return res.status(400).json({ error: 'No IDs' });
   const stmt = db.prepare(`UPDATE staff SET deleted_at=datetime('now') WHERE id=? AND event_id=?`);
@@ -337,7 +337,7 @@ r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (re
 });
 
 // ── Upload commit ─────────────────────────────────────────
-r.post('/event/:eventId/commit', requireEvent, (req, res) => {
+r.post('/event/:eventId/commit', requireEvent, blockIfClosed, (req, res) => {
   const { newRows=[], resolved=[] } = req.body;
   let added=0, updated=0;
   db.transaction(() => {
@@ -359,7 +359,7 @@ r.post('/event/:eventId/commit', requireEvent, (req, res) => {
 });
 
 // ── Confirm bulk (by ticket IDs) ──────────────────────────
-r.post('/event/:eventId/confirm-bulk', requireEvent, (req, res) => {
+r.post('/event/:eventId/confirm-bulk', requireEvent, blockIfClosed, (req, res) => {
   const { ticketIds } = req.body;
   if (!ticketIds?.length) return res.status(400).json({ error: 'No ticket IDs' });
   let confirmed=0, notFound=0;

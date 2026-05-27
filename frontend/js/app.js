@@ -37,6 +37,7 @@ const Auth = {
 const api = {
   auth: {
     login: b => req('/auth/login', { method: 'POST', body: JSON.stringify(b) }),
+    signup: b => req('/auth/signup', { method: 'POST', body: JSON.stringify(b) }),
     pinLogin: b => req('/auth/pin-login', { method: 'POST', body: JSON.stringify(b) }),
     register: b => req('/auth/register', { method: 'POST', body: JSON.stringify(b) }),
     me: () => req('/auth/me'),
@@ -57,7 +58,8 @@ const api = {
     list: () => req('/events'),
     listPublic: () => fetch('/api/events/public').then(r=>r.json()),
     getPublic: id => fetch(`/api/events/public/${id}`).then(r=>r.json()),
-    create: b => req('/events', { method: 'POST', body: JSON.stringify(b) }),
+    close: id => req(`/events/${id}/close`, { method: 'POST' }),
+    reopen: id => req(`/events/${id}/reopen`, { method: 'POST' }),
     update: (id, b) => req(`/events/${id}`, { method: 'PUT', body: JSON.stringify(b) }),
     delete: id => req(`/events/${id}`, { method: 'DELETE' }),
   },
@@ -151,7 +153,23 @@ const api = {
     restore: data => req('/admin/restore', { method: 'POST', body: JSON.stringify(data) }),
     maintenanceStatus: () => req('/admin/maintenance'),
     setMaintenance: enabled => req('/admin/maintenance', { method: 'POST', body: JSON.stringify({ enabled }) }),
-  }
+    getSiteContent: () => req('/admin/site-content'),
+    updateSiteContent: updates => req('/admin/site-content', { method: 'PATCH', body: JSON.stringify({ updates }) }),
+  },
+  connect: {
+    startOAuth:       () => req('/connect/connect/start'),
+    disconnect:       () => req('/connect/connect/disconnect', { method: 'POST' }),
+    status:           () => req('/connect/connect/status'),
+    pricingPlans:     () => req('/connect/pricing-plans'),
+    pricingPlansAdmin:() => req('/connect/pricing-plans/admin'),
+    createPlan:       b  => req('/connect/pricing-plans', { method:'POST', body:JSON.stringify(b) }),
+    updatePlan:       (id,b)=>req(`/connect/pricing-plans/${id}`, { method:'PATCH', body:JSON.stringify(b) }),
+    deletePlan:       id => req(`/connect/pricing-plans/${id}`, { method:'DELETE' }),
+    getSettings:      () => req('/connect/settings'),
+    updateSettings:   u  => req('/connect/settings', { method:'PATCH', body:JSON.stringify({ updates:u }) }),
+    createPaymentIntent: b => req('/connect/event-payment/intent', { method:'POST', body:JSON.stringify(b) }),
+    confirmPayment:   b  => req('/connect/event-payment/confirm', { method:'POST', body:JSON.stringify(b) }),
+  },
 };
 
 // ── Toast notifications ───────────────────────────────────
@@ -394,3 +412,28 @@ function fmtDate(d) { return d ? new Date(d).toLocaleString() : '—'; }
 function downloadCSV(url, filename) {
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
 }
+
+// ── Info tooltips ─────────────────────────────────────────
+// Usage: <span class="tip-icon" data-tip="Explanation">i</span>
+(function initTooltips() {
+  const style = document.createElement('style');
+  style.textContent = `.tip-icon{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#e8edf5;color:#1a3a6b;font-size:9px;font-weight:700;font-style:italic;cursor:help;border:1px solid #c5d0e0;margin-left:5px;vertical-align:middle;flex-shrink:0;user-select:none;transition:background .15s}.tip-icon:hover{background:#1a3a6b;color:#fff;border-color:#1a3a6b}.tip-bubble{position:fixed;z-index:9990;max-width:260px;background:#1a3a6b;color:#fff;border-radius:8px;padding:9px 13px;font-size:12px;line-height:1.55;font-weight:400;box-shadow:0 4px 18px rgba(0,0,0,.22);pointer-events:none;opacity:0;transition:opacity .12s}.tip-bubble.visible{opacity:1}`;
+  document.head.appendChild(style);
+  const bubble = document.createElement('div');
+  bubble.className = 'tip-bubble';
+  document.body.appendChild(bubble);
+  let ht;
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('.tip-icon');
+    if (!el?.dataset.tip) return;
+    clearTimeout(ht);
+    bubble.textContent = el.dataset.tip;
+    const r = el.getBoundingClientRect();
+    let top = r.bottom + 8, left = r.left;
+    if (top + 100 > window.innerHeight) top = r.top - 108;
+    if (left + 270 > window.innerWidth) left = window.innerWidth - 275;
+    bubble.style.top = top + 'px'; bubble.style.left = Math.max(8,left) + 'px';
+    bubble.classList.add('visible');
+  });
+  document.addEventListener('mouseout', e => { if (!e.target.closest('.tip-icon')) return; ht = setTimeout(() => bubble.classList.remove('visible'), 80); });
+})();

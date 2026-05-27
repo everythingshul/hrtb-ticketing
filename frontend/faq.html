@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FAQ — EverythingShul Ticket System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a3a6b;--gold:#c8960c;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
+a{color:inherit;text-decoration:none}
+nav{background:var(--navy);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+.nav-logo{display:flex;align-items:center;gap:10px}.nav-logo img{height:32px}.nav-logo span{color:#fff;font-size:14px;font-weight:600;opacity:.8}
+.nav-links{display:flex;align-items:center;gap:8px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;padding:7px 14px;border-radius:6px;font-weight:500}
+.nav-links a:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-links .btn-gold{background:var(--gold);color:#000;font-weight:700;padding:8px 18px;border-radius:8px}
+.hero{background:var(--navy);color:#fff;padding:56px 24px 48px;text-align:center}
+.hero h1{font-size:clamp(22px,3.5vw,40px);font-weight:800;margin-bottom:10px}
+.hero p{color:rgba(255,255,255,.75);font-size:15px}
+.section{padding:60px 24px;max-width:760px;margin:0 auto}
+.faq-item{background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.faq-q{padding:18px 20px;font-weight:700;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.faq-q:hover{background:#f8fafc}
+.faq-q .arrow{font-size:18px;color:var(--navy);transition:transform .2s;flex-shrink:0}
+.faq-a{padding:0 20px;font-size:14px;color:var(--text2);line-height:1.75;max-height:0;overflow:hidden;transition:max-height .25s ease,padding .25s}
+.faq-item.open .faq-a{max-height:400px;padding-bottom:18px}
+.faq-item.open .arrow{transform:rotate(180deg)}
+footer{background:#0d2454;color:rgba(255,255,255,.5);padding:24px;text-align:center;font-size:12px}
+footer a{color:rgba(255,255,255,.6);margin:0 8px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo"><img src="/logo.png" alt="EverythingShul"><span>Ticket System</span></div>
+  <div class="nav-links">
+    <a href="/landing.html">Home</a>
+    <a href="/pricing.html">Pricing</a>
+    <a href="/index.html">Sign In</a>
+    <a href="/signup.html" class="btn-gold">Get Started →</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1 id="faq-title">Frequently Asked Questions</h1>
+  <p>Everything you need to know about the platform.</p>
+</div>
+
+<div class="section">
+  <div id="faq-list"><!-- populated --></div>
+  <div style="text-align:center;margin-top:48px">
+    <p style="color:var(--text2);font-size:14px;margin-bottom:16px">Still have questions?</p>
+    <a href="mailto:hello@everythingshul.com" style="background:var(--navy);color:#fff;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px">Contact Us →</a>
+  </div>
+</div>
+
+<footer>
+  <a href="/landing.html">Home</a><a href="/pricing.html">Pricing</a><a href="/index.html">Sign In</a><a href="/signup.html">Sign Up</a><a href="/terms.html">Terms</a>
+  <div style="margin-top:8px">&copy; 2025 EverythingShul.com</div>
+</footer>
+
+<script>
+function toggle(el) {
+  const item = el.closest('.faq-item');
+  item.classList.toggle('open');
+}
+fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
+  document.getElementById('faq-title').textContent = c['faq.title']||'FAQ';
+  const items = JSON.parse(c['faq.items']||'[]');
+  document.getElementById('faq-list').innerHTML = items.map((item,i)=>`
+    <div class="faq-item" id="faq-${i}">
+      <div class="faq-q" onclick="toggle(this)">${item.q}<span class="arrow">▾</span></div>
+      <div class="faq-a">${item.a}</div>
+    </div>`).join('');
+}).catch(()=>{});
+</script>
+</body>
+</html>

@@ -23,12 +23,14 @@
     <div class="row mb16" style="gap:8px">
       <button class="btn btn-sm" id="tab-accounts" onclick="setTab('accounts')">Accounts</button>
       <button class="btn btn-sm btn-ghost" id="tab-events" onclick="setTab('events')">All Events</button>
+      <button class="btn btn-sm btn-ghost" id="tab-content" onclick="setTab('content')">Site Content</button>
       <button class="btn btn-sm btn-ghost" id="tab-backup" onclick="setTab('backup')"> Backup &amp; Restore</button>
       <button class="btn btn-sm btn-ghost" id="tab-trash" onclick="setTab('trash')">Trash</button>
     </div>
 
     <div id="tab-accounts-content"></div>
     <div id="tab-events-content" style="display:none"></div>
+    <div id="tab-content-content" style="display:none"></div>
     <div id="tab-trash-content" style="display:none"></div>
     <div id="tab-backup-content" style="display:none">
 
@@ -185,6 +187,28 @@
   </div>
 </div>
 
+<!-- Phone Number Assignment Modal -->
+<div id="modal-phone-assign" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-phone-assign')">
+  <div class="modal"><div class="modal-hd"><h2>SMS/IVR Phone Number</h2><button class="modal-x" onclick="hideModal('modal-phone-assign')">&#x2715;</button></div>
+    <p class="text2 sm mb12" id="phone-assign-acct"></p>
+    <div class="fg"><label>Twilio Phone Number <span class="tip-icon" data-tip="Format: +12125551234. Get this from your Twilio console under Phone Numbers.">i</span></label><input id="pa-number" placeholder="+12125551234"></div>
+    <div class="fg"><label>Expires On <span class="tip-icon" data-tip="Account is notified 24 hours before expiry. On expiry the number is automatically deactivated and cleared. Leave blank for no expiry.">i</span></label><input id="pa-expires" type="date"></div>
+    <div id="pa-status-wrap" style="display:none;margin-bottom:12px">
+      <div class="section-title mb8" style="font-size:12px">Status</div>
+      <div class="row" style="gap:8px;align-items:center">
+        <span id="pa-status-badge"></span>
+        <button id="pa-toggle-btn" class="btn btn-sm" onclick="toggleSmsEnabled()"></button>
+        <span class="xs text2">Toggle without cancelling the number</span>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-phone-assign')">Close</button>
+      <button class="btn btn-danger" onclick="removePhoneNumber()" id="btn-remove-phone" style="display:none">Cancel Number</button>
+      <button class="btn btn-gold" onclick="savePhoneNumber()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script src="/js/app.js"></script>
 <script>
 if (!Auth.require()) throw 0;
@@ -231,13 +255,16 @@ function setTab(t) {
   document.getElementById('tab-events-content').style.display = t==='events' ? '' : 'none';
   document.getElementById('tab-backup-content').style.display = t==='backup' ? '' : 'none';
   document.getElementById('tab-trash-content').style.display = t==='trash' ? '' : 'none';
+  document.getElementById('tab-content-content').style.display = t==='content' ? '' : 'none';
   document.getElementById('tab-accounts').className = `btn btn-sm${t==='accounts'?' btn-gold':''}`;
   document.getElementById('tab-events').className = `btn btn-sm${t==='events'?' btn-gold':' btn-ghost'}`;
   document.getElementById('tab-backup').className = `btn btn-sm${t==='backup'?' btn-gold':' btn-ghost'}`;
   document.getElementById('tab-trash').className = `btn btn-sm${t==='trash'?' btn-gold':' btn-ghost'}`;
+  document.getElementById('tab-content').className = `btn btn-sm${t==='content'?' btn-gold':' btn-ghost'}`;
   if (t === 'events') renderEvents();
   if (t === 'backup') loadMaintenanceStatus();
   if (t === 'trash') loadTrash();
+  if (t === 'content') loadSiteContent();
 }
 
 function renderAccounts() {
@@ -328,6 +355,7 @@ function renderManageBody(a) {
         ${a.is_active ? 'Disable Account' : 'Enable Account'}
       </button>
       <button class="btn btn-sm btn-danger" onclick="deleteAccount('${a.id}','${esc(a.name)}')">Delete Account</button>
+      <button class="btn btn-sm" onclick="openPhoneAssign('${a.id}','${esc(a.name)}','${esc(a.phone_number||'')}','${esc(a.phone_number_expires||'')}',${a.sms_ivr_enabled||0})">📞 SMS/IVR Number</button>
       ` : '<span class="xs text2">Cannot modify your own account here</span>'}
     </div>
     <div class="section-title">Online Sales Permission</div>
@@ -978,7 +1006,324 @@ async function createAdminEvent() {
   } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
 }
 
-function openManageByEvent(eventId) {
+async function loadSiteContent() {
+  const panel = document.getElementById('tab-content-content');
+  panel.innerHTML = '<div class="text2 sm">Loading…</div>';
+  try {
+    const { content } = await api.admin.getSiteContent();
+    const groups = [
+      { label: '🏠 Home Page', keys: ['home.hero_title','home.hero_subtitle','home.cta_primary','home.cta_secondary','home.feature1_title','home.feature1_body','home.feature2_title','home.feature2_body','home.feature3_title','home.feature3_body','home.feature4_title','home.feature4_body'] },
+      { label: '💰 Pricing Page', keys: ['pricing.title','pricing.subtitle','pricing.tier1_name','pricing.tier1_price','pricing.tier1_desc','pricing.tier1_features','pricing.tier2_name','pricing.tier2_price','pricing.tier2_period','pricing.tier2_desc','pricing.tier2_features','pricing.tier3_name','pricing.tier3_price','pricing.tier3_period','pricing.tier3_desc','pricing.tier3_features'] },
+      { label: '❓ FAQ', keys: ['faq.title'] },
+      { label: '📋 Terms & Conditions', keys: ['terms.title','terms.last_updated'] },
+    ];
+    const labels = {
+      'home.hero_title':'Hero Title','home.hero_subtitle':'Hero Subtitle','home.cta_primary':'Primary Button','home.cta_secondary':'Secondary Button',
+      'home.feature1_title':'Feature 1 Title','home.feature1_body':'Feature 1 Description','home.feature2_title':'Feature 2 Title','home.feature2_body':'Feature 2 Description',
+      'home.feature3_title':'Feature 3 Title','home.feature3_body':'Feature 3 Description','home.feature4_title':'Feature 4 Title','home.feature4_body':'Feature 4 Description',
+      'pricing.title':'Page Title','pricing.subtitle':'Subtitle','pricing.tier1_name':'Tier 1 Name','pricing.tier1_price':'Tier 1 Price','pricing.tier1_desc':'Tier 1 Description','pricing.tier1_features':'Tier 1 Features (one per line)',
+      'pricing.tier2_name':'Tier 2 Name','pricing.tier2_price':'Tier 2 Price','pricing.tier2_period':'Tier 2 Period','pricing.tier2_desc':'Tier 2 Description','pricing.tier2_features':'Tier 2 Features',
+      'pricing.tier3_name':'Tier 3 Name','pricing.tier3_price':'Tier 3 Price','pricing.tier3_period':'Tier 3 Period','pricing.tier3_desc':'Tier 3 Description','pricing.tier3_features':'Tier 3 Features',
+      'faq.title':'FAQ Page Title',
+      'terms.title':'Page Title','terms.last_updated':'Last Updated Date',
+    };
+    let html = '<div style="max-width:720px">';
+    for (const g of groups) {
+      html += `<div class="section-title mb12 mt22">${g.label}</div>`;
+      for (const key of g.keys) {
+        const val = content[key]||'';
+        const isLong = val.includes('\n') || val.length > 80;
+        html += `<div class="fg"><label style="font-size:12px">${esc(labels[key]||key)}</label>`;
+        if (isLong) html += `<textarea id="sc-${key.replace(/\./g,'-')}" style="min-height:80px">${esc(val)}</textarea>`;
+        else html += `<input id="sc-${key.replace(/\./g,'-')}" value="${esc(val)}">`;
+        html += `</div>`;
+      }
+    }
+    html += `<div class="fg mt8"><label style="font-size:12px">FAQ Items (JSON array)</label>
+      <textarea id="sc-faq-items" style="min-height:200px;font-family:monospace;font-size:11px">${esc(content['faq.items']||'[]')}</textarea></div>`;
+    html += `<div class="section-title mt22 mb8">📋 Terms &amp; Conditions Content <span class="xs text2">(HTML supported)</span></div>
+      <div class="fg mb8"><textarea id="sc-terms-content" style="min-height:300px;font-family:monospace;font-size:12px">${esc(content['terms.content']||'')}</textarea></div>`;
+    // SMS message editor
+    html += `<div class="section-title mt22 mb8">📱 SMS Messages</div>`;
+    html += `<p class="text2 sm mb12">Variables: {{event_name}} {{event_date}} {{levels}} {{level_name}} {{price}} {{quantity}} {{total}} {{email}} {{first_name}} {{last4}}</p>`;
+    const smsKeys = ['sms.welcome','sms.help','sms.invalid_code','sms.no_levels','sms.select_level','sms.select_quantity','sms.get_name','sms.get_email','sms.confirm','sms.get_card','sms.get_expiry','sms.get_cvv','sms.processing','sms.success','sms.declined','sms.cancelled','sms.session_expired','sms.error'];
+    const smsLabels = {'sms.welcome':'Welcome','sms.help':'Help Message','sms.invalid_code':'Invalid Event Code','sms.no_levels':'No Levels Available','sms.select_level':'Select Level Prompt','sms.select_quantity':'Select Quantity Prompt','sms.get_name':'Ask for Name','sms.get_email':'Ask for Email','sms.confirm':'Order Confirmation (YES/NO)','sms.get_card':'Ask for Card Number','sms.get_expiry':'Ask for Expiry','sms.get_cvv':'Ask for CVV','sms.processing':'Processing...','sms.success':'Payment Success','sms.declined':'Payment Declined','sms.cancelled':'Order Cancelled','sms.session_expired':'Session Expired','sms.error':'General Error'};
+    for (const key of smsKeys) {
+      const val = content[key]||'';
+      html += `<div class="fg"><label style="font-size:12px">${smsLabels[key]||key}</label><textarea id="sc-${key.replace(/\./g,'-')}" style="min-height:55px;font-size:12px">${esc(val)}</textarea></div>`;
+    }
+
+    // IVR message editor
+    html += `<div class="section-title mt22 mb8">📞 IVR Messages</div>`;
+    html += `<p class="text2 sm mb12">For each message, enter text (read by TTS) OR paste an audio URL (.mp3/.wav hosted publicly). Recording URL overrides TTS. Variables same as SMS.</p>`;
+    html += `<div class="fg mb8"><label style="font-size:12px">TTS Voice</label><select id="sc-ivr-tts-voice"><option value="Polly.Joanna" ${(content['ivr.tts_voice']||'Polly.Joanna')==='Polly.Joanna'?'selected':''}>Joanna (Female, US)</option><option value="Polly.Matthew" ${content['ivr.tts_voice']==='Polly.Matthew'?'selected':''}>Matthew (Male, US)</option><option value="Polly.Amy" ${content['ivr.tts_voice']==='Polly.Amy'?'selected':''}>Amy (Female, UK)</option><option value="Polly.Brian" ${content['ivr.tts_voice']==='Polly.Brian'?'selected':''}>Brian (Male, UK)</option></select></div>`;
+    const ivrKeys = ['ivr.welcome','ivr.select_event','ivr.select_level','ivr.select_quantity','ivr.confirm','ivr.get_card','ivr.get_expiry','ivr.get_cvv','ivr.processing','ivr.success','ivr.declined','ivr.invalid','ivr.error','ivr.no_available'];
+    const ivrLabels = {'ivr.welcome':'Welcome Menu','ivr.select_event':'Select Event','ivr.select_level':'Select Level','ivr.select_quantity':'Select Quantity','ivr.confirm':'Order Confirmation','ivr.get_card':'Enter Card Number','ivr.get_expiry':'Enter Expiry','ivr.get_cvv':'Enter CVV','ivr.processing':'Processing Hold Message','ivr.success':'Payment Success','ivr.declined':'Payment Declined','ivr.invalid':'Invalid Input','ivr.error':'General Error','ivr.no_available':'No Events Available'};
+    for (const key of ivrKeys) {
+      const recKey = key+'_recording';
+      html += `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${ivrLabels[key]||key}</div>
+        <div class="form-row" style="gap:8px;margin:0">
+          <div class="fg" style="margin:0"><label style="font-size:11px">TTS Text</label><textarea id="sc-${key.replace(/\./g,'-')}" style="min-height:45px;font-size:11px">${esc(content[key]||'')}</textarea></div>
+          <div class="fg" style="margin:0"><label style="font-size:11px">Recording URL (overrides TTS)</label><input id="sc-${recKey.replace(/\./g,'-')}" placeholder="https://... .mp3" value="${esc(content[recKey]||'')}" style="font-size:11px"></div>
+        </div>
+      </div>`;
+    }
+
+    // PCI Compliance panel — editable SAQ-D data
+    html += `<div class="section-title mt22 mb4">🔐 PCI Compliance — SAQ-D Filing Info</div>`;
+    html += `<p class="text2 sm mb12">Fill in your details here. These auto-populate into your SAQ-D documentation reminders. <a href="https://listings.pcisecuritystandards.org/documents/PCI-DSS-v4-0-SAQ-D-Merchant.pdf" target="_blank" style="color:var(--navy);font-weight:600">Download SAQ-D form ↗</a></p>`;
+
+    // Load PCI settings
+    let pci = {};
+    try { const ps = await api.connect.getSettings(); pci = ps.settings || {}; } catch {}
+
+    const pciFields = [
+      { key:'pci.merchant_name',      label:'Merchant / Business Name',        hint:'As it appears on your Stripe account' },
+      { key:'pci.dba',                label:'DBA (if different)',               hint:'Leave blank if same as above' },
+      { key:'pci.contact_name',       label:'Primary Contact Name',             hint:'Person responsible for PCI compliance' },
+      { key:'pci.contact_title',      label:'Contact Title / Role',             hint:'e.g. Owner, CTO, Compliance Officer' },
+      { key:'pci.contact_phone',      label:'Contact Phone',                    hint:'' },
+      { key:'pci.contact_email',      label:'Contact Email',                    hint:'' },
+      { key:'pci.business_address',   label:'Business Address',                 hint:'Street, City, State, ZIP' },
+      { key:'pci.business_url',       label:'Business Website URL',             hint:'e.g. https://tickets.everythingshul.com' },
+      { key:'pci.acquirer_name',      label:'Acquirer / Payment Processor',     hint:'e.g. Stripe' },
+      { key:'pci.merchant_id',        label:'Merchant ID (from Stripe)',        hint:'Found in Stripe Dashboard → Settings → Account' },
+      { key:'pci.transaction_volume', label:'Approx. Annual Card Transactions', hint:'e.g. under 1,000 — determines your merchant level' },
+      { key:'pci.asv_vendor',         label:'ASV Scan Vendor',                  hint:'e.g. SecurityMetrics, Qualys, Trustwave' },
+      { key:'pci.asv_last_scan',      label:'Last ASV Scan Date',               hint:'YYYY-MM-DD format' },
+      { key:'pci.saq_last_filed',     label:'Last SAQ-D Filed Date',            hint:'YYYY-MM-DD format' },
+      { key:'pci.saq_next_due',       label:'Next SAQ-D Due Date',              hint:'Annual — 12 months from last filing' },
+      { key:'pci.ip_ranges',          label:'Server IP Address(es)',            hint:'Your Render service IP — find in Render dashboard' },
+      { key:'pci.hosting_provider',   label:'Hosting Provider',                 hint:'Render.com (PCI-compliant infrastructure)' },
+      { key:'pci.cde_description',    label:'Cardholder Data Environment Description', hint:'Brief description of how card data flows: Customer → Twilio SMS/Phone → EverythingShul server (RAM only, never stored) → Stripe API → Tokenized. No card data written to disk or database.' },
+      { key:'pci.notes',              label:'Additional Notes / Remediation Items', hint:'Any open issues or notes for next filing' },
+    ];
+
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">`;
+    for (const f of pciFields) {
+      const isWide = f.key.includes('description') || f.key.includes('notes') || f.key.includes('address');
+      const val = pci[f.key] || '';
+      html += `<div class="fg" style="margin:0;${isWide?'grid-column:1/-1':''}">
+        <label style="font-size:12px">${esc(f.label)} ${f.hint?`<span class="tip-icon" data-tip="${esc(f.hint)}">i</span>`:''}
+        </label>
+        ${isWide
+          ? `<textarea id="pci-${f.key.replace(/\./g,'-')}" style="min-height:60px;font-size:12px">${esc(val)}</textarea>`
+          : `<input id="pci-${f.key.replace(/\./g,'-')}" value="${esc(val)}" style="font-size:12px">`
+        }
+      </div>`;
+    }
+    html += `</div>`;
+
+    html += `<button class="btn btn-gold mb12" onclick="savePCIData()">Save PCI Data</button>`;
+
+    html += `<div class="info-box tip mb8" style="font-size:12px;line-height:1.75">
+      <strong>Your situation at a glance:</strong><br>
+      SAQ Required: <strong>SAQ-D Merchant</strong> (MOTO transactions = card data passes through your server)<br>
+      Filing: Annual self-assessment — no QSA required at Level 4 unless you want one<br>
+      ASV Scans: Quarterly external vulnerability scan required<br>
+      Card data in this system: Never stored — Twilio → RAM → Stripe → gone<br>
+      MOTO flag: Must be pre-approved by Stripe support<br>
+      <a href="https://listings.pcisecuritystandards.org/documents/PCI-DSS-v4-0-SAQ-D-Merchant.pdf" target="_blank" style="color:var(--navy);font-weight:600">SAQ-D Merchant form (PDF) ↗</a> &nbsp;
+      <a href="https://stripe.com/docs/payments/payment-intents/moto" target="_blank" style="color:var(--navy);font-weight:600">Stripe MOTO docs ↗</a>
+    </div>
+    <div class="row mb8" style="gap:8px;flex-wrap:wrap">
+      <a href="https://www.pcisecuritystandards.org/document_library/" target="_blank" class="btn btn-sm">PCI Document Library ↗</a>
+      <a href="https://www.pcisecuritystandards.org/assessors_and_solutions/approved_scanning_vendors" target="_blank" class="btn btn-sm">Find ASV Vendor ↗</a>
+      <button class="btn btn-sm btn-primary" onclick="checkPhoneExpiry()">Check Number Expiries Now</button>
+    </div>`;
+
+    html += `<button class="btn btn-gold mt16 mb8" onclick="saveSiteContent()">Save All Content</button>`;
+    html += `<div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <a href="/landing.html" target="_blank" class="btn btn-sm">Preview Home ↗</a>
+      <a href="/pricing.html" target="_blank" class="btn btn-sm">Preview Pricing ↗</a>
+      <a href="/faq.html" target="_blank" class="btn btn-sm">Preview FAQ ↗</a>
+      <a href="/terms.html" target="_blank" class="btn btn-sm">Preview Terms ↗</a>
+    </div>`;
+    // Pricing Plans
+    html += `<div class="section-title mt8 mb12">💳 Event Pricing Plans</div>`;
+    html += `<p class="text2 sm mb12">Plans shown when a user creates a live event. Price 0 = free.</p>`;
+    try {
+      const plansData = await api.connect.pricingPlansAdmin();
+      const plans = plansData.plans || [];      if (plans.length) {
+        html += `<div class="table-wrap mb12"><table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Status</th><th></th></tr></thead><tbody>`;
+        html += plans.map(p=>`<tr><td><strong>${esc(p.name)}</strong></td><td>$${(p.price_cents/100).toFixed(2)}</td><td class="text2 sm">${esc(p.description||'')}</td><td>${p.is_active?'<span class="badge badge-checked">Active</span>':'<span class="badge badge-deactivated">Off</span>'}</td><td><div class="row" style="gap:4px"><button class="btn btn-sm" onclick="togglePlan('${p.id}',${p.is_active?0:1})">${p.is_active?'Disable':'Enable'}</button><button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}')">Delete</button></div></td></tr>`).join('');
+        html += '</tbody></table></div>';
+      } else {
+        html += `<div class="text2 sm mb12">No plans yet.</div>`;
+      }
+    } catch(e) { html += `<div class="info-box warn mb8">${esc(e.message)}</div>`; }
+    html += `<div style="background:var(--bg3);border-radius:var(--r);padding:14px;border:1px solid var(--border);margin-bottom:16px">
+      <div class="section-title mb10" style="font-size:12px">New Plan</div>
+      <div class="form-row mb8">
+        <div class="fg" style="margin:0"><label>Name *</label><input id="np-name" placeholder="Single Event"></div>
+        <div class="fg" style="margin:0"><label>Price (USD) *</label><input id="np-price" type="number" min="0" step="0.01" placeholder="49.00"></div>
+      </div>
+      <div class="fg mb8"><label>Description</label><input id="np-desc" placeholder="Everything you need for one event"></div>
+      <div class="fg mb8"><label>Features (one per line)</label><textarea id="np-features" style="min-height:70px" placeholder="Online ticket sales&#10;Email delivery&#10;Door scanner"></textarea></div>
+      <button class="btn btn-sm btn-primary" onclick="createPlan()">+ Add Plan</button>
+    </div>`;
+    // Platform settings
+    html += `<div class="section-title mb12">⚙️ Platform Settings</div>`;
+    try {
+      const { settings } = await api.connect.getSettings();
+      html += `<div class="form-row mb8">
+        <div class="fg" style="margin:0"><label>Platform Fee % <span class="tip-icon" data-tip="Your cut of each ticket sale via Stripe Connect (0 = disabled)">i</span></label><input id="ps-fee" type="number" min="0" max="100" step="0.1" value="${settings['platform_fee_percent']||0}"></div>
+        <div class="fg" style="margin:0"><label>Currency</label><select id="ps-currency"><option value="usd" ${settings['currency']==='usd'?'selected':''}>USD ($)</option><option value="ils" ${settings['currency']==='ils'?'selected':''}>ILS (₪)</option><option value="eur" ${settings['currency']==='eur'?'selected':''}>EUR (€)</option><option value="gbp" ${settings['currency']==='gbp'?'selected':''}>GBP (£)</option></select></div>
+      </div>
+      <div class="section-title mb8 mt16">📱 SMS &amp; Phone (IVR) Settings</div>
+      <p class="text2 sm mb12">SMS and IVR payments use the <strong>platform Stripe account</strong> and require MOTO approval from Stripe. Enable per-account in Admin → Accounts.</p>
+      <div class="form-row mb8">
+        <div class="fg" style="margin:0"><label>SMS Enabled</label><select id="ps-sms-enabled"><option value="0" ${settings['sms.enabled']!=='1'?'selected':''}>Disabled</option><option value="1" ${settings['sms.enabled']==='1'?'selected':''}>Enabled</option></select></div>
+        <div class="fg" style="margin:0"><label>SMS Twilio Number <span class="tip-icon" data-tip="Your Twilio phone number for inbound SMS (e.g. +12125551234)">i</span></label><input id="ps-sms-number" placeholder="+12125551234" value="${esc(settings['sms.twilio_number']||'')}"></div>
+      </div>
+      <div class="form-row mb8">
+        <div class="fg" style="margin:0"><label>IVR Enabled</label><select id="ps-ivr-enabled"><option value="0" ${settings['ivr.enabled']!=='1'?'selected':''}>Disabled</option><option value="1" ${settings['ivr.enabled']==='1'?'selected':''}>Enabled</option></select></div>
+        <div class="fg" style="margin:0"><label>IVR Twilio Number <span class="tip-icon" data-tip="Your Twilio phone number for inbound voice calls">i</span></label><input id="ps-ivr-number" placeholder="+12125551234" value="${esc(settings['ivr.twilio_number']||'')}"></div>
+      </div>
+      <div class="fg mb8"><label>SMS Welcome Message</label><input id="ps-sms-welcome" value="${esc(settings['sms.welcome']||'')}"></div>
+      <button class="btn btn-sm btn-primary" onclick="savePlatformSettings()">Save Platform Settings</button>`;
+    } catch(e) { html += `<div class="info-box warn">${esc(e.message)}</div>`; }
+    html += '</div>';
+    panel.innerHTML = html;
+    window._siteContentKeys = [
+      ...groups.flatMap(g=>g.keys),
+      'faq.items','terms.content','ivr.tts_voice',
+      ...['sms.welcome','sms.help','sms.invalid_code','sms.no_levels','sms.select_level','sms.select_quantity','sms.get_name','sms.get_email','sms.confirm','sms.get_card','sms.get_expiry','sms.get_cvv','sms.processing','sms.success','sms.declined','sms.cancelled','sms.session_expired','sms.error'],
+      ...['ivr.welcome','ivr.welcome_recording','ivr.select_event','ivr.select_event_recording','ivr.select_level','ivr.select_level_recording','ivr.select_quantity','ivr.select_quantity_recording','ivr.confirm','ivr.confirm_recording','ivr.get_card','ivr.get_card_recording','ivr.get_expiry','ivr.get_expiry_recording','ivr.get_cvv','ivr.get_cvv_recording','ivr.processing','ivr.processing_recording','ivr.success','ivr.success_recording','ivr.declined','ivr.declined_recording','ivr.invalid','ivr.error','ivr.no_available'],
+    ];
+  } catch(e) { panel.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function checkPhoneExpiry() {
+  try {
+    const r = await fetch('/api/phone/check-expiry', { method:'POST', headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    toast(`Expired: ${r.expired}, Notified: ${r.notified}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function savePCIData() {
+  const pciKeys = ['pci.merchant_name','pci.dba','pci.contact_name','pci.contact_title','pci.contact_phone','pci.contact_email','pci.business_address','pci.business_url','pci.acquirer_name','pci.merchant_id','pci.transaction_volume','pci.asv_vendor','pci.asv_last_scan','pci.saq_last_filed','pci.saq_next_due','pci.ip_ranges','pci.hosting_provider','pci.cde_description','pci.notes'];
+  const updates = {};
+  for (const key of pciKeys) {
+    const el = document.getElementById('pci-' + key.replace(/\./g,'-'));
+    if (el) updates[key] = el.value;
+  }
+  try { await api.connect.updateSettings(updates); toast('PCI data saved'); }
+  catch(e) { toast(e.message,'error'); }
+}
+  const updates = {};
+  for (const key of (window._siteContentKeys||[])) {
+    const el = document.getElementById('sc-' + key.replace(/\./g,'-'));
+    if (el) updates[key] = el.value;
+  }
+  try { await api.admin.updateSiteContent(updates); toast('Site content saved'); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function createPlan() {
+  const name = document.getElementById('np-name')?.value.trim();
+  const price = parseFloat(document.getElementById('np-price')?.value||0);
+  const desc = document.getElementById('np-desc')?.value.trim();
+  const feats = (document.getElementById('np-features')?.value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  if (!name) { toast('Plan name required','error'); return; }
+  try { await api.connect.createPlan({ name, price_cents: Math.round(price*100), description: desc, features: feats }); toast('Plan created'); loadSiteContent(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function togglePlan(id, active) {
+  try { await api.connect.updatePlan(id, { is_active: active }); toast(active ? 'Plan enabled' : 'Plan disabled'); loadSiteContent(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function deletePlan(id) {
+  if (!confirm('Delete this pricing plan?')) return;
+  try { await api.connect.deletePlan(id); toast('Plan deleted'); loadSiteContent(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function savePlatformSettings() {
+  const updates = {};
+  const fields = {
+    'ps-fee': 'platform_fee_percent',
+    'ps-currency': 'currency',
+    'ps-sms-enabled': 'sms.enabled',
+    'ps-sms-number': 'sms.twilio_number',
+    'ps-ivr-enabled': 'ivr.enabled',
+    'ps-ivr-number': 'ivr.twilio_number',
+    'ps-sms-welcome': 'sms.welcome',
+  };
+  for (const [elId, key] of Object.entries(fields)) {
+    const el = document.getElementById(elId);
+    if (el) updates[key] = el.value;
+  }
+  try { await api.connect.updateSettings(updates); toast('Platform settings saved'); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+let _phoneAssignAccountId = null;
+let _phoneSmsEnabled = false;
+
+function openPhoneAssign(accountId, name, currentNumber, currentExpiry, smsEnabled) {
+  _phoneAssignAccountId = accountId;
+  _phoneSmsEnabled = smsEnabled == '1' || smsEnabled === true;
+  document.getElementById('phone-assign-acct').textContent = 'Account: ' + name;
+  document.getElementById('pa-number').value = currentNumber || '';
+  document.getElementById('pa-expires').value = currentExpiry ? currentExpiry.slice(0,10) : '';
+  const hasNumber = !!currentNumber;
+  document.getElementById('btn-remove-phone').style.display = hasNumber ? 'inline-flex' : 'none';
+  const statusWrap = document.getElementById('pa-status-wrap');
+  if (hasNumber) {
+    statusWrap.style.display = 'block';
+    document.getElementById('pa-status-badge').innerHTML = _phoneSmsEnabled
+      ? '<span class="badge badge-checked">Enabled</span>'
+      : '<span class="badge badge-deactivated">Disabled</span>';
+    document.getElementById('pa-toggle-btn').textContent = _phoneSmsEnabled ? 'Disable' : 'Enable';
+  } else {
+    statusWrap.style.display = 'none';
+  }
+  showModal('modal-phone-assign');
+}
+
+async function toggleSmsEnabled() {
+  const newVal = !_phoneSmsEnabled;
+  try {
+    await fetch(`/api/phone/account/${_phoneAssignAccountId}/toggle-sms`, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ enabled: newVal })
+    });
+    _phoneSmsEnabled = newVal;
+    document.getElementById('pa-status-badge').innerHTML = newVal
+      ? '<span class="badge badge-checked">Enabled</span>'
+      : '<span class="badge badge-deactivated">Disabled</span>';
+    document.getElementById('pa-toggle-btn').textContent = newVal ? 'Disable' : 'Enable';
+    toast(newVal ? 'SMS/IVR enabled' : 'SMS/IVR disabled — number kept');
+    await load();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function savePhoneNumber() {
+  const number  = document.getElementById('pa-number').value.trim();
+  const expires = document.getElementById('pa-expires').value;
+  if (!number || !number.startsWith('+')) { toast('Enter a valid number starting with +','error'); return; }
+  try {
+    await fetch(`/api/phone/account/${_phoneAssignAccountId}/assign-number`, {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ phoneNumber:number, expiresAt:expires||null })
+    });
+    toast('Phone number saved'); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function removePhoneNumber() {
+  if (!confirm('Permanently cancel and remove this phone number from the account? This cannot be undone — the number will stop accepting calls and SMS immediately.')) return;
+  try {
+    await fetch(`/api/phone/account/${_phoneAssignAccountId}/remove-number`, {
+      method:'POST', headers:{'Authorization':`Bearer ${Auth.token()}`}
+    });
+    toast('Number cancelled and removed'); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
   const ev = events.find(e => e.id === eventId);
   if (!ev) return;
   const acc = accounts.find(a => a.name === ev.account_name);

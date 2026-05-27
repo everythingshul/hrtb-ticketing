@@ -41,6 +41,14 @@ export function requireEvent(req, res, next) {
   const isOwner = event.account_id === req.user.id;
   const isMember = db.prepare('SELECT id FROM account_members WHERE account_id=? AND user_id=?').get(event.account_id, req.user.id);
   if (req.user.role !== 'admin' && !isOwner && !isMember) return res.status(403).json({ error: 'Access denied' });
+  // Closed events: allow read-only access, flag it so routes can block writes
+  req.eventClosed = !!(req.user.role !== 'admin' && event.closed_at);
   req.event = event;
+  next();
+}
+
+// Blocks write operations on closed events for non-admins
+export function blockIfClosed(req, res, next) {
+  if (req.eventClosed) return res.status(403).json({ error: 'EVENT_CLOSED_READONLY', message: 'This event has ended and is now read-only.' });
   next();
 }

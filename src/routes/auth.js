@@ -4,11 +4,42 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
 import db from '../db.js';
 import { auth, JWT_SECRET } from '../middleware/auth.js';
-import { sendMail, inviteEmail } from '../services/mail.js';
+import { sendMail, inviteEmail, notifySignup } from '../services/mail.js';
 
 const r = Router();
 
 // ── Register (first-ever user becomes admin, otherwise invite required) ──
+// ── Public self-signup — creates demo account ─────────────
+r.post('/signup', async (req, res) => {
+  try {
+    const { name, email, password, first_name, last_name, phone, company } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required' });
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    const exists = db.prepare('SELECT id FROM accounts WHERE email=?').get(email.toLowerCase().trim());
+    if (exists) return res.status(409).json({ error: 'An account with this email already exists' });
+
+    const hash = await bcrypt.hash(password, 12);
+    const id = uuid();
+    db.prepare('INSERT INTO accounts (id,name,email,password_hash,role,is_active,demo_mode,account_tier,first_name,last_name,phone,company) VALUES (?,?,?,?,?,1,1,\'demo\',?,?,?,?)')
+      .run(id, name.trim(), email.toLowerCase().trim(), hash, 'user', first_name||null, last_name||null, phone||null, company||null);
+
+    // Seed demo event
+    const { seedDemoEvent } = await import('./demo.js');
+    await seedDemoEvent(id);
+
+    // Send welcome notification emails (non-blocking)
+    const newAccount = db.prepare('SELECT * FROM accounts WHERE id=?').get(id);
+    notifySignup({ account: newAccount }).catch(() => {});
+
+    const tv = 1;
+    const jwtToken = jwt.sign({ userId: id, tokenVersion: tv }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token: jwtToken, user: { id, name: name.trim(), email: email.toLowerCase().trim(), role: 'user', demo_mode: 1 } });
+  } catch(e) {
+    console.error('[signup]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 r.post('/register', async (req, res) => {
   try {
     const { password, token } = req.body;

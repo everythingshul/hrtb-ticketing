@@ -2,8 +2,20 @@ import { Router } from 'express';
 import { v4 as uuid } from 'uuid';
 import db from '../db.js';
 import { auth } from '../middleware/auth.js';
+import { notifyEventCreated } from '../services/mail.js';
 
 const r = Router();
+
+// Auto-close events 48h after expires_at — runs on every list request (lightweight)
+function autoCloseEvents() {
+  try {
+    db.prepare(`UPDATE events SET closed_at=datetime('now')
+      WHERE closed_at IS NULL
+      AND deleted_at IS NULL
+      AND expires_at IS NOT NULL
+      AND datetime(expires_at, '+48 hours') < datetime('now')`).run();
+  } catch {}
+}
 
 // Public — for scanner PIN login page (shows event names only)
 r.get('/public', (req, res) => {
@@ -21,10 +33,13 @@ r.get('/public/:id', (req, res) => {
 r.use(auth);
 
 r.get('/', (req, res) => {
-  let events = req.user.role === 'admin'
-    ? db.prepare('SELECT e.*,a.name as account_name FROM events e JOIN accounts a ON a.id=e.account_id ORDER BY e.created_at DESC').all()
+  autoCloseEvents(); // lightweight check on every list
+  const isAdmin = req.user.role === 'admin';
+  let events = isAdmin
+    ? db.prepare('SELECT e.*,a.name as account_name FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC').all()
     : db.prepare(`SELECT DISTINCT e.*,a.name as account_name FROM events e JOIN accounts a ON a.id=e.account_id
-        WHERE e.account_id=? OR e.account_id IN (SELECT account_id FROM account_members WHERE user_id=?)
+        WHERE (e.account_id=? OR e.account_id IN (SELECT account_id FROM account_members WHERE user_id=?))
+        AND e.deleted_at IS NULL
         ORDER BY e.created_at DESC`).all(req.user.id, req.user.id);
   events = events.map(e => {
     const rows = db.prepare(`SELECT status, COUNT(*) c FROM attendees WHERE event_id=? AND deleted_at IS NULL GROUP BY status`).all(e.id);
@@ -42,36 +57,41 @@ r.post('/', (req, res) => {
   if (!date) return res.status(400).json({ error: 'Event date required' });
   if (!venue) return res.status(400).json({ error: 'Venue required' });
 
-  // Enforce max_events limit for non-admin users
+  // Demo accounts cannot create live events
   if (req.user.role !== 'admin') {
-    const account = db.prepare('SELECT max_events FROM accounts WHERE id=?').get(req.user.id);
+    const account = db.prepare('SELECT max_events, demo_mode, account_tier FROM accounts WHERE id=?').get(req.user.id);
+    if (account?.demo_mode) {
+      return res.status(403).json({ error: 'DEMO_MODE', message: 'Upgrade your account to create live events. Your demo event lets you explore all features.' });
+    }
     const maxEvents = account?.max_events ?? 1;
-    const currentCount = db.prepare('SELECT COUNT(*) c FROM events WHERE account_id=?').get(req.user.id).c;
+    const currentCount = db.prepare("SELECT COUNT(*) c FROM events WHERE account_id=? AND is_demo=0").get(req.user.id).c;
     if (currentCount >= maxEvents) {
-      return res.status(403).json({
-        error: `EVENT_LIMIT`,
-        max: maxEvents,
-        current: currentCount
-      });
+      return res.status(403).json({ error: 'EVENT_LIMIT', max: maxEvents, current: currentCount });
     }
   }
 
   const dateTime = time ? `${date} · ${time}` : date;
   const id = uuid();
-  db.prepare('INSERT INTO events (id,account_id,name,date,venue,description) VALUES (?,?,?,?,?,?)').run(id, req.user.id, name, dateTime, venue, description||null);
-  res.json({ event: db.prepare('SELECT * FROM events WHERE id=?').get(id) });
+  const tz = req.body.timezone || 'America/New_York';
+  const expires_at = req.body.expires_at || null;
+  db.prepare('INSERT INTO events (id,account_id,name,date,venue,description,timezone,expires_at) VALUES (?,?,?,?,?,?,?,?)').run(id, req.user.id, name, dateTime, venue, description||null, tz, expires_at);
+  const newEvent = db.prepare('SELECT * FROM events WHERE id=?').get(id);
+  // Send notification emails (non-blocking)
+  const acct = db.prepare('SELECT * FROM accounts WHERE id=?').get(req.user.id);
+  if (acct && !newEvent.is_demo) notifyEventCreated({ account: acct, event: newEvent }).catch(() => {});
+  res.json({ event: newEvent });
 });
 
 // Admin: create event under any account
 r.post('/admin', (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { name, date, venue, description, accountId } = req.body;
+  const { name, date, venue, description, accountId, timezone } = req.body;
   if (!name || !date || !venue) return res.status(400).json({ error: 'Name, date and venue required' });
   if (!accountId) return res.status(400).json({ error: 'Account required' });
   const account = db.prepare('SELECT id FROM accounts WHERE id=?').get(accountId);
   if (!account) return res.status(404).json({ error: 'Account not found' });
   const id = uuid();
-  db.prepare('INSERT INTO events (id,account_id,name,date,venue,description) VALUES (?,?,?,?,?,?)').run(id, accountId, name, date, venue, description||null);
+  db.prepare('INSERT INTO events (id,account_id,name,date,venue,description,timezone) VALUES (?,?,?,?,?,?,?)').run(id, accountId, name, date, venue, description||null, timezone||'America/New_York');
   res.json({ event: db.prepare('SELECT * FROM events WHERE id=?').get(id) });
 });
 
@@ -79,9 +99,25 @@ r.put('/:id', (req, res) => {
   const ev = db.prepare("SELECT * FROM events WHERE id=? AND deleted_at IS NULL").get(req.params.id);
   if (!ev) return res.status(404).json({ error: 'Not found' });
   if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
-  const { name, date, venue, description } = req.body;
-  db.prepare('UPDATE events SET name=?,date=?,venue=?,description=? WHERE id=?').run(name||ev.name, date??ev.date, venue??ev.venue, description??ev.description, ev.id);
+  const { name, date, venue, description, timezone } = req.body;
+  db.prepare('UPDATE events SET name=?,date=?,venue=?,description=?,timezone=? WHERE id=?').run(name||ev.name, date??ev.date, venue??ev.venue, description??ev.description, timezone||ev.timezone||'America/New_York', ev.id);
   res.json({ event: db.prepare('SELECT * FROM events WHERE id=?').get(ev.id) });
+});
+
+r.post('/:id/close', (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const ev = db.prepare('SELECT id FROM events WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Not found' });
+  db.prepare("UPDATE events SET closed_at=datetime('now') WHERE id=?").run(req.params.id);
+  res.json({ ok: true });
+});
+
+r.post('/:id/reopen', (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const ev = db.prepare('SELECT id FROM events WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Not found' });
+  db.prepare("UPDATE events SET closed_at=NULL WHERE id=?").run(req.params.id);
+  res.json({ ok: true });
 });
 
 r.delete('/:id', (req, res) => {

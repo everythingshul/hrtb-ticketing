@@ -6,7 +6,7 @@ import { promises as fs, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import db from '../db.js';
-import { auth, requireEvent } from '../middleware/auth.js';
+import { auth, requireEvent, blockIfClosed } from '../middleware/auth.js';
 import { sendMail, ticketEmail, digestEmail } from '../services/mail.js';
 import { generateTicketPDF } from '../services/ticketPDF.js';
 import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
@@ -209,7 +209,7 @@ r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (re
 });
 
 // Commit upload — stores batch ID for undo
-r.post('/event/:eventId/commit', requireEvent, (req, res) => {
+r.post('/event/:eventId/commit', requireEvent, blockIfClosed, (req, res) => {
   try {
     const { newRows=[], resolved=[] } = req.body;
     const allLevels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(req.params.eventId);
@@ -265,7 +265,7 @@ r.post('/event/:eventId/commit', requireEvent, (req, res) => {
 });
 
 // Add single attendee
-r.post('/event/:eventId', requireEvent, (req, res) => {
+r.post('/event/:eventId', requireEvent, blockIfClosed, (req, res) => {
   const { first_name, last_name, phone, email, table_number, seat_number, level_id } = req.body;
   if (!first_name || !last_name) return res.status(400).json({ error: 'First and last name required' });
   const lvl = level_id ? db.prepare('SELECT is_staff FROM ticket_levels WHERE id=?').get(level_id) : null;
@@ -277,7 +277,7 @@ r.post('/event/:eventId', requireEvent, (req, res) => {
 });
 
 // Generate pre-printed blank tickets
-r.post('/event/:eventId/preprint', requireEvent, (req, res) => {
+r.post('/event/:eventId/preprint', requireEvent, blockIfClosed, (req, res) => {
   const { count=1, table_number, seat_start, level_id } = req.body;
   const qty = Math.min(parseInt(count)||1, 500);
   const lvl = level_id ? db.prepare('SELECT is_staff FROM ticket_levels WHERE id=?').get(level_id) : null;
@@ -318,7 +318,7 @@ r.get('/lookup/:ticketId', (req, res) => {
 });
 
 // Bulk level change
-r.post('/event/:eventId/bulk-level', requireEvent, (req, res) => {
+r.post('/event/:eventId/bulk-level', requireEvent, blockIfClosed, (req, res) => {
   const { ids, level_id } = req.body;
   if (!ids?.length) return res.status(400).json({ error: 'No attendees selected' });
   const lvl = (level_id && level_id !== '__none') ? level_id : null;
@@ -329,7 +329,7 @@ r.post('/event/:eventId/bulk-level', requireEvent, (req, res) => {
 });
 
 // Bulk status change
-r.post('/event/:eventId/bulk-status', requireEvent, (req, res) => {
+r.post('/event/:eventId/bulk-status', requireEvent, blockIfClosed, (req, res) => {
   const { ids, status } = req.body;
   const allowed = ['pending','sent','checked','deactivated','preprint'];
   if (!ids?.length) return res.status(400).json({ error: 'No attendees selected' });
@@ -404,7 +404,7 @@ r.post('/:id/send', async (req, res) => {
 });
 
 // Send all pending to individual emails
-r.post('/event/:eventId/send-all', requireEvent, async (req, res) => {
+r.post('/event/:eventId/send-all', requireEvent, blockIfClosed, async (req, res) => {
   const { ids } = req.body;
   const event = req.event;
   const owner = db.prepare('SELECT email, reply_to, can_send_email, role FROM accounts WHERE id=?').get(event.account_id);
@@ -440,7 +440,7 @@ r.post('/event/:eventId/send-all', requireEvent, async (req, res) => {
 });
 
 // Digest: all tickets in one email to one address
-r.post('/event/:eventId/digest', requireEvent, async (req, res) => {
+r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) => {
   const { toEmail, ids, subject } = req.body;
   if (!toEmail) return res.status(400).json({ error: 'toEmail required' });
   const event = req.event;
@@ -575,7 +575,7 @@ r.get('/event/:eventId/export', requireEvent, (req, res) => {
 });
 
 // Upload event ticket design image — accepts any image format, any filename
-r.post('/event/:eventId/design', requireEvent, designUpload.single('design'), async (req, res) => {
+r.post('/event/:eventId/design', requireEvent, blockIfClosed, designUpload.single('design'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
@@ -612,7 +612,7 @@ r.post('/event/:eventId/design', requireEvent, designUpload.single('design'), as
 });
 
 // Delete event ticket design
-r.delete('/event/:eventId/design', requireEvent, async (req, res) => {
+r.delete('/event/:eventId/design', requireEvent, blockIfClosed, async (req, res) => {
   for (const ext of ['png','jpg','jpeg','webp','gif','bmp','tiff','avif']) {
     try { await fs.unlink(join(DESIGNS_DIR, `${req.params.eventId}.${ext}`)); } catch {}
   }
@@ -651,7 +651,7 @@ r.get('/event/:eventId/levels', requireEvent, (req, res) => {
   res.json({ levels });
 });
 
-r.post('/event/:eventId/levels', requireEvent, (req, res) => {
+r.post('/event/:eventId/levels', requireEvent, blockIfClosed, (req, res) => {
   const { name, color, description, is_staff } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   if (name.length > 11) return res.status(400).json({ error: 'Level name must be 11 characters or less (fits on ticket badge)' });
@@ -660,7 +660,7 @@ r.post('/event/:eventId/levels', requireEvent, (req, res) => {
   res.json({ level: db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(id) });
 });
 
-r.patch('/event/:eventId/levels/:id', requireEvent, (req, res) => {
+r.patch('/event/:eventId/levels/:id', requireEvent, blockIfClosed, (req, res) => {
   const { name, color, description, is_staff } = req.body;
   const lvl = db.prepare('SELECT * FROM ticket_levels WHERE id=? AND event_id=?').get(req.params.id, req.params.eventId);
   if (!lvl) return res.status(404).json({ error: 'Level not found' });
@@ -670,7 +670,7 @@ r.patch('/event/:eventId/levels/:id', requireEvent, (req, res) => {
   res.json({ level: db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(lvl.id) });
 });
 
-r.delete('/event/:eventId/levels/:id', requireEvent, (req, res) => {
+r.delete('/event/:eventId/levels/:id', requireEvent, blockIfClosed, (req, res) => {
   db.prepare('UPDATE attendees SET level_id=NULL WHERE level_id=?').run(req.params.id);
   db.prepare('DELETE FROM ticket_levels WHERE id=? AND event_id=?').run(req.params.id, req.params.eventId);
   res.json({ ok: true });
@@ -686,7 +686,7 @@ r.post('/:id/confirm', (req, res) => {
 });
 
 // ── Event settings ────────────────────────────────────────
-r.patch('/event/:eventId/settings', requireEvent, (req, res) => {
+r.patch('/event/:eventId/settings', requireEvent, blockIfClosed, (req, res) => {
   const { allow_unconfirmed_checkin } = req.body;
   if (allow_unconfirmed_checkin !== undefined) {
     db.prepare('UPDATE events SET allow_unconfirmed_checkin=? WHERE id=?').run(allow_unconfirmed_checkin ? 1 : 0, req.params.eventId);
@@ -737,7 +737,7 @@ r.get('/event/:eventId/stats', requireEvent, (req, res) => {
 });
 
 // ── Bulk confirm by ticket ID list (CSV upload) ───────────
-r.post('/event/:eventId/confirm-bulk', requireEvent, (req, res) => {
+r.post('/event/:eventId/confirm-bulk', requireEvent, blockIfClosed, (req, res) => {
   const { ticket_ids } = req.body;
   if (!Array.isArray(ticket_ids) || !ticket_ids.length)
     return res.status(400).json({ error: 'No ticket IDs provided' });
@@ -769,7 +769,7 @@ r.get('/event/:eventId/upload-batches', requireEvent, (req, res) => {
   res.json({ batches });
 });
 
-r.delete('/event/:eventId/undo-upload/:batchId', requireEvent, (req, res) => {
+r.delete('/event/:eventId/undo-upload/:batchId', requireEvent, blockIfClosed, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const batch = db.prepare('SELECT * FROM upload_batches WHERE id=? AND event_id=?').get(req.params.batchId, req.params.eventId);
   if (!batch) return res.status(404).json({ error: 'Upload batch not found' });
@@ -837,7 +837,7 @@ function checkCapacity(eventId, levelId) {
 }
 
 // Capacity check endpoint (for portal warning popup)
-r.post('/event/:eventId/capacity-check', requireEvent, (req, res) => {
+r.post('/event/:eventId/capacity-check', requireEvent, blockIfClosed, (req, res) => {
   const { level_id } = req.body;
   res.json(checkCapacity(req.params.eventId, level_id || null));
 });
@@ -880,7 +880,7 @@ r.patch('/event/:eventId/capacity', (req, res, next) => {
 });
 
 // Update level capacity settings
-r.patch('/event/:eventId/level-capacity/:levelId', requireEvent, (req, res) => {
+r.patch('/event/:eventId/level-capacity/:levelId', requireEvent, blockIfClosed, (req, res) => {
   const { max_tickets, alert_at, show_availability } = req.body;
   db.prepare('UPDATE ticket_levels SET max_tickets=?, alert_at=?, show_availability=? WHERE id=? AND event_id=?')
     .run(max_tickets||null, alert_at||null, show_availability?1:0, req.params.levelId, req.params.eventId);

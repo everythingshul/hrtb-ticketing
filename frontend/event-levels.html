@@ -232,7 +232,7 @@ function renderLevelsPanel() {
     <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
       <div class="form-row mb8">
         <div class="fg" style="margin:0">
-          <label>Level name * <span style="font-weight:400;color:var(--text3)">(max 11 chars)</span></label>
+          <label>Level name * <span class="tip-icon" data-tip="The label shown on the ticket badge and in the scanner. Max 11 characters so it fits on the ticket.">i</span></label>
           <input id="new-level-name" placeholder="VIP" maxlength="11" oninput="updateLevelCounter(this)">
           <div class="hint" id="level-char-count">0 / 11 characters</div>
         </div>
@@ -246,7 +246,7 @@ function renderLevelsPanel() {
         <input id="new-level-desc" placeholder="e.g. Front row seats, complimentary dinner included">
       </div>
       <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;font-size:13px;font-weight:600">
-        <input type="checkbox" id="new-level-staff" style="width:15px;height:15px;accent-color:var(--navy)"> Staff level (uses business card PDF, excluded from guest counts)
+        <input type="checkbox" id="new-level-staff" style="width:15px;height:15px;accent-color:var(--navy)"> Staff level <span class="tip-icon" data-tip="Staff tickets use a business card ID badge PDF and are shown separately on the Staff page. They are excluded from all guest counts.">i</span>
       </label>
       <button class="btn btn-gold" onclick="addLevel()">+ Add Level</button>
     </div>`;

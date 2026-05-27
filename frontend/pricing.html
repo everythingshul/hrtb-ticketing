@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pricing — EverythingShul Ticket System</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a3a6b;--gold:#c8960c;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
+a{color:inherit;text-decoration:none}
+nav{background:var(--navy);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
+.nav-logo{display:flex;align-items:center;gap:10px}.nav-logo img{height:32px}.nav-logo span{color:#fff;font-size:14px;font-weight:600;opacity:.8}
+.nav-links{display:flex;align-items:center;gap:8px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;padding:7px 14px;border-radius:6px;font-weight:500}
+.nav-links a:hover{background:rgba(255,255,255,.1);color:#fff}
+.nav-links .btn-gold{background:var(--gold);color:#000;font-weight:700;padding:8px 18px;border-radius:8px}
+.hero{background:var(--navy);color:#fff;padding:60px 24px 50px;text-align:center}
+.hero h1{font-size:clamp(24px,4vw,44px);font-weight:800;margin-bottom:12px}
+.hero p{color:rgba(255,255,255,.75);font-size:16px}
+.section{padding:64px 24px;max-width:1000px;margin:0 auto}
+.tiers{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;align-items:start}
+.tier{background:var(--white);border:1.5px solid var(--border);border-radius:16px;padding:32px;position:relative}
+.tier.featured{border-color:var(--navy);box-shadow:0 8px 32px rgba(26,58,107,.12)}
+.tier-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:.06em;white-space:nowrap}
+.tier-name{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);margin-bottom:8px}
+.tier-price{font-size:42px;font-weight:800;color:var(--navy);line-height:1}
+.tier-period{font-size:13px;color:var(--text2);margin-top:4px;margin-bottom:12px}
+.tier-desc{font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.tier-features{list-style:none;margin-bottom:28px}
+.tier-features li{font-size:13px;padding:6px 0;border-bottom:1px solid var(--border);color:var(--text);display:flex;align-items:center;gap:8px}
+.tier-features li::before{content:'✓';color:#27a85f;font-weight:700;flex-shrink:0}
+.btn-cta{display:block;text-align:center;background:var(--navy);color:#fff;padding:13px;border-radius:10px;font-weight:700;font-size:14px;transition:all .15s}
+.btn-cta:hover{background:#0d2454;transform:translateY(-1px)}
+.btn-cta.gold{background:var(--gold);color:#000}
+.btn-cta.gold:hover{background:#e8ad14}
+footer{background:#0d2454;color:rgba(255,255,255,.5);padding:24px;text-align:center;font-size:12px}
+footer a{color:rgba(255,255,255,.6);margin:0 8px}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-logo"><img src="/logo.png" alt="EverythingShul"><span>Ticket System</span></div>
+  <div class="nav-links">
+    <a href="/landing.html">Home</a>
+    <a href="/faq.html">FAQ</a>
+    <a href="/index.html">Sign In</a>
+    <a href="/signup.html" class="btn-gold">Get Started →</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1 id="pricing-title">Simple, Transparent Pricing</h1>
+  <p id="pricing-subtitle">Start free with a demo event. Upgrade when you're ready to go live.</p>
+</div>
+
+<div class="section">
+  <div class="tiers" id="tiers-grid"><!-- populated --></div>
+</div>
+
+<footer>
+  <a href="/landing.html">Home</a><a href="/faq.html">FAQ</a><a href="/index.html">Sign In</a><a href="/signup.html">Sign Up</a><a href="/terms.html">Terms</a>
+  <div style="margin-top:8px">&copy; 2025 EverythingShul.com</div>
+</footer>
+
+<script>
+fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
+  document.getElementById('pricing-title').textContent = c['pricing.title']||'Pricing';
+  document.getElementById('pricing-subtitle').textContent = c['pricing.subtitle']||'';
+  const tiers = [
+    { nameKey:'pricing.tier1_name', priceKey:'pricing.tier1_price', periodKey:null, descKey:'pricing.tier1_desc', featKey:'pricing.tier1_features', cta:'Try Demo Free', ctaHref:'/signup.html', featured:false },
+    { nameKey:'pricing.tier2_name', priceKey:'pricing.tier2_price', periodKey:'pricing.tier2_period', descKey:'pricing.tier2_desc', featKey:'pricing.tier2_features', cta:'Get Started', ctaHref:'/signup.html', featured:false, badge:'Most Popular' },
+    { nameKey:'pricing.tier3_name', priceKey:'pricing.tier3_price', periodKey:'pricing.tier3_period', descKey:'pricing.tier3_desc', featKey:'pricing.tier3_features', cta:'Get Started', ctaHref:'/signup.html', featured:true, badge:'Best Value' },
+  ];
+  document.getElementById('tiers-grid').innerHTML = tiers.map(t => {
+    const feats = (c[t.featKey]||'').split('\n').filter(Boolean);
+    return `<div class="tier${t.featured?' featured':''}">
+      ${t.badge ? `<div class="tier-badge">${t.badge}</div>` : ''}
+      <div class="tier-name">${c[t.nameKey]||''}</div>
+      <div class="tier-price">${c[t.priceKey]||''}</div>
+      ${t.periodKey ? `<div class="tier-period">${c[t.periodKey]||''}</div>` : '<div class="tier-period">&nbsp;</div>'}
+      <div class="tier-desc">${c[t.descKey]||''}</div>
+      <ul class="tier-features">${feats.map(f=>`<li>${f}</li>`).join('')}</ul>
+      <a href="${t.ctaHref}" class="btn-cta${t.featured?' gold':''}">${t.cta} →</a>
+    </div>`;
+  }).join('');
+}).catch(() => {});
+</script>
+</body>
+</html>

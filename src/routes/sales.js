@@ -67,9 +67,16 @@ function checkCapacity(eventId, levelId) {
 
 // ── Helpers ───────────────────────────────────────────────
 function getStripe(event) {
-  const key = event.stripe_key || process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('Stripe not configured for this event');
+  // Priority: account Stripe Connect key > per-event key > platform key
+  const account = db.prepare('SELECT stripe_connect_key, stripe_key FROM accounts WHERE id=?').get(event.account_id);
+  const key = account?.stripe_connect_key || event.stripe_key || process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('Stripe not configured. Connect your Stripe account in your profile settings.');
   return require('stripe')(key);
+}
+
+function getStripePublishable(event) {
+  const account = db.prepare('SELECT stripe_connect_pub FROM accounts WHERE id=?').get(event.account_id);
+  return account?.stripe_connect_pub || process.env.STRIPE_PUBLISHABLE_KEY || '';
 }
 
 function getEventDesignPath(eventId) {
@@ -150,7 +157,7 @@ r.get('/event/:slug', (req, res) => {
     levels: levelsWithAvail,
     saleImage: saleImagePath,
     accountName: event.account_name,
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+    publishableKey: getStripePublishable(event),
     eventSoldOut,
     allowActivation: event.allow_activation === 1,
     salesOpen
@@ -247,7 +254,7 @@ r.post('/event/:slug/checkout', async (req, res) => {
 
     res.json({
       clientSecret: paymentIntent.client_secret,
-      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+      publishableKey: getStripePublishable(event),
       orderId
     });
   } catch(e) {
@@ -585,7 +592,7 @@ r.get('/portal/:eventId', auth, async (req, res) => {
     levels: levelsWithCap,
     totalSold,
     eventOverLimit,
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
+    publishableKey: getStripePublishable(ev||event)
   });
 });
 
@@ -651,7 +658,7 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
     db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
       .run(orderId, ev.id, paymentIntent.id, 'pending', email||null, totalCents, JSON.stringify(items), JSON.stringify(checkoutAttendees||[]));
 
-    res.json({ clientSecret: paymentIntent.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '', orderId });
+    res.json({ clientSecret: paymentIntent.client_secret, publishableKey: getStripePublishable(event), orderId });
   } catch(e) {
     console.error('[portal/checkout]', e.message);
     res.status(500).json({ error: e.message });

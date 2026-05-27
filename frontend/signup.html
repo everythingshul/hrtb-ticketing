@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign Up Free — EverythingShul Ticket System</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.demo-badge{background:#e8f4fb;border:1.5px solid #b3ddf2;border-radius:10px;padding:12px 16px;font-size:13px;color:#1a3a6b;margin-bottom:18px;line-height:1.6}
+.demo-badge strong{display:block;font-size:14px;margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo" style="margin-bottom:24px">
+      <img src="/logo.png" alt="EverythingShul.com" style="width:200px;height:auto;display:block;margin:0 auto 10px">
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--text3)">Ticket System</p>
+    </div>
+
+    <div class="auth-card">
+      <h2>Create Your Free Account</h2>
+      <p class="sub" style="margin-bottom:16px">No credit card required</p>
+
+      <div class="demo-badge">
+        <strong>🎮 You'll start in Demo Mode</strong>
+        Your account comes with a full demo event loaded with sample attendees, tickets, and a scanner PIN — so you can explore every feature right away. Upgrade anytime to go live.
+      </div>
+
+      <div id="err" class="info-box warn mb16" style="display:none"></div>
+
+      <div class="form-row">
+        <div class="fg"><label>First Name *</label><input id="fname" placeholder="Jane" autocomplete="given-name"></div>
+        <div class="fg"><label>Last Name *</label><input id="lname" placeholder="Doe" autocomplete="family-name"></div>
+      </div>
+      <div class="fg"><label>Organization / Name *</label><input id="orgname" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
+      <div class="fg"><label>Email *</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="fg"><label>Phone *</label><input id="phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel"></div>
+      <div class="fg"><label>Password * <span style="font-weight:400;color:var(--text2);font-size:12px">(at least 8 characters)</span></label><input id="pass" type="password" autocomplete="new-password"></div>
+      <div class="fg"><label>Confirm Password *</label><input id="pass2" type="password" autocomplete="new-password"></div>
+
+      <div style="display:flex;align-items:flex-start;gap:10px;margin:14px 0;padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+        <input type="checkbox" id="agree-terms" style="width:17px;height:17px;margin-top:2px;flex-shrink:0;accent-color:var(--navy);cursor:pointer">
+        <label for="agree-terms" style="font-size:13px;color:var(--text2);cursor:pointer;line-height:1.55">
+          I have read and agree to the <a href="/terms.html" target="_blank" style="color:var(--navy);font-weight:600;text-decoration:underline">Terms and Conditions</a>. I understand that my account starts in Demo Mode and real events require a paid plan.
+        </label>
+      </div>
+
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;margin-top:4px" id="btn-submit" onclick="signup()">Create Free Account →</button>
+    </div>
+
+    <div class="auth-foot">Already have an account? <a href="/index.html">Sign in</a></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (Auth.token()) window.location = '/dashboard.html';
+document.addEventListener('keydown', e => { if (e.key === 'Enter') signup(); });
+
+async function signup() {
+  const fname  = document.getElementById('fname').value.trim();
+  const lname  = document.getElementById('lname').value.trim();
+  const org    = document.getElementById('orgname').value.trim();
+  const email  = document.getElementById('email').value.trim();
+  const phone  = document.getElementById('phone').value.trim();
+  const pass   = document.getElementById('pass').value;
+  const pass2  = document.getElementById('pass2').value;
+  const err    = document.getElementById('err');
+  const btn    = document.getElementById('btn-submit');
+  err.style.display = 'none';
+
+  if (!fname || !lname) { err.textContent = 'First and last name required'; err.style.display='block'; return; }
+  if (!org)   { err.textContent = 'Organization/name required'; err.style.display='block'; return; }
+  if (!email || !email.includes('@')) { err.textContent = 'Valid email required'; err.style.display='block'; return; }
+  if (!pass)  { err.textContent = 'Choose a password'; err.style.display='block'; return; }
+  if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.style.display='block'; return; }
+  if (pass !== pass2) { err.textContent = 'Passwords do not match'; err.style.display='block'; return; }
+  if (!document.getElementById('agree-terms').checked) { err.textContent = 'You must agree to the Terms and Conditions to continue'; err.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    const data = await api.auth.signup({ name: org, email, password: pass, first_name: fname, last_name: lname, phone });
+    Auth.set(data.token, data.user);
+    window.location = '/dashboard.html';
+  } catch(e) {
+    err.textContent = e.message; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Create Free Account →';
+  }
+}
+</script>
+</body>
+</html>

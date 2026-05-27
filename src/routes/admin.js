@@ -514,4 +514,34 @@ r.get('/debug-staff/:eventId', auth, (req, res) => {
   res.json({ levels, staffLevelIds, attendees: allAtt, staffRows });
 });
 
+// ── Site content (CMS) — stored as JSON file, not DB ───────
+import { readFileSync as rfs, writeFileSync as wfs, existsSync as efs } from 'fs';
+import { join as pjoin } from 'path';
+
+function getSiteContentPath() {
+  const d = process.env.DATA_DIR || '/data';
+  return pjoin(d, 'site_content.json');
+}
+function readSiteContent() {
+  try { const p=getSiteContentPath(); if(efs(p)) return JSON.parse(rfs(p,'utf8')); } catch {}
+  try { return Object.fromEntries(db.prepare('SELECT key,value FROM site_content').all().map(r=>[r.key,r.value])); } catch {}
+  return {};
+}
+function writeSiteContent(c) { try { wfs(getSiteContentPath(), JSON.stringify(c, null, 2)); } catch(e) { console.error('site-content write error:', e.message); } }
+
+r.get('/site-content', (req, res) => {
+  res.json({ content: readSiteContent() });
+});
+
+r.patch('/site-content', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { updates } = req.body;
+  if (!updates || typeof updates !== 'object') return res.status(400).json({ error: 'updates object required' });
+  const current = readSiteContent();
+  for (const [key, value] of Object.entries(updates)) current[key] = String(value);
+  writeSiteContent(current);
+  res.json({ ok: true });
+});
+
+
 export default r;

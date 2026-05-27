@@ -75,7 +75,7 @@
         <div class="setting-card">
           <div class="setting-hd">
             <div>
-              <div class="setting-title">Sales Active</div>
+              <div class="setting-title">Sales Active <span class="tip-icon" data-tip="When on, the public ticket sale page is live and anyone with the link can purchase tickets.">i</span></div>
               <div class="setting-sub">Makes the ticket page publicly accessible</div>
             </div>
             <label class="toggle-pill">
@@ -89,7 +89,7 @@
         <div class="setting-card">
           <div class="setting-hd">
             <div>
-              <div class="setting-title">Ticket Activation</div>
+              <div class="setting-title">Ticket Activation <span class="tip-icon" data-tip="Allows attendees to self-activate by entering their ticket ID on the sale page — useful for offline-assigned tickets.">i</span></div>
               <div class="setting-sub">Attendees can self-activate by entering their ticket ID on the sale page</div>
             </div>
             <label class="toggle-pill">
@@ -110,7 +110,7 @@
         </div>
 
         <div class="setting-card full">
-          <div class="setting-title mb4">Link Expiry</div>
+          <div class="setting-title mb4">Link Expiry <span class="tip-icon" data-tip="After this date/time, the sale page closes automatically. Use Auto +48h to set it to 48 hours after your event starts.">i</span></div>
           <div class="setting-sub mb10">Sales page closes at this date/time. 48h auto-sets expiry to 48 hours after the event starts.</div>
           <div class="row" style="gap:8px">
             <input type="datetime-local" id="expires-input" style="flex:1;margin:0;color-scheme:light">
@@ -152,12 +152,12 @@
                 <option value="fixed">Fixed amount off ($)</option>
               </select>
             </div>
-            <div class="fg" style="margin:0"><label id="pc-value-label">Value (%) *</label><input type="number" id="pc-value" min="0" max="100" placeholder="20"></div>
+            <div class="fg" style="margin:0"><label id="pc-value-label">Value (%) * <span class="tip-icon" data-tip="For percent: enter 20 for 20% off. For fixed: enter the dollar amount (e.g. 10 for $10 off).">i</span></label><input type="number" id="pc-value" min="0" max="100" placeholder="20"></div>
           </div>
           <div class="form-row mb8">
             <div class="fg" style="margin:0"><label>Expires At <span class="xs text2">(optional)</span></label><input type="datetime-local" id="pc-expires" style="color-scheme:light"></div>
             <div class="fg" style="margin:0"><label>Max Uses <span class="xs text2">(optional)</span></label><input type="number" id="pc-max-uses" min="1" placeholder="e.g. 50"></div>
-            <div class="fg" style="margin:0"><label>Max $ Discount <span class="xs text2">(optional)</span></label><input type="number" id="pc-max-money" min="1" placeholder="e.g. 500" step="0.01"></div>
+            <div class="fg" style="margin:0"><label>Max $ Discount <span class="tip-icon" data-tip="The maximum total dollar amount this code can give away across all uses combined.">i</span> <span class="xs text2">(optional)</span></label><input type="number" id="pc-max-money" min="1" placeholder="e.g. 500" step="0.01"></div>
           </div>
           <div class="fg mb8">
             <label>Max Total Tickets <span class="xs text2">(across all levels, optional)</span></label>
@@ -168,7 +168,7 @@
             <div id="pc-level-limits-rows"></div>
           </div>
           <div class="fg mb8">
-            <label>Restrict to Emails <span class="xs text2">(comma-separated, optional)</span></label>
+            <label>Restrict to Emails <span class="tip-icon" data-tip="If set, only these email addresses can use this promo code. Separate multiple emails with commas.">i</span> <span class="xs text2">(comma-separated, optional)</span></label>
             <input id="pc-emails" placeholder="alice@example.com, bob@example.com" type="text">
           </div>
           <button class="btn btn-sm btn-primary" onclick="createPromo()">+ Create Promo Code</button>
@@ -250,7 +250,7 @@ function renderSettings() {
   if (s.expires_at) {
     document.getElementById('expires-input').value = s.expires_at.slice(0,16);
     const d = new Date(s.expires_at);
-    document.getElementById('expiry-label').textContent = 'Closes: ' + d.toLocaleString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+    document.getElementById('expiry-label').textContent = 'Closes: ' + d.toLocaleString('en-US', { timeZone: eventData?.timezone||'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
   }
 
   // Image preview
@@ -340,7 +340,7 @@ async function saveExpiry() {
     toast('Expiry saved');
     if (val) {
       const d = new Date(val);
-      document.getElementById('expiry-label').textContent = 'Closes: ' + d.toLocaleString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+      document.getElementById('expiry-label').textContent = 'Closes: ' + d.toLocaleString('en-US', { timeZone: eventData?.timezone||'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
     }
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -367,14 +367,15 @@ async function autoSetExpiry() {
   const year=d.getFullYear(), month=d.getMonth(), day=d.getDate(), hour=d.getHours(), min=d.getMinutes();
   const estStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}:00`;
   const tempDate = new Date(estStr + 'Z');
-  const estOffset = new Date(tempDate.toLocaleString('en-US', { timeZone: 'America/New_York' })) - tempDate;
+  const eventTz = eventData?.timezone || 'America/New_York';
+  const estOffset = new Date(tempDate.toLocaleString('en-US', { timeZone: eventTz })) - tempDate;
   const eventDateEST = new Date(tempDate.getTime() - estOffset);
   const expiryUTC = new Date(eventDateEST.getTime() + 48 * 60 * 60 * 1000);
   const iso = expiryUTC.toISOString().slice(0, 16);
   document.getElementById('expires-input').value = iso;
   await api.attendees.updateSalesSettings(eventId, { expires_at: iso });
   salesSettings.expires_at = iso;
-  const label = expiryUTC.toLocaleString('en-US', { timeZone:'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+  const label = expiryUTC.toLocaleString('en-US', { timeZone: eventData?.timezone||'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
   document.getElementById('expiry-label').textContent = 'Closes: ' + label;
   toast('Expiry set: ' + label);
 }
