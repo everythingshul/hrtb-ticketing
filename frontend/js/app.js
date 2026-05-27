@@ -142,6 +142,9 @@ const api = {
     getTrashAttendees: () => req('/admin/trash/attendees'),
     getTrashEvents: () => req('/admin/trash/events'),
     getTrashAccounts: () => req('/admin/trash/accounts'),
+    getTrash: type => req(`/admin/trash/${type}`),
+    restoreTrash: (type, id) => req(`/admin/trash/${type}/${id}/restore`, { method: 'POST' }),
+    purgeTrash: (type, id) => req(`/admin/trash/${type}/${id}`, { method: 'DELETE' }),
     restoreAttendee: id => req(`/admin/trash/attendees/${id}/restore`, { method: 'POST' }),
     restoreEvent: id => req(`/admin/trash/events/${id}/restore`, { method: 'POST' }),
     restoreAccount: id => req(`/admin/trash/accounts/${id}/restore`, { method: 'POST' }),
@@ -249,7 +252,13 @@ function renderSidebar(activePage) {
         ${nav('scanner.html','Scanner')}
       </div>
       ${eventSubmenuHTML}
-      ${user.role === 'admin' ? `<div class="sb-group"><div class="sb-group-label">System</div>${nav('admin.html','Admin Panel')}</div>` : ''}
+      ${user.role === 'admin' ? `<div class="sb-group"><div class="sb-group-label">Admin</div>
+        ${nav('admin.html','📊 Dashboard')}
+        ${nav('admin-accounts.html','👥 Accounts')}
+        ${nav('admin-events.html','🎟 All Events')}
+        ${nav('admin-content.html','✏️ Site Content')}
+        ${nav('admin-backup.html','💾 Backup &amp; Trash')}
+      </div>` : ''}
     </nav>
     <div class="sb-foot" id="sb-foot">
       <div class="sb-user">

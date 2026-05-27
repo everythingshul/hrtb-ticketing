@@ -417,6 +417,16 @@ r.patch('/accounts/:id/can-send-email', (req, res) => {
   db.prepare('UPDATE accounts SET can_send_email=? WHERE id=?').run(enabled ? 1 : 0, req.params.id);
   res.json({ ok: true });
 });
+r.patch('/accounts/:id/email', (req, res) => {
+  const { enabled } = req.body;
+  db.prepare('UPDATE accounts SET can_send_email=? WHERE id=?').run(enabled ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+});
+r.patch('/accounts/:id/online-sales', (req, res) => {
+  const { enabled } = req.body;
+  db.prepare('UPDATE accounts SET can_sell_online=? WHERE id=?').run(enabled ? 1 : 0, req.params.id);
+  res.json({ ok: true });
+});
 
 // ── Trash & Restore (admin only) ─────────────────────────
 // List deleted items within 30 days

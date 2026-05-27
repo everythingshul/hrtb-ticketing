@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — All Events</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb16">
+      <div class="ph-left"><h1>All Events</h1></div>
+      <div class="ph-actions">
+        <input id="search" placeholder="Search name, account…" style="width:200px" oninput="renderEvents()">
+      </div>
+    </div>
+
+    <div id="stats" class="stat-pills mb16"></div>
+    <div id="events-wrap"></div>
+
+  </div></main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+if (!Auth.requireAdmin()) throw 0;
+renderSidebar();
+
+let events = [];
+
+async function load() {
+  try {
+    const [eData, sData] = await Promise.all([api.admin.events(), api.admin.stats()]);
+    events = eData.events || [];
+    const s = sData.stats || {};
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-label">Total Events</div><div class="stat-val">${events.length}</div></div>
+      <div class="stat"><div class="stat-label">Open</div><div class="stat-val green">${events.filter(e=>!e.closed_at&&!e.deleted_at).length}</div></div>
+      <div class="stat"><div class="stat-label">Closed</div><div class="stat-val">${events.filter(e=>e.closed_at).length}</div></div>
+      <div class="stat"><div class="stat-label">Total Attendees</div><div class="stat-val">${s.attendees||0}</div></div>`;
+    renderEvents();
+  } catch(e) {
+    document.getElementById('events-wrap').innerHTML = `<div class="info-box warn">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderEvents() {
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const filtered = events.filter(e => !q || e.name?.toLowerCase().includes(q) || e.account_name?.toLowerCase().includes(q));
+  if (!filtered.length) { document.getElementById('events-wrap').innerHTML = '<div class="empty"><div class="ico"></div><h3>No events</h3></div>'; return; }
+  document.getElementById('events-wrap').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Account</th><th>Date</th><th>Attendees</th><th>Staff</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${filtered.map(e=>`<tr>
+      <td><strong>${esc(e.name)}</strong>${e.is_demo?'<span class="badge" style="background:#e8f4fb;color:#1a6b9a;border:1px solid #b3d4f2;font-size:10px;margin-left:6px">DEMO</span>':''}</td>
+      <td class="text2 sm">${esc(e.account_name||'—')}</td>
+      <td class="text2 sm">${esc(e.date||'—')}</td>
+      <td>${e.attendee_count||0}</td>
+      <td>${e.staff_count||0}</td>
+      <td>${e.closed_at?'<span class="badge badge-deactivated" style="font-size:10px">Closed</span>':e.deleted_at?'<span class="badge badge-warn" style="font-size:10px">Deleted</span>':'<span class="badge badge-checked" style="font-size:10px">Open</span>'}</td>
+      <td><div class="row" style="gap:4px">
+        <button class="btn btn-sm" onclick="window.open('/event-detail.html?id=${e.id}','_blank')">Open ↗</button>
+        ${e.closed_at
+          ? `<button class="btn btn-sm btn-success" onclick="reopenEvent('${e.id}')">Reopen</button>`
+          : `<button class="btn btn-sm btn-danger" onclick="closeEvent('${e.id}')">Close</button>`}
+        <button class="btn btn-sm" onclick="openPhoneAssign('${e.id}','${esc(e.name)}','${esc(e.phone_number||'')}','${esc(e.phone_number_expires||'')}',${e.sms_ivr_enabled||0})">📞</button>
+      </div></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+async function closeEvent(id) {
+  if (!confirm('Close this event? Users will see it as read-only.')) return;
+  try { await api.events.close(id); toast('Event closed'); await load(); } catch(e) { toast(e.message,'error'); }
+}
+
+async function reopenEvent(id) {
+  try { await api.events.reopen(id); toast('Event reopened'); await load(); } catch(e) { toast(e.message,'error'); }
+}
+
+// Phone modal (simplified — same as accounts page)
+let _phoneEventId=null,_phoneSmsEnabled=false,_pendingBuyNumber=null;
+function openPhoneAssign(eventId,name,num,exp,sms){
+  // Redirect to accounts page with event context — simpler approach
+  window.location = `/admin-accounts.html`;
+  // For now just show a simpler prompt
+}
+
+load();
+</script>
+</body>
+</html>
