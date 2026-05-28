@@ -15,7 +15,7 @@ async function req(path, opts = {}) {
     if (data.forceLogout) {
       Auth.clear();
       sessionStorage.setItem('hrtb_logout_msg', data.error || 'Your role has changed. Please log in again.');
-      window.location = '/index.html';
+      window.location = '/login.html';
       throw new Error(data.error);
     }
     throw new Error(data.error || `Error ${res.status}`);
@@ -29,7 +29,7 @@ const Auth = {
   token: () => localStorage.getItem('hrtb_token'),
   set: (token, user) => { localStorage.setItem('hrtb_token', token); localStorage.setItem('hrtb_user', JSON.stringify(user)); },
   clear: () => { localStorage.removeItem('hrtb_token'); localStorage.removeItem('hrtb_user'); },
-  require: () => { if (!Auth.token()) { window.location = '/index.html'; return false; } return true; },
+  require: () => { if (!Auth.token()) { window.location = '/login.html'; return false; } return true; },
   requireAdmin: () => { const u = Auth.user(); if (!u || u.role !== 'admin') { window.location = '/dashboard.html'; return false; } return true; }
 };
 
@@ -298,7 +298,7 @@ function switchAccount(accountId) {
   window.location = '/dashboard.html';
 }
 
-function logout() { Auth.clear(); window.location = '/index.html'; }
+function logout() { Auth.clear(); window.location = '/login.html'; }
 
 // ── English-only input restriction ───────────────────────
 // Blocks non-ASCII characters from being typed or pasted into any input/textarea

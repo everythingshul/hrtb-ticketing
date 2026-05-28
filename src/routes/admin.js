@@ -428,6 +428,13 @@ r.patch('/accounts/:id/online-sales', (req, res) => {
   res.json({ ok: true });
 });
 
+// Admin: grant full access (bypass payment requirement)
+r.post('/accounts/:id/grant-access', (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  db.prepare("UPDATE accounts SET demo_mode=0, can_sell_online=1, can_send_email=1 WHERE id=?").run(req.params.id);
+  res.json({ ok: true });
+});
+
 // ── Trash & Restore (admin only) ─────────────────────────
 // List deleted items within 30 days
 

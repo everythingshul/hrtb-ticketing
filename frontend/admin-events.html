@@ -81,12 +81,18 @@ async function reopenEvent(id) {
   try { await api.events.reopen(id); toast('Event reopened'); await load(); } catch(e) { toast(e.message,'error'); }
 }
 
-// Phone modal (simplified — same as accounts page)
-let _phoneEventId=null,_phoneSmsEnabled=false,_pendingBuyNumber=null;
+// Simple phone number assignment for events
 function openPhoneAssign(eventId,name,num,exp,sms){
-  // Redirect to accounts page with event context — simpler approach
-  window.location = `/admin-accounts.html`;
-  // For now just show a simpler prompt
+  const current = num ? `Current: ${num}` : 'No number assigned';
+  const action = prompt(`${name}\n${current}\n\nEnter Twilio phone number to assign (e.g. +12125551234), or leave blank to remove:`);
+  if (action === null) return; // cancelled
+  if (action === '') {
+    if (!confirm('Remove phone number from this event?')) return;
+    fetch(`/api/phone/event/${eventId}/remove-number`,{method:'POST',headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(()=>{toast('Number removed');load();}).catch(e=>toast(e.message,'error'));
+  } else {
+    const expires = prompt('Expiry date? (YYYY-MM-DD or blank for none)');
+    fetch(`/api/phone/event/${eventId}/assign-number`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({phoneNumber:action,expiresAt:expires||null})}).then(()=>{toast(`${action} assigned`);load();}).catch(e=>toast(e.message,'error'));
+  }
 }
 
 load();

@@ -100,7 +100,9 @@ db.exec(`
 
 // ── Migrations (safe — run every time, no-op if already done) ──
 try { db.exec('ALTER TABLE accounts ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1'); } catch {}
-try { db.exec('ALTER TABLE events ADD COLUMN closed_at TEXT'); } catch {} // set 48h after event end; users lose access, admin keeps it
+try { db.exec('ALTER TABLE events ADD COLUMN closed_at TEXT'); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/New_York'"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN twilio_sid TEXT"); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN demo_mode INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN account_tier TEXT NOT NULL DEFAULT \'demo\''); } catch {} // demo | starter | pro | enterprise
 try { db.exec('ALTER TABLE events ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0'); } catch {}

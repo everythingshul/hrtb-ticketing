@@ -162,7 +162,7 @@ export function inviteEmail({ fromName, accountName, url, role }) {
 }
 
 // ── Admin + user notification emails ──────────────────────
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.SMTP_USER || 'hello@everythingshul.com';
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'everythingshul@gmail.com';
 const ADMIN_NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER; // where to send admin copies
 
 function notifyEmailBase(title, bodyHtml) {

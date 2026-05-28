@@ -67,10 +67,10 @@ function checkCapacity(eventId, levelId) {
 
 // ── Helpers ───────────────────────────────────────────────
 function getStripe(event) {
-  // Priority: account Stripe Connect key > per-event key > platform key
-  const account = db.prepare('SELECT stripe_connect_key, stripe_key FROM accounts WHERE id=?').get(event.account_id);
-  const key = account?.stripe_connect_key || event.stripe_key || process.env.STRIPE_SECRET_KEY;
-  if (!key) throw new Error('Stripe not configured. Connect your Stripe account in your profile settings.');
+  // Online/portal sales: use account's own Stripe Connect key first
+  const account = db.prepare('SELECT stripe_connect_key FROM accounts WHERE id=?').get(event.account_id);
+  const key = account?.stripe_connect_key || process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('Stripe not configured. Connect your Stripe account in Profile settings.');
   return require('stripe')(key);
 }
 

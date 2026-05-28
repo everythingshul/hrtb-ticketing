@@ -57,16 +57,11 @@ r.post('/', (req, res) => {
   if (!date) return res.status(400).json({ error: 'Event date required' });
   if (!venue) return res.status(400).json({ error: 'Venue required' });
 
-  // Demo accounts cannot create live events
+  // Demo accounts cannot create live events — show pricing paywall
   if (req.user.role !== 'admin') {
-    const account = db.prepare('SELECT max_events, demo_mode, account_tier FROM accounts WHERE id=?').get(req.user.id);
+    const account = db.prepare('SELECT demo_mode, account_tier FROM accounts WHERE id=?').get(req.user.id);
     if (account?.demo_mode) {
-      return res.status(403).json({ error: 'DEMO_MODE', message: 'Upgrade your account to create live events. Your demo event lets you explore all features.' });
-    }
-    const maxEvents = account?.max_events ?? 1;
-    const currentCount = db.prepare("SELECT COUNT(*) c FROM events WHERE account_id=? AND is_demo=0").get(req.user.id).c;
-    if (currentCount >= maxEvents) {
-      return res.status(403).json({ error: 'EVENT_LIMIT', max: maxEvents, current: currentCount });
+      return res.status(403).json({ error: 'DEMO_MODE', message: 'Upgrade to create live events.' });
     }
   }
 

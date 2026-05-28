@@ -167,6 +167,8 @@ r.post('/event-payment/confirm', auth, async (req, res) => {
     db.prepare('INSERT INTO events (id,account_id,name,date,venue,description,timezone,expires_at,platform_order_id) VALUES (?,?,?,?,?,?,?,?,?)').run(id, req.user.id, name, dateTime, venue, description||null, tz, expires_at||null, paymentIntentId||null);
     // Remove demo_mode if this is their first live event
     db.prepare("UPDATE accounts SET demo_mode=0 WHERE id=? AND demo_mode=1").run(req.user.id);
+    // After payment, auto-enable email sending and online sales (can be disabled by admin)
+    db.prepare("UPDATE accounts SET can_sell_online=1, can_send_email=1 WHERE id=?").run(req.user.id);
     const newEvent = db.prepare('SELECT * FROM events WHERE id=?').get(id);
     // Send notifications
     const acct = db.prepare('SELECT * FROM accounts WHERE id=?').get(req.user.id);

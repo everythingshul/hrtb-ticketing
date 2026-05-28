@@ -7,6 +7,29 @@
 <title>Sign Up Free — EverythingShul Ticket System</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
+
+:root{--navy:#1a3a6b;--navy2:#0d2454;--gold:#c8960c;--gold2:#e8ad14;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand{display:flex;align-items:center;gap:12px}.nav-brand img{height:36px;filter:brightness(0) invert(1)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s;text-decoration:none}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-links a.active{font-weight:700}
+.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important}
+.btn-nav-cta:hover{background:var(--gold2)!important}
+.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important}
+footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
+.footer-brand img{height:38px;filter:brightness(0) invert(1);margin-bottom:12px;display:block}
+.footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
+.footer-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:12px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;text-decoration:none;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:1060px;margin:0 auto;font-size:12px}
+.footer-bottom a{color:rgba(255,255,255,.4);margin-left:14px;text-decoration:none}
+.footer-bottom a:hover{color:rgba(255,255,255,.8)}
+@media(max-width:700px){nav{padding:0 16px}.nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}.footer-grid{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}}
+
 .demo-badge{background:#e8f4fb;border:1.5px solid #b3ddf2;border-radius:10px;padding:12px 16px;font-size:13px;color:#1a3a6b;margin-bottom:18px;line-height:1.6}
 .demo-badge strong{display:block;font-size:14px;margin-bottom:3px}
 </style>
@@ -34,9 +57,9 @@
         <div class="fg"><label>First Name *</label><input id="fname" placeholder="Jane" autocomplete="given-name"></div>
         <div class="fg"><label>Last Name *</label><input id="lname" placeholder="Doe" autocomplete="family-name"></div>
       </div>
-      <div class="fg"><label>Organization / Name *</label><input id="orgname" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
+      <div class="fg"><label>Business or Organization Name *</label><input id="orgname" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
       <div class="fg"><label>Email *</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email"></div>
-      <div class="fg"><label>Phone *</label><input id="phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel"></div>
+      <div class="fg"><label>Phone * <span style="font-weight:400;color:var(--text2);font-size:12px">Include country code (e.g. +1 for US)</span></label><input id="phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel" pattern="\+[1-9][0-9]{6,14}" oninput="validatePhone(this)"><div id="phone-hint" class="xs text2" style="margin-top:4px"></div></div>
       <div class="fg"><label>Password * <span style="font-weight:400;color:var(--text2);font-size:12px">(at least 8 characters)</span></label><input id="pass" type="password" autocomplete="new-password"></div>
       <div class="fg"><label>Confirm Password *</label><input id="pass2" type="password" autocomplete="new-password"></div>
 
@@ -58,6 +81,16 @@
 <script>
 if (Auth.token()) window.location = '/dashboard.html';
 document.addEventListener('keydown', e => { if (e.key === 'Enter') signup(); });
+
+function validatePhone(input) {
+  const val = input.value.trim();
+  const hint = document.getElementById('phone-hint');
+  if (!val) { hint.textContent = ''; return; }
+  if (!val.startsWith('+')) { hint.textContent = 'Must start with country code, e.g. +1 (US), +44 (UK), +972 (Israel)'; hint.style.color='var(--warn)'; return; }
+  const digits = val.replace(/[^0-9]/g,'').length;
+  if (digits < 7 || digits > 15) { hint.textContent = 'Invalid length — most numbers are 10–15 digits including country code'; hint.style.color='var(--warn)'; return; }
+  hint.textContent = 'Looks good!'; hint.style.color='var(--green)';
+}
 
 async function signup() {
   const fname  = document.getElementById('fname').value.trim();
@@ -85,7 +118,11 @@ async function signup() {
     Auth.set(data.token, data.user);
     window.location = '/dashboard.html';
   } catch(e) {
-    err.textContent = e.message; err.style.display = 'block';
+    let msg = e.message;
+    if (msg.includes('already exists') || msg === 'ACCOUNT_EXISTS') {
+      msg = 'An account with this email already exists. <a href="/login.html" style="color:var(--navy);font-weight:600">Sign in instead →</a>';
+    }
+    err.innerHTML = msg; err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Create Free Account →';
   }
 }

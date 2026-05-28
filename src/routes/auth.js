@@ -20,7 +20,7 @@ r.post('/signup', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const id = uuid();
-    db.prepare('INSERT INTO accounts (id,name,email,password_hash,role,is_active,demo_mode,account_tier,first_name,last_name,phone,company) VALUES (?,?,?,?,?,1,1,\'demo\',?,?,?,?)')
+    db.prepare('INSERT INTO accounts (id,name,email,password_hash,role,is_active,demo_mode,account_tier,first_name,last_name,phone,company,can_sell_online,can_send_email) VALUES (?,?,?,?,?,1,1,\'demo\',?,?,?,?,0,0)')
       .run(id, name.trim(), email.toLowerCase().trim(), hash, 'user', first_name||null, last_name||null, phone||null, company||null);
 
     // Seed demo event

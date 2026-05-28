@@ -2,157 +2,303 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EverythingShul.com — Ticket System Login</title>
-<link rel="stylesheet" href="/css/style.css">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul — Event Ticketing for Communities</title>
+<meta name="description" content="Sell tickets online, manage attendees, scan at the door, take orders by phone and SMS. Built for synagogues and community organizations.">
 <style>
-  .role-picker { display:none; }
-  .role-card {
-    display:flex; align-items:center; gap:14px;
-    padding:14px 16px; background:var(--bg3);
-    border:1.5px solid var(--border); border-radius:var(--r-lg);
-    cursor:pointer; margin-bottom:9px; transition:all .15s;
-  }
-  .role-card:hover { border-color:var(--cyan); background:var(--bg4); }
-  .role-card .rico { font-size:22px; }
-  .role-card .rname { font-size:14px; font-weight:600; }
-  .role-card .rdesc { font-size:12px; color:var(--text2); margin-top:2px; }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a3a6b;--navy2:#0d2454;--cyan:#00aadd;--gold:#c8960c;--gold2:#e8ad14;
+  --bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0;
+  --r:10px;--shadow:0 4px 20px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:var(--text);line-height:1.6}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ── NAV ─────────────────────────────────────────────── */
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-brand img{height:36px;filter:brightness(0) invert(1)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-links a.active{font-weight:700}
+.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important;padding:9px 20px!important;border-radius:8px!important}
+.btn-nav-cta:hover{background:var(--gold2)!important;transform:translateY(-1px)}
+.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important;color:#fff!important}
+.btn-nav-login:hover{border-color:rgba(255,255,255,.7)!important;background:rgba(255,255,255,.08)!important}
+
+/* ── HERO ─────────────────────────────────────────────── */
+.hero{background:linear-gradient(135deg,var(--navy) 0%,#0f2d5e 50%,var(--navy2) 100%);color:#fff;padding:90px 32px 80px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+.hero-eyebrow{display:inline-block;background:rgba(200,150,12,.2);border:1px solid rgba(200,150,12,.4);color:var(--gold2);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:20px}
+.hero h1{font-size:clamp(30px,5.5vw,58px);font-weight:900;line-height:1.1;max-width:800px;margin:0 auto 22px;letter-spacing:-.02em}
+.hero h1 em{color:var(--gold2);font-style:normal}
+.hero p{font-size:clamp(15px,2vw,19px);color:rgba(255,255,255,.78);max-width:600px;margin:0 auto 38px;line-height:1.7}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-gold{display:inline-block;background:var(--gold);color:#000;font-weight:700;padding:15px 34px;border-radius:10px;font-size:15px;transition:all .15s;border:none;cursor:pointer}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(200,150,12,.35)}
+.btn-outline{display:inline-block;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.4);font-weight:600;padding:13px 28px;border-radius:10px;font-size:15px;transition:all .15s}
+.btn-outline:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.7)}
+
+/* ── TRUST BAR ──────────────────────────────────────── */
+.trust-bar{background:var(--navy2);padding:16px 32px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08)}
+.trust-bar p{color:rgba(255,255,255,.5);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.trust-logos{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap}
+.trust-logos span{color:rgba(255,255,255,.35);font-size:13px;font-weight:600}
+
+/* ── CHANNELS ───────────────────────────────────────── */
+.channels{background:var(--bg);padding:60px 32px;text-align:center}
+.section-eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
+.section-title{font-size:clamp(22px,3vw,38px);font-weight:800;color:var(--navy);margin-bottom:12px;letter-spacing:-.01em}
+.section-sub{font-size:16px;color:var(--text2);max-width:580px;margin:0 auto 48px}
+.channel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;max-width:1000px;margin:0 auto}
+.channel-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:28px 22px;text-align:left;transition:all .2s}
+.channel-card:hover{border-color:var(--navy);box-shadow:0 8px 28px rgba(0,0,0,.09);transform:translateY(-2px)}
+.channel-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:20px}
+.channel-card h3{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.channel-card p{font-size:13px;color:var(--text2);line-height:1.65}
+.badge-new{display:inline-block;background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
+
+/* ── FEATURES ───────────────────────────────────────── */
+.features{padding:70px 32px;max-width:1060px;margin:0 auto}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px}
+.feat{padding:4px}
+.feat-ico{font-size:28px;margin-bottom:12px}
+.feat h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.feat p{font-size:13px;color:var(--text2);line-height:1.65}
+
+/* ── CUSTOMER LOGOS ─────────────────────────────────── */
+.customers{background:var(--bg);padding:56px 32px;text-align:center}
+.customer-logos{display:flex;align-items:center;justify-content:center;gap:36px;flex-wrap:wrap;margin-top:28px;max-width:900px;margin-left:auto;margin-right:auto}
+.customer-logo{height:48px;opacity:.55;filter:grayscale(1);transition:all .2s}
+.customer-logo:hover{opacity:.9;filter:none}
+.customer-placeholder{width:120px;height:48px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);font-weight:600}
+
+/* ── HOW IT WORKS ───────────────────────────────────── */
+.how{padding:70px 32px;max-width:900px;margin:0 auto;text-align:center}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;margin-top:48px}
+.step{position:relative}
+.step-num{width:40px;height:40px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;margin:0 auto 14px}
+.step h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.step p{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* ── CTA BAND ───────────────────────────────────────── */
+.cta-band{background:linear-gradient(135deg,var(--navy),var(--navy2));padding:70px 32px;text-align:center;color:#fff}
+.cta-band h2{font-size:clamp(24px,4vw,40px);font-weight:800;margin-bottom:14px;letter-spacing:-.01em}
+.cta-band p{color:rgba(255,255,255,.72);font-size:16px;margin-bottom:32px}
+
+/* ── FOOTER ─────────────────────────────────────────── */
+footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
+.footer-brand img{height:40px;filter:brightness(0) invert(1);margin-bottom:14px}
+.footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
+.footer-col h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:14px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:1060px;margin:0 auto;font-size:12px}
+.footer-bottom a{color:rgba(255,255,255,.4);margin-left:16px}
+.footer-bottom a:hover{color:rgba(255,255,255,.8)}
+
+@media(max-width:700px){
+  nav{padding:0 16px}
+  .nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .footer-brand{grid-column:1/-1}
+  .hero{padding:60px 20px 50px}
+  .channels,.features,.how,.customers,.cta-band{padding-left:20px;padding-right:20px}
+}
 </style>
 </head>
 <body>
-<div class="auth-page">
-  <div class="auth-box">
-    <div class="auth-logo" style="margin-bottom:28px">
-      <img src="/logo.png" alt="EverythingShul.com" style="width:200px;height:auto;display:block;margin:0 auto 10px">
-      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--text3)">Ticket System</p>
-    </div>
 
-    <!-- Login form -->
-    <div class="auth-card" id="login-form">
-      <h2>Welcome back</h2>
-      <p class="sub">Sign in to manage your events</p>
-      <div id="err" style="display:none" class="info-box warn mb16"></div>
-      <div class="fg"><label>Email</label><input id="email" type="email" placeholder="you@example.com" autofocus></div>
-      <div class="fg"><label>Password</label><input id="pass" type="password" placeholder="••••••••"></div>
-      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:11px;margin-top:4px" onclick="login()">Sign in →</button>
-    </div>
+<nav>
+  <a href="/" class="nav-brand">
+    <img src="/logo.png" alt="EverythingShul">
+  </a>
+  <div class="nav-links">
+    <a href="/" class="active">Home</a>
+    <a href="/pricing.html">Pricing</a>
+    <a href="/faq.html">FAQ</a>
+    <a href="/login.html" class="btn-nav-login">Sign In</a>
+    <a href="/signup.html" class="btn-nav-cta">Start Free</a>
+  </div>
+</nav>
 
-    <!-- Dual-role picker (shown when user has multiple roles) -->
-    <div class="auth-card role-picker" id="role-picker">
-      <h2>Choose your role</h2>
-      <p class="sub" style="margin-bottom:18px">You have access in multiple capacities. Which would you like to use now?</p>
-      <div id="role-options"></div>
-    </div>
-
-    <div class="auth-foot">New here? <a href="/signup.html">Create free account</a> &nbsp;·&nbsp; <a href="/landing.html">Learn more</a></div>
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-eyebrow">Built for synagogues &amp; communities</div>
+  <h1 id="hero-title">Event Ticketing That <em>Works the Way You Do</em></h1>
+  <p id="hero-subtitle">Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.</p>
+  <div class="hero-btns">
+    <a href="/signup.html" class="btn-gold" id="cta-primary">Get Started Free →</a>
+    <a href="/pricing.html" class="btn-outline" id="cta-secondary">View Pricing</a>
   </div>
 </div>
 
-<script src="/js/app.js"></script>
+<!-- Trust bar / Customer logos -->
+<div class="trust-bar">
+  <p>Trusted by organizations across the US</p>
+  <div class="trust-logos" id="trust-logos">
+    <span>Add your customers here via Admin</span>
+  </div>
+</div>
+
+<!-- Sales Channels -->
+<div class="channels">
+  <div class="section-eyebrow">Multiple ways to sell</div>
+  <div class="section-title">Meet your guests where they are</div>
+  <div class="section-sub">Not everyone buys tickets online. EverythingShul lets guests purchase the way they prefer.</div>
+  <div class="channel-grid">
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#e8f4fb">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a6b9a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <h3>Online Sales Page</h3>
+      <p>A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.</p>
+    </div>
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#fef3c7">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.9.372 1.845.566 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </div>
+      <h3>IVR Phone Ordering <span class="badge-new">NEW</span></h3>
+      <p>Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.</p>
+    </div>
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#dcfce7">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <h3>SMS Ordering <span class="badge-new">NEW</span></h3>
+      <p>Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.</p>
+    </div>
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#f3e8ff">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b21a8" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>Staff Portal Sale</h3>
+      <p>Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<div class="features">
+  <div style="text-align:center;margin-bottom:48px">
+    <div class="section-eyebrow">Everything included</div>
+    <div class="section-title">All the tools you need</div>
+  </div>
+  <div class="features-grid" id="features-grid">
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    </div><h3>Attendee Management</h3><p>Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div><h3>Door Scanner</h3><p>Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div><h3>Staff Tickets</h3><p>Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+    </div><h3>Promo Codes</h3><p>Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div><h3>Your Own Stripe</h3><p>Connect your Stripe account. All funds go directly to you — we never touch your money.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+    </div><h3>Reports &amp; Stats</h3><p>Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div><h3>Demo Mode</h3><p>Every account starts with a full demo event loaded with sample data — explore everything before going live.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 2.93 19.07m16.14 0A10 10 0 0 0 4.93 4.93"/></svg>
+    </div><h3>Capacity Control</h3><p>Set max tickets per event or per level, with automatic alerts when you're getting close.</p></div>
+  </div>
+</div>
+
+<!-- Customer logos -->
+<div class="customers" id="customers-section">
+  <div class="section-eyebrow">Our customers</div>
+  <div class="section-title">Organizations that trust us</div>
+  <div class="customer-logos" id="customer-logos">
+    <!-- Populated from admin site content or placeholder -->
+    <div class="customer-placeholder">Add Logo</div>
+    <div class="customer-placeholder">Add Logo</div>
+    <div class="customer-placeholder">Add Logo</div>
+    <div class="customer-placeholder">Add Logo</div>
+  </div>
+  <p class="text-sm" style="font-size:12px;color:var(--text2);margin-top:20px">Contact us to have your organization featured here.</p>
+</div>
+
+<!-- How it works -->
+<div class="how">
+  <div class="section-eyebrow">Simple setup</div>
+  <div class="section-title">Up and running in minutes</div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3>Create your account</h3><p>Sign up free. Your demo event is ready instantly with sample data to explore.</p></div>
+    <div class="step"><div class="step-num">2</div><h3>Connect Stripe</h3><p>Link your own Stripe account. All ticket revenue goes directly to you.</p></div>
+    <div class="step"><div class="step-num">3</div><h3>Create your event</h3><p>Add details, set ticket levels, enable online sales, phone ordering, or both.</p></div>
+    <div class="step"><div class="step-num">4</div><h3>Sell &amp; scan</h3><p>Share your ticket link, scan QR codes at the door, track everything in real time.</p></div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2>Ready to run a better event?</h2>
+  <p>Start free with a full demo — no credit card required.</p>
+  <a href="/signup.html" class="btn-gold">Create Your Free Account →</a>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <img src="/logo.png" alt="EverythingShul">
+      <p>Professional event ticketing for synagogues, community organizations, and private events. Sell online, by phone, or by SMS.</p>
+      <p style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.35)">
+        <a href="mailto:everythingshul@gmail.com" style="color:rgba(255,255,255,.5)">everythingshul@gmail.com</a>
+      </p>
+    </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <a href="/pricing.html">Pricing</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/signup.html">Get Started Free</a>
+      <a href="/login.html">Sign In</a>
+    </div>
+    <div class="footer-col">
+      <h4>Features</h4>
+      <a href="/signup.html">Online Sales</a>
+      <a href="/signup.html">Phone &amp; SMS Orders</a>
+      <a href="/signup.html">Door Scanner</a>
+      <a href="/signup.html">Staff Tickets</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="/terms.html">Terms &amp; Conditions</a>
+      <a href="/pricing.html">Pricing</a>
+      <a href="mailto:everythingshul@gmail.com">Contact Us</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2025 EverythingShul.com — Ticket System</span>
+    <div>
+      <a href="/terms.html">Terms</a>
+      <a href="/pricing.html">Pricing</a>
+      <a href="mailto:everythingshul@gmail.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
 <script>
-  if (Auth.token()) window.location = '/dashboard.html';
-  document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.getElementById('login-form').style.display !== 'none') login(); });
-
-  // Show message if logged out due to role change
-  const msg = sessionStorage.getItem('hrtb_logout_msg');
-  if (msg) {
-    const err = document.getElementById('err');
-    err.textContent = msg;
-    err.className = 'info-box tip mb16';
-    err.style.display = 'block';
-    sessionStorage.removeItem('hrtb_logout_msg');
-  }
-
-  let pendingLoginData = null;
-
-  async function login() {
-    const email = document.getElementById('email').value.trim();
-    const pass = document.getElementById('pass').value;
-    const err = document.getElementById('err');
-    err.style.display = 'none';
-    if (!email || !pass) { err.textContent = 'Enter your email and password'; err.style.display = 'block'; return; }
-    try {
-      const data = await api.auth.login({ email, password: pass });
-      pendingLoginData = data;
-
-      // Check if user has multiple roles (dual-role)
-      const choices = buildRoleChoices(data);
-      if (choices.length > 1) {
-        showRolePicker(choices, data);
-      } else {
-        completeLogin(data);
-      }
-    } catch(e) { err.textContent = e.message; err.style.display = 'block'; }
-  }
-
-  function buildRoleChoices(data) {
-    const { user, memberships = [] } = data;
-    const choices = [];
-
-    // Own admin/user role
-    if (user.role === 'admin') {
-      choices.push({ type: 'system', label: 'System Admin', desc: 'Full access to all accounts and settings', icon: '', role: 'admin' });
-    } else if (!memberships.length) {
-      choices.push({ type: 'own', label: 'My Account', desc: 'Access your events', icon: '', role: 'user' });
-    }
-
-    // Each membership (they're a member of someone else's account)
-    for (const m of memberships) {
-      choices.push({
-        type: 'member',
-        label: m.account_name,
-        desc: `${m.member_role === 'owner' ? 'Owner' : 'Member'} of this account`,
-        icon: m.member_role === 'owner' ? '' : '',
-        accountId: m.account_id,
-        role: m.member_role
-      });
-    }
-
-    // Also show own account if they have memberships too
-    if (memberships.length && user.role !== 'admin') {
-      choices.unshift({ type: 'own', label: 'My Own Events', desc: 'Access events under your own account', icon: '', role: 'user' });
-    }
-
-    return choices;
-  }
-
-  function showRolePicker(choices, data) {
-    document.getElementById('login-form').style.display = 'none';
-    const picker = document.getElementById('role-picker');
-    picker.style.display = 'block';
-    document.getElementById('role-options').innerHTML = choices.map((c, i) => `
-      <div class="role-card" onclick="selectRole(${i})">
-        <div class="rico">${c.icon}</div>
-        <div>
-          <div class="rname">${esc(c.label)}</div>
-          <div class="rdesc">${esc(c.desc)}</div>
-        </div>
-      </div>`).join('');
-    picker.choices = choices;
-  }
-
-  function selectRole(idx) {
-    const choice = document.getElementById('role-picker').choices[idx];
-    // Store selected context
-    if (choice.accountId) {
-      localStorage.setItem('hrtb_context_account', choice.accountId);
-    } else {
-      localStorage.removeItem('hrtb_context_account');
-    }
-    completeLogin(pendingLoginData);
-  }
-
-  function completeLogin(data) {
-    Auth.set(data.token, data.user);
-    // Store memberships for account switcher
-    const memberships = (data.memberships || []).map(m => ({
-      accountId: m.account_id,
-      accountName: m.account_name,
-      role: m.member_role
-    }));
-    localStorage.setItem('hrtb_memberships', JSON.stringify(memberships));
-    window.location = '/dashboard.html';
-  }
+// Load editable content from admin
+fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
+  if (c['home.hero_title']) document.getElementById('hero-title').innerHTML = c['home.hero_title'].replace(/\*(.*?)\*/g,'<em>$1</em>');
+  if (c['home.hero_subtitle']) document.getElementById('hero-subtitle').textContent = c['home.hero_subtitle'];
+  if (c['home.cta_primary']) document.getElementById('cta-primary').textContent = c['home.cta_primary'] + ' →';
+  if (c['home.cta_secondary']) document.getElementById('cta-secondary').textContent = c['home.cta_secondary'];
+}).catch(() => {});
 </script>
 </body>
 </html>

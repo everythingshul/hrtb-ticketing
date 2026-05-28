@@ -6,6 +6,29 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Terms and Conditions — EverythingShul</title>
 <style>
+
+:root{--navy:#1a3a6b;--navy2:#0d2454;--gold:#c8960c;--gold2:#e8ad14;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand{display:flex;align-items:center;gap:12px}.nav-brand img{height:36px;filter:brightness(0) invert(1)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s;text-decoration:none}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-links a.active{font-weight:700}
+.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important}
+.btn-nav-cta:hover{background:var(--gold2)!important}
+.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important}
+footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
+.footer-brand img{height:38px;filter:brightness(0) invert(1);margin-bottom:12px;display:block}
+.footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
+.footer-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:12px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;text-decoration:none;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:1060px;margin:0 auto;font-size:12px}
+.footer-bottom a{color:rgba(255,255,255,.4);margin-left:14px;text-decoration:none}
+.footer-bottom a:hover{color:rgba(255,255,255,.8)}
+@media(max-width:700px){nav{padding:0 16px}.nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}.footer-grid{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}}
+
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#1a3a6b;--gold:#c8960c;--bg:#f8fafc;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
@@ -32,12 +55,15 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
 </head>
 <body>
 <nav>
-  <div class="nav-logo"><img src="/logo.png" alt="EverythingShul"><span>Ticket System</span></div>
+  <a href="/" class="nav-brand">
+    <img src="/logo.png" alt="EverythingShul">
+  </a>
   <div class="nav-links">
-    <a href="/landing.html">Home</a>
-    <a href="/pricing.html">Pricing</a>
-    <a href="/faq.html">FAQ</a>
-    <a href="/signup.html" class="btn-gold">Get Started →</a>
+    <a href="/" id="nav-home">Home</a>
+    <a href="/pricing.html" id="nav-pricing">Pricing</a>
+    <a href="/faq.html" id="nav-faq">FAQ</a>
+    <a href="/login.html" class="btn-nav-login">Sign In</a>
+    <a href="/signup.html" class="btn-nav-cta">Start Free</a>
   </div>
 </nav>
 <div class="hero">
@@ -48,18 +74,62 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
   <div class="content-body" id="terms-body">Loading…</div>
 </div>
 <footer>
-  <a href="/landing.html">Home</a><a href="/pricing.html">Pricing</a><a href="/faq.html">FAQ</a><a href="/index.html">Sign In</a>
-  <div style="margin-top:8px">&copy; 2025 EverythingShul.com</div>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <img src="/logo.png" alt="EverythingShul">
+      <p>Professional event ticketing for synagogues, community organizations, and private events.</p>
+      <p style="margin-top:10px;font-size:12px"><a href="mailto:everythingshul@gmail.com" style="color:rgba(255,255,255,.5)">everythingshul@gmail.com</a></p>
+    </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <a href="/pricing.html">Pricing</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/signup.html">Get Started Free</a>
+      <a href="/login.html">Sign In</a>
+    </div>
+    <div class="footer-col">
+      <h4>Features</h4>
+      <a href="/signup.html">Online Sales</a>
+      <a href="/signup.html">Phone &amp; SMS Orders</a>
+      <a href="/signup.html">Door Scanner</a>
+      <a href="/signup.html">Staff Tickets</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="/terms.html">Terms &amp; Conditions</a>
+      <a href="/pricing.html">Pricing</a>
+      <a href="mailto:everythingshul@gmail.com">Contact Us</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2025 EverythingShul.com</span>
+    <div>
+      <a href="/terms.html">Terms</a>
+      <a href="/pricing.html">Pricing</a>
+      <a href="mailto:everythingshul@gmail.com">Contact</a>
+    </div>
+  </div>
 </footer>
 <script>
-fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
-  document.getElementById('terms-title').textContent = c['terms.title'] || 'Terms and Conditions';
-  document.title = (c['terms.title'] || 'Terms and Conditions') + ' — EverythingShul';
-  if (c['terms.last_updated']) document.getElementById('terms-updated').textContent = 'Last updated: ' + c['terms.last_updated'];
-  document.getElementById('terms-body').innerHTML = c['terms.content'] || '<p>Terms not yet configured. Check back soon.</p>';
-}).catch(() => {
-  document.getElementById('terms-body').textContent = 'Could not load terms. Please try again.';
-});
+fetch('/api/admin/site-content')
+  .then(r => r.ok ? r.json() : Promise.reject(r.status))
+  .then(({ content: c }) => {
+    document.getElementById('terms-title').textContent = c['terms.title'] || 'Terms and Conditions';
+    document.title = (c['terms.title'] || 'Terms and Conditions') + ' — EverythingShul';
+    if (c['terms.last_updated']) document.getElementById('terms-updated').textContent = 'Last updated: ' + c['terms.last_updated'];
+    const body = c['terms.content'];
+    document.getElementById('terms-body').innerHTML = body && body.trim()
+      ? body
+      : `<h2>Terms and Conditions</h2>
+         <p>By using EverythingShul Ticket System, you agree to these terms. This page is editable by the administrator in Admin → Site Content.</p>
+         <h2>Contact</h2><p>Questions? Email us at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a></p>`;
+  })
+  .catch(() => {
+    document.getElementById('terms-body').innerHTML = `
+      <h2>Terms and Conditions</h2>
+      <p>Our terms are being finalized. For questions, contact us at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a></p>`;
+  });
+document.getElementById('nav-pricing') && document.getElementById('nav-pricing').removeAttribute('class');
 </script>
 </body>
 </html>
