@@ -411,12 +411,30 @@ r.get('/debug-staff/:eventId', auth, (req, res) => {
   res.json({ levels, staffLevelIds, attendees: allAtt, staffAttendees: allAtt.filter(a=>a.source==='staff'), offlineWithStaffLevel: allAtt.filter(a=>a.source!=='staff'&&staffLevelIds.includes(a.level_id)) });
 });
 
-// Toggle can_send_email
-r.patch('/accounts/:id/can-send-email', (req, res) => {
-  const { enabled } = req.body;
-  db.prepare('UPDATE accounts SET can_send_email=? WHERE id=?').run(enabled ? 1 : 0, req.params.id);
-  res.json({ ok: true });
+// Contact admin — sends email from SMTP to admin address, user sees a form
+r.post('/contact', async (req, res) => {
+  const { from_name, from_email, subject, message, event_name, event_id } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'Message is required' });
+  try {
+    const { sendMail } = await import('../services/mail.js');
+    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.SUPPORT_EMAIL || 'everythingshul@gmail.com';
+    const body = `
+      <p><strong>From:</strong> ${from_name||'Unknown'} &lt;${from_email||'no email'}&gt;</p>
+      ${event_name ? `<p><strong>Event:</strong> ${event_name}${event_id ? ` (ID: ${event_id})` : ''}</p>` : ''}
+      <p><strong>Subject:</strong> ${subject||'Support Request'}</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:16px 0">
+      <p style="white-space:pre-wrap">${message.replace(/</g,'&lt;')}</p>
+    `;
+    await sendMail({
+      to: adminEmail,
+      replyTo: from_email || undefined,
+      subject: `[EverythingShul Support] ${subject||'Support Request'}`,
+      html: body
+    });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
+
 r.patch('/accounts/:id/email', (req, res) => {
   const { enabled } = req.body;
   db.prepare('UPDATE accounts SET can_send_email=? WHERE id=?').run(enabled ? 1 : 0, req.params.id);

@@ -146,45 +146,72 @@ const defaultContent = {
   'pricing.tier3_features': 'Unlimited events\nOnline ticket sales\nEmail delivery\nAll features\nPriority support',
   'faq.title': 'Frequently Asked Questions',
   'faq.items': JSON.stringify([
-    { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore the full system with a demo event at no cost. A credit card is only needed when you\'re ready to run a live event with ticket sales.' },
-    { q: 'How does payment processing work?', a: 'You connect your own Stripe account to collect payments directly. EverythingShul does not handle your money — all funds go straight to your Stripe account.' },
-    { q: 'Can I import my existing attendee list?', a: 'Yes. Upload a CSV or Excel file with your attendee list and the system will match, import, and send tickets automatically.' },
-    { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a PIN for each entrance, open the scanner page, and you\'re ready. Works offline too.' },
-    { q: 'Can I have multiple entrances with different access levels?', a: 'Yes. Each door scanner PIN can be restricted to specific ticket levels, so VIP entrances only let through VIP tickets.' },
-    { q: 'What is a staff ticket?', a: 'Staff tickets use a business card ID badge format and are tracked separately from guest attendees. They don\'t count toward your event capacity.' },
-    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private Render deployment. Passwords are hashed. Stripe handles all payment data — we never store card numbers.' }
+    { q: 'Do I need a credit card to sign up?', a: 'No. Sign up free and explore everything with a demo event. A credit card is only needed when you create your first live event.' },
+    { q: 'How does payment processing work?', a: 'You connect your own Stripe account. All ticket revenue goes directly to your Stripe — we never touch your money. Stripe charges their standard processing fees.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes. Each event can have its own dedicated phone number. Guests call or text that number and go through a fully automated checkout — no staff needed. They pay by card directly through the phone or text conversation.' },
+    { q: 'Can I import my existing attendee list?', a: 'Yes. Upload a CSV or Excel file. The system imports all attendees, optionally matches duplicates, and can automatically send everyone their tickets.' },
+    { q: 'How does the door scanner work?', a: 'Any smartphone or tablet can scan QR codes. Create a PIN for each entrance, open the scanner page on any device, and you\'re ready. Multiple simultaneous entrances are supported. Scanners can be restricted to specific ticket levels.' },
+    { q: 'What is a staff ticket?', a: 'Staff tickets use a business card-style ID badge PDF and are tracked separately from guest attendees. They don\'t count toward capacity and always receive "Access Granted" at the scanner regardless of check-in status.' },
+    { q: 'Can I set a seating chart or table assignments?', a: 'Yes. You can assign table and seat numbers to each attendee, either individually or by upload. Enable the seating feature in your event settings to show this column.' },
+    { q: 'What happens when my event is over?', a: 'Events automatically close 48 hours after the end date you set. Once closed, all data is locked — no changes can be made, but everything is preserved for records. Contact us to reopen if needed.' },
+    { q: 'Can I run multiple events?', a: 'Yes, as many as you need. Each event has its own ticket levels, sale page, promo codes, scanner setup, staff, and phone number.' },
+    { q: 'Can I use promo codes?', a: 'Yes. Create percent or fixed-dollar discount codes with optional expiry dates, usage limits, per-level limits, and email restrictions.' },
+    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all online payment data — card numbers are never stored. For phone and SMS orders, card digits go directly from the caller to Stripe and are never written to disk.' },
+    { q: 'How do I get started?', a: 'Sign up free — your account comes with a fully loaded demo event so you can explore every feature immediately. When ready to go live, connect your Stripe account and create your first real event.' },
+  ]),
+  'faq.items': JSON.stringify([
+    { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real, live event.' },
+    { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it. For phone and SMS orders, payments are processed through our platform Stripe account and your attendee is issued a ticket just like an online order.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! EverythingShul supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Both are available on request — contact us to get a phone number assigned to your event.' },
+    { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file with your attendee list and the system will import everyone, match any existing records, and optionally email tickets to everyone automatically.' },
+    { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes at the door. You create a scanner PIN for each entrance — your staff just open the scanner page on any device and scan. No app download required. Multiple entrances can run simultaneously.' },
+    { q: 'Can I have VIP entrances that only admit certain ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always get through regardless.' },
+    { q: 'What is a staff ticket?', a: 'Staff tickets are a completely separate system from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward your event capacity, and always scan as Access Granted at the door.' },
+    { q: 'Can I set a maximum number of tickets?', a: 'Yes. Set a capacity limit per event or per ticket level. You can also set a warning threshold — when you reach it, you get an email alert. Online sales automatically stop when capacity is reached.' },
+    { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats, attendee info, and export data, but no changes can be made. Admins can reopen a closed event at any time.' },
+    { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event is completely independent with its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
+    { q: 'What are promo codes?', a: 'Promo codes let you offer discounts. You can set a percentage off, a fixed dollar amount off, an expiry date, a maximum number of uses, a spending cap, and even restrict a code to specific email addresses. Codes are entered by the buyer on the checkout page.' },
+    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private deployment. Passwords are hashed with bcrypt. Stripe handles all payment card data — we never store card numbers anywhere. For phone and SMS orders, card digits travel from Twilio directly to Stripe in memory and are never written to disk or database.' },
+    { q: 'What does the demo account include?', a: 'Your demo account comes with a fully loaded demo event: 12 sample attendees with different statuses and ticket levels, 2 staff members, a promo code, and a working scanner PIN. You can explore every single feature without any real data.' },
   ]),
   'terms.title': 'Terms and Conditions',
   'terms.last_updated': new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
   'terms.content': `<h2>1. Acceptance of Terms</h2>
-<p>By creating an account and using EverythingShul Ticket System, you agree to these Terms and Conditions. If you do not agree, do not use the service.</p>
+<p>By creating an account and using the EverythingShul Ticket System ("the Service"), you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
 
-<h2>2. Service Description</h2>
-<p>EverythingShul Ticket System provides event ticketing software allowing you to sell tickets, manage attendees, and process check-ins. We are a software platform — we do not organize events or sell tickets on your behalf.</p>
+<h2>2. Description of Service</h2>
+<p>EverythingShul Ticket System is a software platform that allows organizations to sell event tickets, manage attendees, process check-ins at the door, and collect payments. We are a software provider — we do not organize events or sell tickets on behalf of our users.</p>
 
-<h2>3. Account Responsibilities</h2>
-<p>You are responsible for maintaining the security of your account credentials and for all activity that occurs under your account. You must provide accurate information when registering.</p>
+<h2>3. Account Registration</h2>
+<p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. Notify us immediately of any unauthorized access at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a>.</p>
 
 <h2>4. Demo Accounts</h2>
-<p>Free demo accounts are provided for evaluation purposes only. Demo events cannot process real payments or send emails to attendees. Upgrade to a paid plan to run live events.</p>
+<p>All new accounts begin in Demo Mode with a fully featured demo event for evaluation purposes. Demo accounts cannot process real payments or send ticket emails to real attendees. To run a live event, you must purchase a plan. Your demo event remains accessible at no cost indefinitely.</p>
 
-<h2>5. Payment Processing</h2>
-<p>Ticket sales are processed through your own Stripe account. EverythingShul is not responsible for payment disputes, refunds, or chargebacks. You must comply with Stripe's Terms of Service.</p>
+<h2>5. Payments and Billing</h2>
+<p>Creating live events requires a one-time fee per event (or as otherwise indicated at the time of purchase). Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service in addition to these terms.</p>
 
-<h2>6. Event Data</h2>
-<p>You retain ownership of your event data and attendee information. By using our platform, you grant us a limited license to store and process this data solely to provide the service.</p>
+<h2>6. Ticket Sales and Payment Processing</h2>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to your Stripe account — EverythingShul does not hold or transmit your ticket sale funds. You are solely responsible for refunds, disputes, chargebacks, and compliance with consumer protection laws in your jurisdiction.</p>
+<p>Phone and SMS ticket orders are processed through our platform Stripe account under our MOTO (Mail Order/Telephone Order) approval. You are responsible for ensuring compliance with card network rules when enabling phone ordering.</p>
 
-<h2>7. Prohibited Uses</h2>
-<p>You may not use the platform for illegal activities, fraud, spam, or any purpose that violates applicable law. We reserve the right to suspend accounts for violations.</p>
+<h2>7. Your Data and Attendee Information</h2>
+<p>You retain full ownership of your event data and attendee information. By using the Service, you grant us a limited, non-exclusive license to store and process this data solely for the purpose of providing the Service. We do not sell, share, or use your attendee data for any purpose other than operating the platform. You are responsible for obtaining any necessary consent from your attendees to collect and process their personal information.</p>
 
-<h2>8. Limitation of Liability</h2>
-<p>The service is provided "as is." EverythingShul is not liable for any indirect, incidental, or consequential damages arising from your use of the platform.</p>
+<h2>8. Acceptable Use</h2>
+<p>You agree not to use the Service for any unlawful purpose, including fraud, phishing, spam, or any activity that violates applicable laws. We reserve the right to suspend or terminate accounts that violate these terms without notice.</p>
 
-<h2>9. Changes to Terms</h2>
-<p>We may update these terms at any time. Continued use of the service after changes constitutes acceptance of the revised terms.</p>
+<h2>9. Service Availability</h2>
+<p>We aim for maximum uptime but do not guarantee uninterrupted availability. We are not liable for losses resulting from service interruptions. We recommend exporting your attendee list before any major event as a precaution.</p>
 
-<h2>10. Contact</h2>
-<p>For questions about these terms, contact us at <a href="mailto:hello@everythingshul.com">hello@everythingshul.com</a>.</p>`
+<h2>10. Limitation of Liability</h2>
+<p>The Service is provided "as is" without warranty of any kind. To the maximum extent permitted by law, EverythingShul shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including lost revenue, lost data, or event disruptions.</p>
+
+<h2>11. Changes to These Terms</h2>
+<p>We may update these Terms at any time. Continued use of the Service after changes constitutes acceptance. We recommend checking this page periodically.</p>
+
+<h2>12. Contact Us</h2>
+<p>For questions about these Terms, contact us at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a></p>`
 };
 for (const [key, value] of Object.entries(defaultContent)) {
   try { db.prepare('INSERT OR IGNORE INTO site_content (key, value) VALUES (?,?)').run(key, value); } catch {}

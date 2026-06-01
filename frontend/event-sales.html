@@ -99,6 +99,19 @@
           </div>
         </div>
 
+        <div class="setting-card">
+          <div class="setting-hd">
+            <div>
+              <div class="setting-title">Allow unconfirmed check-in <span class="tip-icon" data-tip="When off, only guests who have been activated can check in at the door.">i</span></div>
+              <div class="setting-sub">When off, only activated guests can scan at the door</div>
+            </div>
+            <label class="toggle-pill">
+              <input type="checkbox" id="allow-unconfirmed" onchange="saveSaleSetting('allow_unconfirmed_checkin',this.checked)">
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+        </div>
+
         <div class="setting-card full">
           <div class="setting-title mb12">Sale Page Image</div>
           <div class="row" style="gap:8px">
@@ -238,6 +251,7 @@ function renderSettings() {
   document.getElementById('url-prefix').textContent = prefix;
   document.getElementById('sale-enabled').checked = !!s.sale_enabled;
   document.getElementById('allow-activation').checked = !!s.allow_activation;
+  document.getElementById('allow-unconfirmed').checked = s.allow_unconfirmed_checkin !== 0;
 
   // Slug field
   const isAdmin = Auth.user()?.role === 'admin';

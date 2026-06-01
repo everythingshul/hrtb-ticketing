@@ -156,6 +156,7 @@ const api = {
     restore: data => req('/admin/restore', { method: 'POST', body: JSON.stringify(data) }),
     maintenanceStatus: () => req('/admin/maintenance'),
     setMaintenance: enabled => req('/admin/maintenance', { method: 'POST', body: JSON.stringify({ enabled }) }),
+    contactAdmin: data => req('/admin/contact', { method: 'POST', body: JSON.stringify(data) }),
     getSiteContent: () => req('/admin/site-content'),
     updateSiteContent: updates => req('/admin/site-content', { method: 'PATCH', body: JSON.stringify({ updates }) }),
   },
@@ -233,9 +234,9 @@ function renderSidebar(activePage) {
       ${nav(`event-detail.html?id=${currentEventId}`, '↳ Attendees')}
       ${nav(`event-staff.html?id=${currentEventId}`, '↳ Staff')}
       ${nav(`event-stats.html?id=${currentEventId}`, '↳ Stats')}
-      ${nav(`event-levels.html?id=${currentEventId}`, '↳ Ticket Levels')}
+      ${nav(`event-levels.html?id=${currentEventId}`, '↳ Levels')}
       ${nav(`event-sales.html?id=${currentEventId}`, '↳ Online Sales')}
-      ${nav(`event-sell.html?id=${currentEventId}`, '↳ Sell Ticket')}
+      ${nav(`event-sell.html?id=${currentEventId}`, '↳ Sell')}
     </div>` : '';
 
   sidebar.innerHTML = `

@@ -39,14 +39,14 @@
       </div>
 
       <!-- Per Level: check-in rate -->
-      <div class="card" id="card-level-checkin" style="display:none">
+      <div class="card" id="card-level-checkin">
         <div class="section-title mb16">Check-in Rate by Ticket Level</div>
         <canvas id="chart-level-checkin" height="260"></canvas>
         <div id="legend-level-checkin" style="margin-top:14px"></div>
       </div>
 
       <!-- Per Level: ticket count -->
-      <div class="card" id="card-level-count" style="display:none">
+      <div class="card" id="card-level-count">
         <div class="section-title mb16">Ticket Count by Level</div>
         <canvas id="chart-level-count" height="260"></canvas>
         <div id="legend-level-count" style="margin-top:14px"></div>
@@ -60,7 +60,7 @@
       </div>
 
       <!-- Staff tickets -->
-      <div class="card" id="card-staff" style="display:none">
+      <div class="card" id="card-staff">
         <div class="section-title mb16">Staff Tickets by Level</div>
         <canvas id="chart-staff" height="260"></canvas>
         <div id="legend-staff" style="margin-top:14px"></div>
@@ -107,13 +107,24 @@ function makeLegend(items) {
 }
 
 function buildPie(canvasId, labels, data, colors) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return;
+  const total = data.reduce((s,v) => s+v, 0);
+  // If no data, show a grey empty ring
+  const chartData = total > 0 ? data : [1];
+  const chartColors = total > 0 ? colors : ['#e5e7eb'];
+  const chartLabels = total > 0 ? labels : ['No data yet'];
   return new Chart(ctx, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+    data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: total > 0 ? 2 : 0, borderColor: '#fff' }] },
     options: {
       cutout: '60%',
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw}` } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: total > 0
+          ? { callbacks: { label: c => ` ${c.label}: ${c.raw}` } }
+          : { enabled: false }
+      },
       responsive: true
     }
   });
@@ -145,16 +156,13 @@ async function load() {
     <div class="stat"><div class="stat-label">Confirmed</div><div class="stat-val green">${confirmed}</div></div>
     <div class="stat"><div class="stat-label">Not Confirmed</div><div class="stat-val orange">${unconfirmed}</div></div>`;
 
-  // Status pie
-  const statusKeys = Object.keys(byStatus).filter(k => byStatus[k] > 0);
-  const statusTotal = statusKeys.reduce((s,k) => s + byStatus[k], 0);
-  buildPie('chart-status',
-    statusKeys.map(k => STATUS_LABELS[k]),
-    statusKeys.map(k => byStatus[k]),
-    statusKeys.map(k => STATUS_COLORS[k])
-  );
+  // Status pie — always show all categories
+  const statusAllKeys = ['pending','sent','checked','preprint','deactivated'];
+  const statusValues = statusAllKeys.map(k => byStatus[k]||0);
+  const statusTotal = statusValues.reduce((s,v)=>s+v, 0);
+  buildPie('chart-status', statusAllKeys.map(k=>STATUS_LABELS[k]), statusValues, statusAllKeys.map(k=>STATUS_COLORS[k]));
   document.getElementById('legend-status').innerHTML = makeLegend(
-    statusKeys.map(k => ({ color: STATUS_COLORS[k], label: STATUS_LABELS[k], value: byStatus[k], pct: statusTotal ? Math.round(byStatus[k]/statusTotal*100) : 0 }))
+    statusAllKeys.map(k => ({ color:STATUS_COLORS[k], label:STATUS_LABELS[k], value:byStatus[k]||0, pct:statusTotal?Math.round((byStatus[k]||0)/statusTotal*100):0 }))
   );
 
   // Confirmation pie
@@ -176,47 +184,43 @@ async function load() {
     { color:'#27a85f', label:'Online (Stripe)',  value: online||0,  pct: sourceTotal ? Math.round((online||0)/sourceTotal*100) : 0 },
     { color:'#00aadd', label:'Offline (Manual)', value: offline||0, pct: sourceTotal ? Math.round((offline||0)/sourceTotal*100) : 0 },
   ]);
-  // Staff tickets pie — from staff table
+  // Staff pie — always show, empty if no data
+  const staffColors = (staffStats.byLevel||[]).map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
   if (staffStats.byLevel && staffStats.byLevel.length > 0 && staffStats.total > 0) {
-    document.getElementById('card-staff').style.display = 'block';
-    const staffColors = staffStats.byLevel.map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
     buildPie('chart-staff', staffStats.byLevel.map(l=>l.name), staffStats.byLevel.map(l=>l.total), staffColors);
     document.getElementById('legend-staff').innerHTML = makeLegend(
       staffStats.byLevel.map((l,i) => ({ color: staffColors[i], label: l.name, value: l.total, pct: staffStats.total ? Math.round(l.total/staffStats.total*100) : 0 }))
     );
+  } else {
+    buildPie('chart-staff', [], [], []);
+    document.getElementById('legend-staff').innerHTML = '<div class="text2 xs" style="text-align:center">No staff tickets yet</div>';
   }
-  if (byLevel && byLevel.length > 0) {
-    document.getElementById('card-level-checkin').style.display = 'block';
-    document.getElementById('card-level-count').style.display = 'block';
+  document.getElementById('card-staff').style.display = 'block';
 
+  // Level pies — always show
+  document.getElementById('card-level-checkin').style.display = 'block';
+  document.getElementById('card-level-count').style.display = 'block';
+  if (byLevel && byLevel.length > 0) {
     const allLevels = [...byLevel];
     if (noLevel > 0) allLevels.push({ name: 'No Level', total: noLevel, checked: 0, sent: 0, color: '#aaa' });
-
     const levelColors = allLevels.map((l, i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
     const levelLabels = allLevels.map(l => l.name);
     const levelTotals = allLevels.map(l => l.total);
     const levelChecked = allLevels.map(l => l.checked);
     const levelTotal = allLevels.reduce((s,l) => s+l.total, 0);
-
-    // Check-in rate per level
     buildPie('chart-level-checkin', levelLabels, levelChecked, levelColors);
     document.getElementById('legend-level-checkin').innerHTML = makeLegend(
-      allLevels.map((l,i) => ({
-        color: levelColors[i], label: l.name,
-        value: `${l.checked}/${l.total}`,
-        pct: l.total ? Math.round(l.checked/l.total*100) : 0
-      }))
+      allLevels.map((l,i) => ({ color: levelColors[i], label: l.name, value: `${l.checked}/${l.total}`, pct: l.total ? Math.round(l.checked/l.total*100) : 0 }))
     );
-
-    // Count per level
     buildPie('chart-level-count', levelLabels, levelTotals, levelColors);
     document.getElementById('legend-level-count').innerHTML = makeLegend(
-      allLevels.map((l,i) => ({
-        color: levelColors[i], label: l.name,
-        value: l.total,
-        pct: levelTotal ? Math.round(l.total/levelTotal*100) : 0
-      }))
+      allLevels.map((l,i) => ({ color: levelColors[i], label: l.name, value: l.total, pct: levelTotal ? Math.round(l.total/levelTotal*100) : 0 }))
     );
+  } else {
+    buildPie('chart-level-checkin', [], [], []);
+    buildPie('chart-level-count', [], [], []);
+    document.getElementById('legend-level-checkin').innerHTML = '<div class="text2 xs" style="text-align:center">No ticket levels yet</div>';
+    document.getElementById('legend-level-count').innerHTML = '<div class="text2 xs" style="text-align:center">No ticket levels yet</div>';
   }
 }
 

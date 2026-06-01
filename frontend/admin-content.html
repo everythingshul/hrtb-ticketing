@@ -281,18 +281,30 @@ function renderSubTab(tab) {
 }
 
 async function saveAll() {
+  // Save current tab's visible fields
   const updates = {};
   for (const { key, id } of allKeys) {
     const el = document.getElementById(id);
     if (el) updates[key] = el.value;
   }
-  // Split into site content keys vs platform settings keys
-  const siteKeys = Object.keys(updates).filter(k => !k.startsWith('platform_fee') && !k.startsWith('currency') && !k.startsWith('sms.enabled') && !k.startsWith('ivr.enabled') && !k.startsWith('pci.'));
-  const platformKeys = Object.keys(updates).filter(k => k.startsWith('platform_fee') || k.startsWith('currency') || k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.'));
+  const siteKeys = Object.keys(updates).filter(k =>
+    !k.startsWith('platform_fee') && !k.startsWith('currency') &&
+    !k.startsWith('sms.enabled') && !k.startsWith('ivr.enabled') && !k.startsWith('pci.')
+  );
+  const platformKeys = Object.keys(updates).filter(k =>
+    k.startsWith('platform_fee') || k.startsWith('currency') ||
+    k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.')
+  );
   const promises = [];
   if (siteKeys.length) promises.push(api.admin.updateSiteContent(Object.fromEntries(siteKeys.map(k=>[k,updates[k]]))));
   if (platformKeys.length) promises.push(api.connect.updateSettings(Object.fromEntries(platformKeys.map(k=>[k,updates[k]]))));
-  try { await Promise.all(promises); toast('Saved!'); } catch(e) { toast(e.message,'error'); }
+  try {
+    await Promise.all(promises);
+    // Refresh cached content
+    const [cData, psData] = await Promise.all([api.admin.getSiteContent(), api.connect.getSettings()]);
+    siteContent = { ...cData.content, ...psData.settings };
+    toast('Saved!');
+  } catch(e) { toast(e.message,'error'); }
 }
 
 // Pricing plans
