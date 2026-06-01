@@ -253,11 +253,11 @@ function renderSidebar(activePage) {
       </div>
       ${eventSubmenuHTML}
       ${user.role === 'admin' ? `<div class="sb-group"><div class="sb-group-label">Admin</div>
-        ${nav('admin.html','📊 Dashboard')}
-        ${nav('admin-accounts.html','👥 Accounts')}
-        ${nav('admin-events.html','🎟 All Events')}
-        ${nav('admin-content.html','✏️ Site Content')}
-        ${nav('admin-backup.html','💾 Backup &amp; Trash')}
+        ${nav('admin.html','Dashboard')}
+        ${nav('admin-accounts.html','Accounts')}
+        ${nav('admin-events.html','All Events')}
+        ${nav('admin-content.html','Site Content')}
+        ${nav('admin-backup.html','Backup &amp; Trash')}
       </div>` : ''}
     </nav>
     <div class="sb-foot" id="sb-foot">

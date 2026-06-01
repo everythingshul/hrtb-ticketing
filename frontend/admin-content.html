@@ -21,12 +21,12 @@
 
     <!-- Sub-tabs -->
     <div class="row mb20" style="gap:6px;border-bottom:2px solid var(--border);padding-bottom:12px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-gold" id="stab-pages" onclick="subTab('pages')">🌐 Public Pages</button>
-      <button class="btn btn-sm btn-ghost" id="stab-sms" onclick="subTab('sms')">📱 SMS Messages</button>
-      <button class="btn btn-sm btn-ghost" id="stab-ivr" onclick="subTab('ivr')">📞 IVR Messages</button>
-      <button class="btn btn-sm btn-ghost" id="stab-pricing" onclick="subTab('pricing')">💰 Pricing Plans</button>
-      <button class="btn btn-sm btn-ghost" id="stab-platform" onclick="subTab('platform')">⚙️ Platform Settings</button>
-      <button class="btn btn-sm btn-ghost" id="stab-pci" onclick="subTab('pci')">🔐 PCI Compliance</button>
+      <button class="btn btn-sm btn-gold" id="stab-pages" onclick="subTab('pages')">Public Pages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-sms" onclick="subTab('sms')">SMS Messages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-ivr" onclick="subTab('ivr')">IVR Messages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-pricing" onclick="subTab('pricing')">Pricing Plans</button>
+      <button class="btn btn-sm btn-ghost" id="stab-platform" onclick="subTab('platform')">Platform Settings</button>
+      <button class="btn btn-sm btn-ghost" id="stab-pci" onclick="subTab('pci')">PCI Compliance</button>
     </div>
 
     <div id="content-area"><div class="text2">Loading…</div></div>
@@ -83,7 +83,7 @@ function renderSubTab(tab) {
 
   if (tab === 'pages') {
     area.innerHTML = `
-      ${sectionTitle('🏠 Home Page')}
+      ${sectionTitle('Home Page')}
       ${field('home.hero_title','Hero Title')}
       ${field('home.hero_subtitle','Hero Subtitle','')}
       ${field('home.cta_primary','Primary Button Text')}
@@ -92,7 +92,7 @@ function renderSubTab(tab) {
       ${field('home.feature2_title','Feature 2 Title')} ${field('home.feature2_body','Feature 2 Body','')}
       ${field('home.feature3_title','Feature 3 Title')} ${field('home.feature3_body','Feature 3 Body','')}
       ${field('home.feature4_title','Feature 4 Title')} ${field('home.feature4_body','Feature 4 Body','')}
-      ${sectionTitle('💰 Pricing Page')}
+      ${sectionTitle('Pricing Page')}
       ${field('pricing.title','Page Title')} ${field('pricing.subtitle','Subtitle','')}
       <div class="form-row" style="gap:12px">
         <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 1 (Demo/Free)</div>
@@ -102,11 +102,11 @@ function renderSubTab(tab) {
         <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 3</div>
           ${field('pricing.tier3_name','Name')}${field('pricing.tier3_price','Price')}${field('pricing.tier3_period','Period')}${field('pricing.tier3_desc','Description','')}${field('pricing.tier3_features','Features','',80)}</div>
       </div>
-      ${sectionTitle('❓ FAQ')}
+      ${sectionTitle('FAQ')}
       ${field('faq.title','FAQ Page Title')}
       <div class="fg"><label style="font-size:12px">FAQ Items (JSON array)</label>
         <textarea id="sc-faq-items" style="min-height:200px;font-family:monospace;font-size:11px">${esc(siteContent['faq.items']||'[]')}</textarea></div>
-      ${sectionTitle('📋 Terms &amp; Conditions')}
+      ${sectionTitle('Terms &amp; Conditions')}
       ${field('terms.title','Page Title')}${field('terms.last_updated','Last Updated Date')}
       <div class="fg"><label style="font-size:12px">Content (HTML supported)</label>
         <textarea id="sc-terms-content" style="min-height:250px;font-family:monospace;font-size:12px">${esc(siteContent['terms.content']||'')}</textarea></div>
@@ -153,15 +153,22 @@ function renderSubTab(tab) {
       ['ivr.error','General Error'],['ivr.no_available','No Events Available'],
     ];
     area.innerHTML = `
-      <div class="fg mb16"><label style="font-size:12px">TTS Voice <span class="tip-icon" data-tip="Used when no recording URL is set for a message">i</span></label>
-        <select id="${voiceId}">
-          <option value="Polly.Joanna" ${voice==='Polly.Joanna'?'selected':''}>Joanna (Female, US)</option>
-          <option value="Polly.Matthew" ${voice==='Polly.Matthew'?'selected':''}>Matthew (Male, US)</option>
-          <option value="Polly.Amy" ${voice==='Polly.Amy'?'selected':''}>Amy (Female, UK)</option>
-          <option value="Polly.Brian" ${voice==='Polly.Brian'?'selected':''}>Brian (Male, UK)</option>
-        </select>
+      <div class="fg mb12">
+        <label style="font-size:12px">Global TTS Voice <span class="tip-icon" data-tip="Used when no recording URL is set. Can be overridden per event in Admin Events.">i</span></label>
+        <div class="row" style="gap:8px">
+          <select id="${voiceId}" style="flex:1">
+            <option value="Polly.Joanna" ${voice==='Polly.Joanna'?'selected':''}>Joanna (Female, US)</option>
+            <option value="Polly.Matthew" ${voice==='Polly.Matthew'?'selected':''}>Matthew (Male, US)</option>
+            <option value="Polly.Amy" ${voice==='Polly.Amy'?'selected':''}>Amy (Female, UK)</option>
+            <option value="Polly.Brian" ${voice==='Polly.Brian'?'selected':''}>Brian (Male, UK)</option>
+          </select>
+          <button class="btn btn-sm" onclick="previewGlobalVoice()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Preview Voice
+          </button>
+        </div>
       </div>
-      <p class="text2 sm mb12">For each step: enter TTS text OR paste a recording URL (.mp3/.wav). Recording overrides TTS.</p>
+      <p class="text2 sm mb12">For each step: enter TTS text OR paste a recording URL (.mp3/.wav). Recording overrides TTS. Per-event overrides can be set in Admin → All Events → phone button.</p>
       ${msgs.map(([key,label]) => {
         const recKey = key+'_recording';
         const textId = 'sc-'+key.replace(/[^a-z0-9]/gi,'-');
@@ -171,7 +178,16 @@ function renderSubTab(tab) {
         return `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
           <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${label}</div>
           <div class="form-row" style="gap:8px;margin:0">
-            <div class="fg" style="margin:0"><label style="font-size:11px">TTS Text</label><textarea id="${textId}" style="min-height:45px;font-size:11px">${esc(siteContent[key]||'')}</textarea></div>
+            <div class="fg" style="margin:0">
+              <div class="row" style="gap:6px;align-items:center;margin-bottom:3px">
+                <label style="font-size:11px;margin:0">TTS Text</label>
+                <button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 7px" onclick="previewTTSGlobal('${textId}')">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Preview
+                </button>
+              </div>
+              <textarea id="${textId}" style="min-height:45px;font-size:11px">${esc(siteContent[key]||'')}</textarea>
+            </div>
             <div class="fg" style="margin:0"><label style="font-size:11px">Recording URL (overrides TTS)</label><input id="${recId}" placeholder="https://... .mp3" value="${esc(siteContent[recKey]||'')}" style="font-size:11px"></div>
           </div>
         </div>`;
@@ -327,6 +343,38 @@ async function checkPhoneExpiry() {
     toast(`Expired: ${r.expired}, Notified: ${r.notified}`);
   } catch(e) { toast(e.message,'error'); }
 }
+
+function speakText(text, voiceKey) {
+  if (!window.speechSynthesis) { toast('Speech not supported in this browser','error'); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text.replace(/{{[^}]+}}/g,'example'));
+  const langMap = {'Polly.Joanna':'en-US','Polly.Matthew':'en-US','Polly.Amy':'en-GB','Polly.Brian':'en-GB'};
+  const genderMap = {'Polly.Joanna':'female','Polly.Matthew':'male','Polly.Amy':'female','Polly.Brian':'male'};
+  utt.lang = langMap[voiceKey]||'en-US';
+  const voices = window.speechSynthesis.getVoices();
+  const match = voices.find(v=>v.lang.startsWith((langMap[voiceKey]||'en-US').split('-')[0]) && v.name.toLowerCase().includes(genderMap[voiceKey]||'female'))
+    || voices.find(v=>v.lang.startsWith((langMap[voiceKey]||'en-US').split('-')[0])) || voices[0];
+  if (match) utt.voice = match;
+  utt.rate=0.95; utt.pitch=(voiceKey||'').includes('Matthew')||(voiceKey||'').includes('Brian')?0.9:1.1;
+  window.speechSynthesis.speak(utt);
+  toast('Playing preview…');
+}
+
+function previewGlobalVoice() {
+  const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
+  speakText('Hello, welcome to EverythingShul Tickets. Press 1 to buy tickets.', voice);
+}
+
+function previewTTSGlobal(textareaId) {
+  const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
+  const text = document.getElementById(textareaId)?.value?.trim();
+  if (!text) { toast('Enter TTS text first','error'); return; }
+  speakText(text, voice);
+}
+
+window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined
+  ? (window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices())
+  : window.speechSynthesis?.getVoices();
 
 load();
 </script>

@@ -46,7 +46,7 @@
 
       <!-- ── Section 1: Sale Link ── -->
       <div class="mb8" style="display:flex;align-items:center;gap:8px">
-        <div class="section-badge">🔗 Sale Link</div>
+        <div class="section-badge">Sale Link</div>
       </div>
       <div class="card mb22">
         <div class="fg mb12">
@@ -68,7 +68,7 @@
 
       <!-- ── Section 2: Settings ── -->
       <div class="mb8" style="display:flex;align-items:center;gap:8px">
-        <div class="section-badge">⚙️ Settings</div>
+        <div class="section-badge">Settings</div>
       </div>
       <div class="settings-grid mb22">
 
@@ -125,7 +125,7 @@
 
       <!-- ── Section 3: Ticket Levels ── -->
       <div class="mb8" style="display:flex;align-items:center;gap:8px">
-        <div class="section-badge">🎫 Ticket Levels</div>
+        <div class="section-badge">Ticket Levels</div>
       </div>
       <div class="card mb22">
         <p class="sm text2 mb12">Set price and toggle online availability per level. <a href="/event-levels.html?id=" id="levels-link" style="color:var(--cyan)">Manage levels →</a></p>
@@ -135,7 +135,7 @@
 
       <!-- ── Section 4: Promo Codes ── -->
       <div class="mb8" style="display:flex;align-items:center;gap:8px">
-        <div class="section-badge">🏷️ Promo Codes</div>
+        <div class="section-badge">Promo Codes</div>
       </div>
       <div class="card mb22">
         <p class="sm text2 mb16">Create discount codes for your buyers. Codes are entered on the checkout page.</p>
@@ -178,6 +178,19 @@
         <div id="promos-list"><div class="text2 sm">No promo codes yet.</div></div>
       </div>
 
+    </div><!-- end sales-wrap -->
+
+    <!-- Phone & SMS ordering section — always visible -->
+    <div id="phone-ordering-wrap" style="display:none">
+      <div class="mb8 mt4" style="display:flex;align-items:center;gap:8px">
+        <div class="section-badge" style="background:#0d2454">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Phone &amp; SMS Ordering
+        </div>
+      </div>
+      <div class="card mb22" id="phone-ordering-card">
+        <div id="phone-ordering-body"><div class="text2 sm">Loading…</div></div>
+      </div>
     </div>
 
   </div></main>
@@ -216,6 +229,7 @@ async function load() {
   } catch(e) {
     document.getElementById('no-access').style.display = 'block';
   }
+  await loadPhoneOrdering();
 }
 
 function renderSettings() {
@@ -229,7 +243,7 @@ function renderSettings() {
   const isAdmin = Auth.user()?.role === 'admin';
   const slugField = document.getElementById('slug-field');
   if (s.slug && !isAdmin) {
-    slugField.innerHTML = `<input value="${esc(s.slug)}" disabled style="flex:1;margin:0;background:var(--bg3);color:var(--text2)"><span class="xs text2" style="line-height:38px;white-space:nowrap;flex-shrink:0">🔒 Admin only</span>`;
+    slugField.innerHTML = `<input value="${esc(s.slug)}" disabled style="flex:1;margin:0;background:var(--bg3);color:var(--text2)"><span class="xs text2" style="line-height:38px;white-space:nowrap;flex-shrink:0"> Admin only</span>`;
   } else {
     slugField.innerHTML = `<input id="slug-input" placeholder="my-event-2025" value="${esc(s.slug||'')}" style="flex:1;margin:0"><button class="btn btn-sm btn-primary" onclick="saveSlug()">Save</button>`;
   }
@@ -243,7 +257,7 @@ function renderSettings() {
   }
 
   // Sale status text
-  document.getElementById('sale-status-text').textContent = s.sale_enabled ? '✅ Sale page is live' : '⏸️ Sale page is inactive';
+  document.getElementById('sale-status-text').textContent = s.sale_enabled ? ' Sale page is live' : ' Sale page is inactive';
   document.getElementById('sale-status-text').style.color = s.sale_enabled ? 'var(--green)' : 'var(--text3)';
 
   // Expiry
@@ -312,7 +326,7 @@ async function saveSaleSetting(key, val) {
     salesSettings[key] = val;
     if (key === 'sale_enabled') {
       const el = document.getElementById('sale-status-text');
-      if (el) { el.textContent = val ? '✅ Sale page is live' : '⏸️ Sale page is inactive'; el.style.color = val ? 'var(--green)' : 'var(--text3)'; }
+      if (el) { el.textContent = val ? ' Sale page is live' : ' Sale page is inactive'; el.style.color = val ? 'var(--green)' : 'var(--text3)'; }
       toast(val ? 'Sales page is now live' : 'Sales page disabled');
     } else {
       toast('Setting saved');
@@ -474,7 +488,7 @@ function renderPromos() {
       const usesLabel = `${p.uses}${p.max_uses ? '/'+p.max_uses : ''}`;
       const moneyLabel = p.max_money ? ` · $${(p.money_given/100).toFixed(2)}/$${(p.max_money/100).toFixed(2)} off` : '';
       const restrictions = [];
-      if (p.allowed_emails) restrictions.push('📧 Restricted emails');
+      if (p.allowed_emails) restrictions.push(' Restricted emails');
       if (p.max_tickets_per_level) restrictions.push('🎫 Per-level limits');
       if (p.max_total_tickets) restrictions.push(`Max ${p.max_total_tickets} tickets`);
       return `<tr style="opacity:${p.active?1:.5}">
@@ -495,6 +509,80 @@ function renderPromos() {
 }
 
 load();
+
+// ── Phone & SMS Ordering Section ─────────────────────────
+async function loadPhoneOrdering() {
+  try {
+    const ev = eventData;
+    const wrap = document.getElementById('phone-ordering-wrap');
+    const body = document.getElementById('phone-ordering-body');
+    if (!wrap || !body) return;
+    wrap.style.display = 'block';
+
+    const hasNumber = !!(ev.phone_number && ev.sms_ivr_enabled);
+    const number = ev.phone_number;
+    const expires = ev.phone_number_expires ? new Date(ev.phone_number_expires).toLocaleDateString() : null;
+
+    if (!hasNumber) {
+      body.innerHTML = `
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" style="flex-shrink:0;margin-top:2px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">No phone number assigned</div>
+            <div class="text2 sm" style="margin-bottom:12px">Ask your administrator to assign a dedicated phone number to this event. Guests can then call or text that number to purchase tickets automatically.</div>
+            <button class="btn btn-sm btn-primary" onclick="requestPhoneNumber()">Request Phone Number</button>
+          </div>
+        </div>`;
+    } else {
+      body.innerHTML = `
+        <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" style="flex-shrink:0;margin-top:2px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:2px">Phone ordering active</div>
+            <div style="font-family:monospace;font-size:18px;color:var(--navy);font-weight:700;margin-bottom:4px">${esc(number)}</div>
+            ${expires ? `<div class="xs text2">Expires: ${expires}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px">
+          <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">SMS</div>
+            <div style="font-size:13px;font-weight:600">Guests text to buy</div>
+            <div class="xs text2 mt4">Customer texts the number → conversational checkout → card entry → ticket emailed</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">IVR Phone</div>
+            <div style="font-size:13px;font-weight:600">Guests call to buy</div>
+            <div class="xs text2 mt4">Customer calls → automated voice menu → keypad entry → card charged → ticket emailed</div>
+          </div>
+        </div>
+        <div class="info-box tip mt12" style="font-size:12px">Payments go through the platform Stripe account. Tickets are issued the same as online purchases. Card data is never stored.</div>`;
+    }
+
+    // Load recent phone orders for this event
+    try {
+      const ordersData = await fetch(`/api/phone/orders?eventId=${eventId}`, { headers:{'Authorization':'Bearer '+Auth.token()} }).then(r=>r.json());
+      const orders = (ordersData.orders||[]).filter(o=>o.event_id===eventId);
+      if (orders.length) {
+        body.innerHTML += `<div class="section-title mt16 mb8">Recent Phone/SMS Orders (${orders.length})</div>
+          <div class="table-wrap"><table><thead><tr><th>Channel</th><th>From</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>
+          ${orders.slice(0,10).map(o=>`<tr>
+            <td><span class="badge" style="font-size:10px;background:var(--bg3)">${o.channel==='sms'?'SMS':'IVR'}</span></td>
+            <td class="mono xs">${esc(o.from_number)}</td>
+            <td class="text2">$${(o.amount_cents/100).toFixed(2)}</td>
+            <td><span class="badge badge-${o.status==='paid'?'checked':o.status==='failed'?'warn':'deactivated'}" style="font-size:10px">${o.status}</span></td>
+            <td class="text2 xs">${new Date(o.created_at).toLocaleDateString()}</td>
+          </tr>`).join('')}
+          </tbody></table></div>`;
+      }
+    } catch {}
+  } catch(e) { console.error('[phone ordering]', e.message); }
+}
+
+function requestPhoneNumber() {
+  const subject = `Phone number request for event: ${eventData?.name}`;
+  const body = `Hi,\n\nI would like a phone number assigned to my event for SMS and IVR ticket ordering.\n\nEvent: ${eventData?.name}\nEvent ID: ${eventId}\n\nPlease let me know the details.\n\nThank you`;
+  window.open(`mailto:everythingshul@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+}
 </script>
 </body>
 </html>

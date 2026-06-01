@@ -23,15 +23,22 @@ function getPlatformStripe() {
   return new Stripe(key, { apiVersion: '2024-06-20' });
 }
 
-// ── Settings helper ───────────────────────────────────────
-function g(key, fallback = '') {
+// ── Settings helper — global default, optionally overridden per event ─────────────
+function g(key, fallback = '', eventId = null) {
+  if (eventId) {
+    const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(eventId);
+    if (row) {
+      const overrides = JSON.parse(row.settings || '{}');
+      if (overrides[key] !== undefined && overrides[key] !== '') return overrides[key];
+    }
+  }
   const row = db.prepare('SELECT value FROM platform_settings WHERE key=?').get(key);
   return row?.value ?? fallback;
 }
 
 // ── Message template engine ───────────────────────────────
-function tmpl(key, vars = {}) {
-  let msg = g(key, key);
+function tmpl(key, vars = {}, eventId = null) {
+  let msg = g(key, key, eventId);
   for (const [k, v] of Object.entries(vars)) msg = msg.replace(new RegExp(`{{${k}}}`, 'g'), v ?? '');
   return msg;
 }
@@ -131,10 +138,10 @@ function twimlMsg(msg) {
   return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${msg}</Message></Response>`;
 }
 
-function twimlSay(key, vars = {}, hangup = false, redirect = null) {
-  const recording = g(key + '_recording', '');
-  const voice     = g('ivr.tts_voice', 'Polly.Joanna');
-  const text      = tmpl(key, vars);
+function twimlSay(key, vars = {}, hangup = false, redirect = null, eventId = null) {
+  const recording = g(key + '_recording', '', eventId);
+  const voice     = g('ivr.tts_voice', 'Polly.Joanna', eventId);
+  const text      = tmpl(key, vars, eventId);
   const audio     = recording
     ? `<Play>${recording}</Play>`
     : `<Say voice="${voice}">${text}</Say>`;
@@ -145,10 +152,10 @@ function twimlSay(key, vars = {}, hangup = false, redirect = null) {
 </Response>`;
 }
 
-function twimlGather({ textKey, vars = {}, action, numDigits, timeout = 10, finishOnKey = '#' }) {
-  const recording = g(textKey + '_recording', '');
-  const voice     = g('ivr.tts_voice', 'Polly.Joanna');
-  const text      = tmpl(textKey, vars);
+function twimlGather({ textKey, vars = {}, action, numDigits, timeout = 10, finishOnKey = '#', eventId = null }) {
+  const recording = g(textKey + '_recording', '', eventId);
+  const voice     = g('ivr.tts_voice', 'Polly.Joanna', eventId);
+  const text      = tmpl(textKey, vars, eventId);
   const audio     = recording ? `<Play>${recording}</Play>` : `<Say voice="${voice}">${text}</Say>`;
   const APP_URL   = process.env.APP_URL || '';
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -514,6 +521,42 @@ r.get('/numbers/owned', async (req, res) => {
       assignedEvent: byNum[n.phoneNumber]||null,
     })) });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Per-event SMS/IVR settings (overrides per event) ─────
+
+r.get('/event/:id/settings', (req, res) => {
+  const globalRows = db.prepare('SELECT key,value FROM platform_settings').all();
+  const global = Object.fromEntries(globalRows.map(r => [r.key, r.value]));
+  const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(req.params.id);
+  const overrides = row ? JSON.parse(row.settings || '{}') : {};
+  res.json({ settings: { ...global, ...overrides }, overrides });
+});
+
+r.patch('/event/:id/settings', (req, res) => {
+  const { updates } = req.body;
+  if (!updates) return res.status(400).json({ error: 'updates required' });
+  const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(req.params.id);
+  const current = row ? JSON.parse(row.settings || '{}') : {};
+  const merged = { ...current };
+  for (const [k, v] of Object.entries(updates)) {
+    if (v === null || v === undefined) delete merged[k]; // null = revert to global
+    else merged[k] = String(v);
+  }
+  db.prepare('INSERT OR REPLACE INTO event_sms_settings (event_id, settings) VALUES (?,?)').run(req.params.id, JSON.stringify(merged));
+  res.json({ ok: true });
+});
+
+r.delete('/event/:id/settings', (req, res) => {
+  db.prepare('DELETE FROM event_sms_settings WHERE event_id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// TTS preview — browser uses Web Speech API (no Twilio cost)
+r.post('/tts-preview', (req, res) => {
+  const { text, voice } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+  res.json({ fallback: true, text, voice: voice || 'Polly.Joanna' });
 });
 
 // ── Admin: manage event phone numbers ─────────────────────

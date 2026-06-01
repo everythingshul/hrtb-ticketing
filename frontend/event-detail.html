@@ -52,7 +52,14 @@
         <option value="online">Online</option>
         <option value="offline">Offline</option>
       </select>
-      <button class="btn btn-sm btn-ghost" onclick="clearFilters()" style="font-size:11px;padding:5px 10px;opacity:.7">✕ Clear</button>
+      <button class="btn btn-sm btn-ghost" onclick="clearFilters()" style="font-size:11px;padding:5px 10px;opacity:.7">Clear filters</button>
+      <select id="page-size-select" style="width:95px;font-size:12px;margin:0" onchange="changePageSize(+this.value)" title="Rows per page">
+        <option value="25">25 / page</option>
+        <option value="50">50 / page</option>
+        <option value="100">100 / page</option>
+        <option value="500">500 / page</option>
+        <option value="1000">1000 / page</option>
+      </select>
       <!-- Spacer -->
       <div style="flex:1"></div>
       <!-- Actions -->
@@ -98,17 +105,17 @@
 
     <!-- Ticket Levels moved to /event-levels.html -->
 
-    <!-- Event settings panel -->
+    <!-- Event Settings panel -->
     <div class="card mt16" id="settings-panel">
       <div class="section-title mb12">Event Settings</div>
-      <div class="row-between">
+      <div class="row-between" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
         <div>
-          <div style="font-size:13px;font-weight:600">Allow check-in for unconfirmed guests</div>
-          <div class="sm text2">When off, only guests who confirmed attendance can check in at the door</div>
+          <div style="font-size:13px;font-weight:600">Allow check-in for unconfirmed guests <span class="tip-icon" data-tip="When off, only guests who have been activated can check in at the door.">i</span></div>
+          <div class="sm text2">When off, only activated guests can scan in</div>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-          <input type="checkbox" id="toggle-unconfirmed" onchange="toggleUnconfirmedCheckin(this.checked)" style="width:18px;height:18px;cursor:pointer">
-          <span class="sm" id="toggle-unconfirmed-label">On</span>
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggle-unconfirmed" onchange="toggleUnconfirmedCheckin(this.checked)">
+          <div class="toggle-track"></div>
         </label>
       </div>
     </div>
@@ -116,6 +123,22 @@
     <!-- Online Sales moved to /event-sales.html -->
 
   </div></main>
+</div>
+
+<!-- Contact Admin Modal -->
+<div id="modal-contact-admin" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-contact-admin')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Contact Administrator</h2><button class="modal-x" onclick="hideModal('modal-contact-admin')">&#x2715;</button></div>
+    <p class="text2 sm mb14">Fill in the details below. Clicking Send opens your email client with this message ready to send.</p>
+    <div class="fg"><label>Your Name</label><input id="ca-name" placeholder="Your name"></div>
+    <div class="fg"><label>Your Email</label><input id="ca-email-field" type="email" placeholder="your@email.com"></div>
+    <div class="fg"><label>Subject</label><input id="ca-subject"></div>
+    <div class="fg"><label>Message *</label><textarea id="ca-body" style="min-height:100px" placeholder="Describe your request…"></textarea></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-contact-admin')">Cancel</button>
+      <button class="btn btn-gold" onclick="sendContactAdmin()">Send via Email →</button>
+    </div>
+  </div>
 </div>
 
 <!-- Undo Upload Bar -->
@@ -401,6 +424,8 @@ const eventId = new URLSearchParams(location.search).get('id');
 if (!eventId) window.location = '/events.html';
 
 let eventData = null, attendees = [], filtered = [], selected = new Set(), pendingUpload = null, currentSendId = null, levels = [];
+let pageSize = parseInt(localStorage.getItem('hrtb_page_size_'+location.search) || '25');
+let currentPage = 1;
 let sortCol = null, sortDir = 1; // stable sort state — persists across renders
 
 // Debounced search — runs immediately on first keypress, then waits 200ms
@@ -415,7 +440,10 @@ async function load() {
   try { attData = await api.attendees.list(eventId); }
   catch(e) {
     if (e.message === 'EVENT_CLOSED') {
-      document.querySelector('.page').innerHTML = `<div class="empty"><div class="ico">🔒</div><h3>Event Closed</h3><p>This event has been archived and is no longer accessible. Contact your administrator for access.</p><a href="/events.html" class="btn btn-gold mt16" style="display:inline-flex">← Back to Events</a></div>`;
+      // Try to get event info from the error response
+      let ev = null;
+      try { const r = await fetch(`/api/attendees/event/${eventId}`,{headers:{'Authorization':'Bearer '+Auth.token()}}); const d = await r.json(); ev = d.event; } catch {}
+      showClosedPage(ev);
       return;
     }
     throw e;
@@ -450,16 +478,10 @@ async function load() {
     if (d.hasDesign) document.getElementById('btn-design').textContent = 'Update Ticket Design';
   } catch {}
 
-  // Show read-only banner for closed events
+  // Closed events: show info only, no data — block everything
   if (eventData.closed_at) {
-    const banner = document.createElement('div');
-    banner.className = 'info-box warn mb16';
-    banner.innerHTML = `🔒 <strong>This event has ended and is now read-only.</strong> You can view all data but cannot make changes. Contact your administrator to reopen.`;
-    const ph = document.querySelector('.ph');
-    ph.parentNode.insertBefore(banner, ph.nextSibling);
-    document.querySelectorAll('.ph-actions button, .ph-actions a').forEach(b => {
-      b.disabled = true; b.style.opacity = '.4'; b.style.pointerEvents = 'none';
-    });
+    showClosedPage(eventData);
+    return;
   }
 
   renderStats(); filterTable();
@@ -493,9 +515,9 @@ function renderStats() {
   });
   document.getElementById('stats').innerHTML = `
     <div class="stat"><div class="stat-label">Total <span class="tip-icon" data-tip="All attendees added to this event, excluding staff and deactivated tickets.">i</span></div><div class="stat-val">${s.total}</div></div>
-    <div class="stat"><div class="stat-label">Confirmed <span class="tip-icon" data-tip="Attendees who have confirmed their attendance, either by clicking their activation link or being marked confirmed manually.">i</span></div><div class="stat-val green">${s.confirmed}</div></div>
+    ${eventData.allow_activation ? `<div class="stat"><div class="stat-label">Activated <span class="tip-icon" data-tip="Attendees who have activated their ticket via the activation link.">i</span></div><div class="stat-val">${s.confirmed}</div></div>` : ""}
     <div class="stat"><div class="stat-label">Pre-printed <span class="tip-icon" data-tip="Blank tickets with QR codes printed in advance, not yet assigned to a specific person.">i</span></div><div class="stat-val purple">${s.preprint}</div></div>
-    <div class="stat"><div class="stat-label">Pending</div><div class="stat-val orange">${s.pending}</div></div>
+    <div class="stat"><div class="stat-label">Pending <span class="tip-icon" data-tip="Attendees added but ticket not yet sent. Use 'Send All' to email tickets.">i</span></div><div class="stat-val">${s.pending}</div></div>
     <div class="stat"><div class="stat-label">Sent <span class="tip-icon" data-tip="Attendees whose tickets have been emailed to them.">i</span></div><div class="stat-val blue">${s.sent}</div></div>
     <div class="stat"><div class="stat-label">Checked In <span class="tip-icon" data-tip="Attendees who have been scanned at the door.">i</span></div><div class="stat-val green">${s.checked}</div></div>
 `;
@@ -535,6 +557,7 @@ function filterTable() {
     return true;
   });
 
+  currentPage = 1;
   // Apply current sort if any
   if (sortCol !== null) applySort();
   else renderTable();
@@ -561,24 +584,40 @@ function renderTable() {
     return;
   }
   const allSel = filtered.length > 0 && filtered.every(a => selected.has(a.id));
-  const cols = ['Name','Phone','Email','Table','Level','Activated','Source','Status','ID'];
+  const showActivation = eventData?.allow_activation;
+  const showSeating = eventData?.show_seating;
+  const cols = ['Name','Phone','Email',...(showSeating?['Table']:[]),'Level',...(showActivation?['Activated']:[]),'Source','Status','ID'];
   const arrow = i => sortCol===i ? (sortDir>0?' ↑':' ↓') : '';
-  document.getElementById('table-wrap').innerHTML = `<div class="table-wrap"><table>
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  if (currentPage > totalPages) currentPage = 1;
+  const start = (currentPage - 1) * pageSize;
+  const pageRows = filtered.slice(start, start + pageSize);
+  const pageSel = document.getElementById('page-size-select');
+  if (pageSel) pageSel.value = String(pageSize);
+
+  const pagerHtml = totalPages > 1 ? `<div style="display:flex;align-items:center;gap:8px;padding:12px 0;font-size:13px;color:var(--text2)">
+    <button class="btn btn-sm btn-ghost" onclick="gotoPage(${currentPage-1})" ${currentPage<=1?'disabled':''}>&#8592;</button>
+    <span>Page ${currentPage} of ${totalPages} &nbsp;(${filtered.length} total)</span>
+    <button class="btn btn-sm btn-ghost" onclick="gotoPage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>&#8594;</button>
+  </div>` : `<div style="padding:8px 0;font-size:12px;color:var(--text2)">${filtered.length} attendee${filtered.length!==1?'s':''}</div>`;
+
+  document.getElementById('table-wrap').innerHTML = pagerHtml + `<div class="table-wrap"><table>
     <thead><tr>
       <th data-nosort style="width:32px"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)"></th>
       ${cols.map((c,i)=>`<th style="cursor:pointer;user-select:none;white-space:nowrap" onclick="sortByCol(${i})">${c}${arrow(i)}</th>`).join('')}
       <th data-nosort>Actions</th>
     </tr></thead>
-    <tbody>${filtered.map(a => {
+    <tbody>${pageRows.map(a => {
       const lvl = levels.find(l => l.id === a.level_id);
       return `<tr>
       <td><input type="checkbox" ${selected.has(a.id)?'checked':''} onchange="toggleOne('${a.id}',this)"></td>
       <td style="white-space:nowrap"><strong>${esc(a.first_name||'')} ${esc(a.last_name||'')}</strong></td>
       <td class="text2 mono" style="font-size:12px">${esc(a.phone||'—')}</td>
       <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'—')}</td>
-      <td class="text2" style="font-size:12px;white-space:nowrap">${a.table_number?`${esc(a.table_number)}${a.seat_number?' / '+esc(a.seat_number):''}`:'-'}</td>
+      ${showSeating ? `<td class="text2" style="font-size:12px;white-space:nowrap">${a.table_number?`${esc(a.table_number)}${a.seat_number?' / '+esc(a.seat_number):''}`:'-'}</td>` : ''}
       <td>${lvl?`<span class="badge" style="font-size:11px;background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44">${esc(lvl.name)}</span>`:'<span class="text3" style="font-size:11px">—</span>'}</td>
-      <td><button class="btn btn-sm ${a.confirmed?'btn-success':'btn-ghost'}" style="min-width:88px;font-size:11px" onclick="toggleConfirm('${a.id}',${a.confirmed?0:1})">${a.confirmed?'✓ Activated':'Activate'}</button></td>
+      ${showActivation ? `<td><button class="btn btn-sm ${a.confirmed?'btn-success':'btn-ghost'}" style="min-width:88px;font-size:11px" onclick="toggleConfirm('${a.id}',${a.confirmed?0:1})">${a.confirmed?'✓ Activated':'Activate'}</button></td>` : ""}
       <td style="text-align:center">
         ${a.source==='online'
           ?`<span onclick="showCheckoutInfo('${a.id}')" title="Online — click for details" style="cursor:pointer;display:inline-flex">
@@ -593,7 +632,7 @@ function renderTable() {
         ${a.status==='preprint'
           ?`<button class="btn btn-sm btn-primary" onclick="openAssign('${a.ticket_id}')">Assign</button>`
           :`<button class="btn btn-sm" onclick="openSend('${a.id}')">Send</button>`}
-        ${(a.status==='sent'||a.status==='pending')?`<button class="btn btn-sm btn-primary" onclick="setStatus('${a.id}','checked')" title="Check In">✓</button>`:''}
+        ${(a.status==='sent'||a.status==='pending')?`<button class="btn btn-sm btn-primary" onclick="setStatus('${a.id}','checked')" title="Check In" style="font-size:11px">In</button>`:''}
         ${a.status==='checked'?`<button class="btn btn-sm" onclick="confirmUncheck('${a.id}','${esc(a.first_name)} ${esc(a.last_name)}')" title="Undo check-in">↺</button>`:''}
         ${a.status!=='deactivated'
           ?`<button class="btn btn-sm btn-danger" onclick="setStatus('${a.id}','deactivated')" title="Deactivate">✕</button>`
@@ -601,9 +640,21 @@ function renderTable() {
         <button class="btn btn-sm btn-danger" onclick="delAttendee('${a.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
       </div></td></tr>`;
     }).join('')}</tbody>
-  </table></div>`;
+  </table></div>` + (totalPages > 1 ? pagerHtml : '');
 }
 
+function gotoPage(p) {
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  currentPage = Math.max(1, Math.min(p, totalPages));
+  renderTable();
+  document.getElementById('table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function changePageSize(n) {
+  pageSize = n;
+  currentPage = 1;
+  localStorage.setItem('hrtb_page_size_' + location.search, n);
+  renderTable();
+}
 function sortByCol(i) {
   sortDir = (sortCol===i) ? -sortDir : 1;
   sortCol = i;
@@ -1567,6 +1618,56 @@ function dlTemplate() {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+}
+
+// ── Closed event + Contact Admin ──────────────────────────
+function showClosedPage(ev) {
+  const name = ev?.name || 'Event';
+  const closedDate = ev?.closed_at ? new Date(ev.closed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'recently';
+  document.querySelector('.page').innerHTML = `
+    <div style="max-width:560px;margin:0 auto">
+      <div class="ph mb20">
+        <div class="ph-left">
+          <h1>${esc(name)}</h1>
+          <p class="text2">${esc([ev?.date,ev?.venue].filter(Boolean).join(' · '))}</p>
+        </div>
+      </div>
+      <div style="border:1.5px solid #f59e0b;border-radius:12px;padding:28px;background:#fffbeb">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div>
+            <div style="font-weight:700;font-size:17px;color:#92400e;margin-bottom:6px">This event is closed</div>
+            <div style="font-size:13px;color:#78350f;line-height:1.7">Closed on ${closedDate}. All attendee data is locked. To reopen this event, contact the administrator.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a href="/events.html" class="btn btn-sm" style="background:#fff;border:1.5px solid #f59e0b;color:#92400e">← My Events</a>
+          <button class="btn btn-sm btn-primary" id="btn-contact-reopen">Contact Admin to Reopen</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('btn-contact-reopen').onclick = () =>
+    openContactAdmin('Please reopen: ' + name, 'Hi,\n\nPlease reopen my event:\n\nEvent: ' + name + '\nEvent ID: ' + eventId + '\n\nReason:\n');
+}
+
+function openContactAdmin(subject, prefill) {
+  document.getElementById('ca-subject').value = subject || (eventData?.name ? 'Re: ' + eventData.name : 'Support Request');
+  document.getElementById('ca-body').value = prefill || '';
+  document.getElementById('ca-name').value = Auth.user()?.name || '';
+  document.getElementById('ca-email-field').value = Auth.user()?.email || '';
+  showModal('modal-contact-admin');
+}
+
+function sendContactAdmin() {
+  const subject = document.getElementById('ca-subject').value.trim();
+  const body = document.getElementById('ca-body').value.trim();
+  const name = document.getElementById('ca-name').value.trim();
+  const email = document.getElementById('ca-email-field').value.trim();
+  if (!body) { toast('Please describe your request', 'error'); return; }
+  const full = `From: ${name} <${email}>\nEvent: ${eventData?.name||''} (${eventId})\n\n${body}`;
+  window.open(`mailto:everythingshul@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(full)}`);
+  hideModal('modal-contact-admin');
+  toast('Email client opened — send the email to complete your request');
 }
 
 load();

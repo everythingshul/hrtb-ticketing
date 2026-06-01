@@ -140,6 +140,14 @@ function parseRow(row) {
 
 // List attendees for an event
 r.get('/event/:eventId', requireEvent, (req, res) => {
+  const event = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+
+  // Closed events: return event info only, no attendee data
+  if (event.closed_at && req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'EVENT_CLOSED', event });
+  }
+
   const attendees = db.prepare(`
     SELECT id, event_id, account_id, first_name, last_name, phone, email,
            table_number, seat_number, ticket_id, status, confirmed, level_id,
@@ -148,7 +156,6 @@ r.get('/event/:eventId', requireEvent, (req, res) => {
     FROM attendees WHERE event_id=? AND deleted_at IS NULL ORDER BY last_name,first_name
   `).all(req.params.eventId);
   const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=? ORDER BY created_at').all(req.params.eventId);
-  const event = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   res.json({ attendees, levels, event });
 });
 

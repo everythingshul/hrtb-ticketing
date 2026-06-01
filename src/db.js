@@ -309,6 +309,7 @@ try { db.exec("ALTER TABLE events ADD COLUMN capacity_alert_email TEXT"); } catc
 try { db.exec("ALTER TABLE events ADD COLUMN capacity_count_unconfirmed INTEGER"); } catch {}
 try { db.exec("UPDATE events SET capacity_count_unconfirmed=1 WHERE capacity_count_unconfirmed IS NULL"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN allow_activation INTEGER NOT NULL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN show_seating INTEGER NOT NULL DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN max_tickets INTEGER"); } catch {}
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN alert_at INTEGER"); } catch {}
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN show_availability INTEGER"); } catch {}
@@ -378,6 +379,13 @@ try { db.exec("ALTER TABLE events ADD COLUMN phone_number TEXT"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number_expires TEXT"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DEFAULT 0"); } catch {}
+
+// Per-event SMS/IVR message overrides — null values fall back to global platform_settings
+db.exec(`CREATE TABLE IF NOT EXISTS event_sms_settings (
+  event_id TEXT PRIMARY KEY,
+  settings TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);`);
 // Keep account-level columns for backward compat (don't remove existing data)
 try { db.exec("ALTER TABLE accounts ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number TEXT"); } catch {}

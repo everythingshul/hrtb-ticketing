@@ -213,43 +213,61 @@ async function load() {
 function renderLevelsPanel() {
   const el = document.getElementById('levels-panel');
   if (!el) return;
+
+  const levelRows = levels.map(l => {
+    const count = attendees.filter(a=>a.level_id===l.id).length;
+    return `
+      <details class="level-accordion" id="level-acc-${l.id}">
+        <summary style="display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;list-style:none;border-radius:var(--r);background:var(--bg3);border:1px solid var(--border);user-select:none" onclick="this.parentElement.open=!this.parentElement.open;return false">
+          <div style="width:12px;height:12px;border-radius:3px;background:${l.color};flex-shrink:0"></div>
+          <div style="flex:1;font-size:13px;font-weight:700">${esc(l.name)} ${l.is_staff?'<span class="badge" style="font-size:9px;background:#1a3a6b22;color:#1a3a6b;border:1px solid #1a3a6b44">STAFF</span>':''}</div>
+          <span class="text2 xs">${count} ticket${count!==1?'s':''}</span>
+          <svg id="acc-arrow-${l.id}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2.5" stroke-linecap="round" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div style="padding:14px;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);background:#fff">
+          ${l.description?`<div class="sm text2 mb10">${esc(l.description)}</div>`:''}
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600">
+              <input type="checkbox" ${l.is_staff?'checked':''} onchange="toggleStaffLevel('${l.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--navy)"> Staff level
+            </label>
+            <button class="btn btn-sm btn-danger" onclick="deleteLevel('${l.id}')">Remove Level</button>
+          </div>
+        </div>
+      </details>`;
+  }).join('');
+
   el.innerHTML = `
     <div class="section-title mb8">Ticket Levels</div>
-    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong>. Mark a level as <strong>Staff</strong> to issue staff passes — staff tickets use a business card style PDF and are excluded from guest counts.</p>
-    ${levels.map(l => `
-      <div class="row mb8" style="gap:8px;align-items:flex-start;padding:9px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
-        <div style="width:14px;height:14px;border-radius:3px;background:${l.color};flex-shrink:0;margin-top:2px"></div>
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:700">${esc(l.name)} ${l.is_staff ? '<span class="badge" style="font-size:9px;background:#1a3a6b22;color:#1a3a6b;border:1px solid #1a3a6b44">STAFF</span>' : ''}</div>
-          ${l.description ? `<div class="xs text2">${esc(l.description)}</div>` : ''}
-          <div class="xs text2">${attendees.filter(a=>a.level_id===l.id).length} tickets</div>
+    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong>. Mark a level as <strong>Staff</strong> to issue staff passes — excluded from guest counts.</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">${levelRows||'<p class="sm text2">No levels yet. Add one below.</p>'}</div>
+    <details id="add-level-acc" style="border:1.5px dashed var(--border);border-radius:var(--r)">
+      <summary style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;list-style:none;font-size:13px;font-weight:600;color:var(--navy)" onclick="this.parentElement.open=!this.parentElement.open;return false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add New Level
+      </summary>
+      <div style="padding:14px;border-top:1px solid var(--border)">
+        <div class="form-row mb8">
+          <div class="fg" style="margin:0">
+            <label>Level name * <span class="tip-icon" data-tip="Max 11 characters — fits on the ticket badge.">i</span></label>
+            <input id="new-level-name" placeholder="VIP" maxlength="11" oninput="updateLevelCounter(this)">
+            <div class="hint" id="level-char-count">0 / 11 characters</div>
+          </div>
+          <div class="fg" style="margin:0">
+            <label>Color</label>
+            <input id="new-level-color" type="color" value="${LEVEL_PALETTE[levels.length % LEVEL_PALETTE.length]}" style="width:100%;height:38px;padding:2px 4px;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer">
+          </div>
         </div>
-        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);white-space:nowrap">
-          <input type="checkbox" ${l.is_staff?'checked':''} onchange="toggleStaffLevel('${l.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--navy)"> Staff
+        <div class="fg mb8">
+          <label>Description <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
+          <input id="new-level-desc" placeholder="e.g. Front row seats, complimentary dinner included">
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;font-size:13px;font-weight:600">
+          <input type="checkbox" id="new-level-staff" style="width:15px;height:15px;accent-color:var(--navy)"> Staff level
+          <span class="tip-icon" data-tip="Staff tickets use a business card ID badge and are separate from guests.">i</span>
         </label>
-        <button class="btn btn-sm btn-danger" onclick="deleteLevel('${l.id}')">Remove</button>
-      </div>`).join('')}
-    <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
-      <div class="form-row mb8">
-        <div class="fg" style="margin:0">
-          <label>Level name * <span class="tip-icon" data-tip="The label shown on the ticket badge and in the scanner. Max 11 characters so it fits on the ticket.">i</span></label>
-          <input id="new-level-name" placeholder="VIP" maxlength="11" oninput="updateLevelCounter(this)">
-          <div class="hint" id="level-char-count">0 / 11 characters</div>
-        </div>
-        <div class="fg" style="margin:0">
-          <label>Color</label>
-          <input id="new-level-color" type="color" value="${LEVEL_PALETTE[levels.length % LEVEL_PALETTE.length]}" style="width:100%;height:38px;padding:2px 4px;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer">
-        </div>
+        <button class="btn btn-gold" onclick="addLevel()">+ Add Level</button>
       </div>
-      <div class="fg mb8">
-        <label>Description <span style="font-weight:400;color:var(--text3)">(optional)</span></label>
-        <input id="new-level-desc" placeholder="e.g. Front row seats, complimentary dinner included">
-      </div>
-      <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer;font-size:13px;font-weight:600">
-        <input type="checkbox" id="new-level-staff" style="width:15px;height:15px;accent-color:var(--navy)"> Staff level <span class="tip-icon" data-tip="Staff tickets use a business card ID badge PDF and are shown separately on the Staff page. They are excluded from all guest counts.">i</span>
-      </label>
-      <button class="btn btn-gold" onclick="addLevel()">+ Add Level</button>
-    </div>`;
+    </details>`;
 }
 
 function updateLevelCounter(input) {
