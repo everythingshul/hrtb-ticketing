@@ -6,63 +6,59 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FAQ — EverythingShul Ticket System</title>
 <style>
-
-:root{--navy:#1a3a6b;--navy2:#0d2454;--gold:#c8960c;--gold2:#e8ad14;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
-nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
-.nav-brand{display:flex;align-items:center;gap:12px}.nav-brand img{height:36px;filter:brightness(0) invert(1)}
-.nav-links{display:flex;align-items:center;gap:4px}
-.nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s;text-decoration:none}
-.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
-.nav-links a.active{font-weight:700}
-.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important}
-.btn-nav-cta:hover{background:var(--gold2)!important}
-.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important}
-footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px}
-.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
-.footer-brand img{height:38px;filter:brightness(0) invert(1);margin-bottom:12px;display:block}
-.footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
-.footer-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:12px}
-.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;text-decoration:none;transition:color .15s}
-.footer-col a:hover{color:#fff}
-.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:1060px;margin:0 auto;font-size:12px}
-.footer-bottom a{color:rgba(255,255,255,.4);margin-left:14px;text-decoration:none}
-.footer-bottom a:hover{color:rgba(255,255,255,.8)}
-@media(max-width:700px){nav{padding:0 16px}.nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}.footer-grid{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}}
-
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--navy:#1a3a6b;--gold:#c8960c;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
+:root{--navy:#1a3a6b;--navy2:#0d2454;--gold:#c8960c;--gold2:#e8ad14;--bg:#f8fafc;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text)}
-a{color:inherit;text-decoration:none}
-nav{background:var(--navy);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100}
-.nav-logo{display:flex;align-items:center;gap:10px}.nav-logo img{height:32px}.nav-logo span{color:#fff;font-size:14px;font-weight:600;opacity:.8}
-.nav-links{display:flex;align-items:center;gap:8px}
-.nav-links a{color:rgba(255,255,255,.8);font-size:13px;padding:7px 14px;border-radius:6px;font-weight:500}
+a{text-decoration:none;color:inherit}
+
+/* Nav */
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand img{height:36px;filter:brightness(0) invert(1)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a{color:rgba(255,255,255,.75);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s}
 .nav-links a:hover{background:rgba(255,255,255,.1);color:#fff}
-.nav-links .btn-gold{background:var(--gold);color:#000;font-weight:700;padding:8px 18px;border-radius:8px}
-.hero{background:var(--navy);color:#fff;padding:56px 24px 48px;text-align:center}
-.hero h1{font-size:clamp(22px,3.5vw,40px);font-weight:800;margin-bottom:10px}
-.hero p{color:rgba(255,255,255,.75);font-size:15px}
-.section{padding:60px 24px;max-width:760px;margin:0 auto}
-.faq-item{background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;overflow:hidden}
-.faq-q{padding:18px 20px;font-weight:700;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.nav-links a.active{background:rgba(255,255,255,.15);color:#fff;font-weight:700}
+.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important}
+.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important;color:rgba(255,255,255,.85)!important}
+
+/* Hero */
+.hero{background:var(--navy);color:#fff;padding:56px 32px 48px;text-align:center}
+.hero h1{font-size:clamp(24px,4vw,42px);font-weight:800;margin-bottom:10px}
+.hero p{color:rgba(255,255,255,.7);font-size:15px}
+
+/* FAQ */
+.section{padding:56px 32px;max-width:780px;margin:0 auto}
+.faq-item{background:#fff;border:1.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;transition:border-color .15s}
+.faq-item.open{border-color:var(--navy)}
+.faq-q{padding:18px 20px;font-weight:700;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--text)}
 .faq-q:hover{background:#f8fafc}
-.faq-q .arrow{font-size:18px;color:var(--navy);transition:transform .2s;flex-shrink:0}
-.faq-a{padding:0 20px;font-size:14px;color:var(--text2);line-height:1.75;max-height:0;overflow:hidden;transition:max-height .25s ease,padding .25s}
-.faq-item.open .faq-a{max-height:400px;padding-bottom:18px}
+.arrow{font-size:14px;color:var(--navy);transition:transform .2s;flex-shrink:0;display:inline-block}
+.faq-a{font-size:14px;color:var(--text2);line-height:1.8;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s;padding:0 20px}
+.faq-item.open .faq-a{max-height:500px;padding:0 20px 18px}
 .faq-item.open .arrow{transform:rotate(180deg)}
-footer{background:#0d2454;color:rgba(255,255,255,.5);padding:24px;text-align:center;font-size:12px}
-footer a{color:rgba(255,255,255,.6);margin:0 8px}
+
+/* Footer */
+footer{background:var(--navy2);color:rgba(255,255,255,.6);padding:44px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 36px}
+.footer-brand img{height:36px;filter:brightness(0) invert(1);display:block;margin-bottom:12px}
+.footer-brand p{font-size:13px;line-height:1.7;color:rgba(255,255,255,.45)}
+.footer-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.3);margin-bottom:12px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.55);margin-bottom:8px;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:18px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;max-width:1060px;margin:0 auto;font-size:12px}
+.footer-bottom a{color:rgba(255,255,255,.35);margin-left:14px}
+.footer-bottom a:hover{color:rgba(255,255,255,.75)}
+@media(max-width:700px){.footer-grid{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}nav{padding:0 16px}.nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}}
 </style>
 </head>
 <body>
+
 <nav>
-  <a href="/" class="nav-brand">
-    <img src="/logo.png" alt="EverythingShul">
-  </a>
+  <a href="/" class="nav-brand"><img src="/logo.png" alt="EverythingShul"></a>
   <div class="nav-links">
-    <a href="/" id="nav-home">Home</a>
-    <a href="/pricing.html" id="nav-pricing">Pricing</a>
-    <a href="/faq.html" id="nav-faq">FAQ</a>
+    <a href="/">Home</a>
+    <a href="/pricing.html">Pricing</a>
+    <a href="/faq.html" class="active">FAQ</a>
     <a href="/login.html" class="btn-nav-login">Sign In</a>
     <a href="/signup.html" class="btn-nav-cta">Start Free</a>
   </div>
@@ -70,15 +66,11 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
 
 <div class="hero">
   <h1 id="faq-title">Frequently Asked Questions</h1>
-  <p>Everything you need to know about the platform.</p>
+  <p>Everything you need to know about EverythingShul Ticket System.</p>
 </div>
 
 <div class="section">
-  <div id="faq-list"><!-- populated --></div>
-  <div style="text-align:center;margin-top:48px">
-    <p style="color:var(--text2);font-size:14px;margin-bottom:16px">Still have questions?</p>
-    <a href="mailto:everythingshul@gmail.com" style="background:var(--navy);color:#fff;padding:12px 28px;border-radius:10px;font-weight:700;font-size:14px">Contact Us →</a>
-  </div>
+  <div id="faq-list"></div>
 </div>
 
 <footer>
@@ -86,7 +78,6 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
     <div class="footer-brand">
       <img src="/logo.png" alt="EverythingShul">
       <p>Professional event ticketing for synagogues, community organizations, and private events.</p>
-      <p style="margin-top:10px;font-size:12px"><a href="mailto:everythingshul@gmail.com" style="color:rgba(255,255,255,.5)">everythingshul@gmail.com</a></p>
     </div>
     <div class="footer-col">
       <h4>Product</h4>
@@ -106,7 +97,6 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
       <h4>Legal</h4>
       <a href="/terms.html">Terms &amp; Conditions</a>
       <a href="/pricing.html">Pricing</a>
-      <a href="mailto:everythingshul@gmail.com">Contact Us</a>
     </div>
   </div>
   <div class="footer-bottom">
@@ -114,51 +104,61 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
     <div>
       <a href="/terms.html">Terms</a>
       <a href="/pricing.html">Pricing</a>
-      <a href="mailto:everythingshul@gmail.com">Contact</a>
     </div>
   </div>
 </footer>
 
 <script>
 function toggle(el) {
-  const item = el.closest('.faq-item');
-  item.classList.toggle('open');
+  el.parentElement.classList.toggle('open');
 }
+
 const DEFAULT_FAQS = [
-  { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore the full system with a demo event at no cost. A credit card is only required when you create your first live event.' },
-  { q: 'How does online ticket payment work?', a: 'You connect your own Stripe account. When guests buy tickets, the money goes directly into your Stripe account. We never handle your funds.' },
-  { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! EverythingShul supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS ordering (guests text to buy). Both are optional features you can enable per event.' },
-  { q: 'Can I import my existing attendee list?', a: 'Yes. Upload a CSV or Excel file and the system matches, imports, and can automatically send tickets to everyone.' },
-  { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance, open the scanner page on any device, and you're ready. Supports multiple simultaneous entrances.' },
-  { q: 'Can different entrances have different access levels?', a: 'Yes. Each door scanner PIN can be restricted to specific ticket levels — so your VIP entrance only admits VIP tickets.' },
-  { q: 'What is a staff ticket?', a: 'Staff tickets use a business card-size ID badge PDF and are tracked completely separately from guest attendees. They don't count toward capacity and always get "Access Granted" at the scanner regardless of check-in status.' },
-  { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional alerts when you're getting close to selling out.' },
-  { q: 'What happens after my event ends?', a: 'Events automatically close 48 hours after the end date you set. Closed events become read-only — you can still view all data, stats, and attendee info, but can't make changes.' },
-  { q: 'Can I run multiple events at the same time?', a: 'Yes. Create as many events as you need — each with its own ticket levels, sale page, staff, and scanner setup.' },
-  { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment processing — we never store card numbers. For phone/SMS orders, card digits go directly from Twilio to Stripe and are never saved.' },
-  { q: 'What does a demo account include?', a: 'Your demo account comes with a fully loaded demo event: 12 sample attendees with different ticket levels and statuses, 2 staff members, a promo code, and a working scanner PIN. You can explore every feature without any real data or payments.' },
+  { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
+  { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
+  { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! EverythingShul supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
+  { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
+  { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
+  { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, and staff always scan through regardless.' },
+  { q: 'What is a staff ticket?', a: 'Staff tickets are completely separate from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward capacity, and always scan as Access Granted.' },
+  { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional email alerts when you are getting close to selling out. Online sales stop automatically when capacity is reached.' },
+  { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
+  { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event has its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
+  { q: 'What are promo codes?', a: 'Promo codes let you offer discounts — percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific email addresses. Buyers enter the code at checkout.' },
+  { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data — we never store card numbers anywhere.' },
 ];
 
-fetch('/api/admin/site-content')
-  .then(r => r.ok ? r.json() : Promise.reject())
-  .then(({ content: c }) => {
-    if (c['faq.title']) document.getElementById('faq-title').textContent = c['faq.title'];
-    let items = DEFAULT_FAQS;
-    try { const parsed = JSON.parse(c['faq.items']||'[]'); if (Array.isArray(parsed) && parsed.length > 0) items = parsed; } catch {}
-    renderFaqs(items);
-  })
-  .catch(() => renderFaqs(DEFAULT_FAQS));
-
-renderFaqs(DEFAULT_FAQS); // show immediately, overwrite after fetch
-
 function renderFaqs(items) {
-  document.getElementById('faq-list').innerHTML = items.map((item,i)=>`
+  document.getElementById('faq-list').innerHTML = items.map((item, i) => `
     <div class="faq-item" id="faq-${i}">
-      <div class="faq-q" onclick="toggle(this)">${item.q.replace(/</g,'&lt;')}<span class="arrow">&#9660;</span></div>
-      <div class="faq-a">${item.a.replace(/</g,'&lt;')}</div>
+      <div class="faq-q" onclick="toggle(this)">
+        <span>${item.q.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
+        <span class="arrow">&#9660;</span>
+      </div>
+      <div class="faq-a">${item.a.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
     </div>`).join('');
 }
-document.getElementById('nav-faq').classList.add('active');
+
+// Render defaults immediately — no loading state
+renderFaqs(DEFAULT_FAQS);
+
+// Try to load admin-customized content and overwrite if set
+fetch('/api/admin/site-content')
+  .then(r => r.json())
+  .then(({ content: c }) => {
+    if (c && c['faq.title']) {
+      document.getElementById('faq-title').textContent = c['faq.title'];
+    }
+    if (c && c['faq.items']) {
+      try {
+        const items = JSON.parse(c['faq.items']);
+        if (Array.isArray(items) && items.length > 0) {
+          renderFaqs(items);
+        }
+      } catch(e) {}
+    }
+  })
+  .catch(() => {}); // silently keep defaults on error
 </script>
 </body>
 </html>
