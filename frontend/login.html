@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EverythingShul.com — Ticket System Login</title>
 <link rel="stylesheet" href="/css/style.css">
@@ -35,6 +41,8 @@
       <div class="fg"><label>Email</label><input id="email" type="email" placeholder="you@example.com" autofocus></div>
       <div class="fg"><label>Password</label><input id="pass" type="password" placeholder="••••••••"></div>
       <button class="btn btn-gold" style="width:100%;justify-content:center;padding:11px;margin-top:4px" onclick="login()">Sign in →</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+      <div id="google-btn-login" style="display:flex;justify-content:center"></div>
     </div>
 
     <!-- Dual-role picker (shown when user has multiple roles) -->
@@ -153,6 +161,41 @@
     localStorage.setItem('hrtb_memberships', JSON.stringify(memberships));
     window.location = '/dashboard.html';
   }
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+window.addEventListener('load', () => {
+  const clientId = '__GOOGLE_CLIENT_ID__'; // replaced at runtime by meta tag
+  // Read from meta tag injected by server or env
+  fetch('/api/auth/google-client-id').then(r=>r.json()).then(d => {
+    if (!d.clientId) return; // Google login not configured
+    google.accounts.id.initialize({
+      client_id: d.clientId,
+      callback: handleGoogleLogin
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('google-btn-login'),
+      { theme:'outline', size:'large', width:'100%', text:'signin_with' }
+    );
+  }).catch(()=>{});
+});
+async function handleGoogleLogin(response) {
+  try {
+    const r = await fetch('/api/auth/google', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const d = await r.json();
+    if (d.error) { document.getElementById('err').textContent = d.error; document.getElementById('err').style.display='block'; return; }
+    Auth.set(d.token, d.user);
+    window.location = '/dashboard.html';
+  } catch(e) { document.getElementById('err').textContent = 'Google sign-in failed'; document.getElementById('err').style.display='block'; }
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

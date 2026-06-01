@@ -142,15 +142,14 @@ const DEFAULT_FAQS = [
 fetch('/api/admin/site-content')
   .then(r => r.ok ? r.json() : Promise.reject())
   .then(({ content: c }) => {
-    document.getElementById('faq-title').textContent = c['faq.title'] || 'Frequently Asked Questions';
+    if (c['faq.title']) document.getElementById('faq-title').textContent = c['faq.title'];
     let items = DEFAULT_FAQS;
-    try { const parsed = JSON.parse(c['faq.items']||'[]'); if (parsed.length) items = parsed; } catch {}
+    try { const parsed = JSON.parse(c['faq.items']||'[]'); if (Array.isArray(parsed) && parsed.length > 0) items = parsed; } catch {}
     renderFaqs(items);
   })
-  .catch(() => {
-    document.getElementById('faq-title').textContent = 'Frequently Asked Questions';
-    renderFaqs(DEFAULT_FAQS);
-  });
+  .catch(() => renderFaqs(DEFAULT_FAQS));
+
+renderFaqs(DEFAULT_FAQS); // show immediately, overwrite after fetch
 
 function renderFaqs(items) {
   document.getElementById('faq-list').innerHTML = items.map((item,i)=>`

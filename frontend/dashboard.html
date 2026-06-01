@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EverythingShul.com Tickets — Dashboard</title>
 <link rel="stylesheet" href="/css/style.css">
@@ -56,11 +62,11 @@ async function loadAdminDashboard() {
     const s = statsData?.stats || {};
 
     document.getElementById('stats').innerHTML = `
-      <div class="stat"><div class="stat-label">Total Accounts</div><div class="stat-val gold">${s.accounts || 0}</div></div>
+      <div class="stat"><div class="stat-label">Total Accounts</div><div class="stat-val">${s.accounts || 0}</div></div>
       <div class="stat"><div class="stat-label">Total Events</div><div class="stat-val">${s.events || allEvents.length}</div></div>
       <div class="stat"><div class="stat-label">Total Attendees</div><div class="stat-val">${s.attendees || 0}</div></div>
-      <div class="stat"><div class="stat-label">Tickets Sent</div><div class="stat-val blue">${s.sent || 0}</div></div>
-      <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${s.checkedIn || 0}</div></div>`;
+      <div class="stat"><div class="stat-label">Tickets Sent</div><div class="stat-val">${s.sent || 0}</div></div>
+      <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val">${s.checkedIn || 0}</div></div>`;
 
     if (!allEvents.length) {
       document.getElementById('empty').style.display = 'block';
@@ -129,6 +135,11 @@ async function loadUserDashboard() {
 
 load();
 RealtimeSync.register(load, 30000);
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

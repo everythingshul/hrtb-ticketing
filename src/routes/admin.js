@@ -565,7 +565,54 @@ function readSiteContent() {
 function writeSiteContent(c) { try { wfs(getSiteContentPath(), JSON.stringify(c, null, 2)); } catch(e) { console.error('site-content write error:', e.message); } }
 
 r.get('/site-content', (req, res) => {
-  res.json({ content: readSiteContent() });
+  const content = readSiteContent();
+  // Always inject default FAQ and terms if not set (handles fresh deploys)
+  if (!content['faq.items'] || content['faq.items'] === '[]') {
+    content['faq.items'] = JSON.stringify([
+      { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
+      { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
+      { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! EverythingShul supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
+      { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
+      { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
+      { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always scan through.' },
+      { q: 'What is a staff ticket?', a: 'Staff tickets are completely separate from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward capacity, and always scan as Access Granted.' },
+      { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional email alerts when you are getting close to selling out. Online sales stop automatically when capacity is reached.' },
+      { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
+      { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event has its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
+      { q: 'What are promo codes?', a: 'Promo codes let you offer discounts — percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific emails. Buyers enter the code at checkout.' },
+      { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data — we never store card numbers. For phone and SMS orders, card digits go directly from Twilio to Stripe in memory and are never written anywhere.' },
+    ]);
+  }
+  if (!content['terms.content'] || content['terms.content'].length < 200) {
+    content['terms.content'] = `<h2>1. Acceptance of Terms</h2>
+<p>By creating an account and using the EverythingShul Ticket System, you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
+<h2>2. Description of Service</h2>
+<p>EverythingShul Ticket System is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider — we do not organize events or sell tickets on behalf of users.</p>
+<h2>3. Account Registration</h2>
+<p>You must provide accurate information when registering. You are responsible for all activity under your account. Notify us of any unauthorized access at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a>.</p>
+<h2>4. Demo Accounts</h2>
+<p>New accounts start in Demo Mode with a free demo event. Demo accounts cannot process real payments. Purchase a plan to run live events. Your demo event remains free indefinitely.</p>
+<h2>5. Payments and Billing</h2>
+<p>Creating live events requires a one-time fee per event. Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service.</p>
+<h2>6. Ticket Sales and Payment Processing</h2>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to you — we never hold your funds. You are responsible for refunds, disputes, and compliance with consumer protection laws.</p>
+<p>Phone and SMS orders are processed through our platform Stripe account under MOTO approval. You are responsible for compliance with card network rules when enabling phone ordering.</p>
+<h2>7. Your Data and Attendee Information</h2>
+<p>You own your event data and attendee information. We process it only to provide the Service. We do not sell or share your data. You are responsible for obtaining consent from attendees as required by applicable privacy laws.</p>
+<h2>8. Acceptable Use</h2>
+<p>You agree not to use the Service for unlawful purposes including fraud, phishing, or spam. We may suspend accounts that violate these terms without notice.</p>
+<h2>9. Service Availability</h2>
+<p>We aim for maximum uptime but do not guarantee uninterrupted availability. We recommend exporting your attendee list before major events as a precaution.</p>
+<h2>10. Limitation of Liability</h2>
+<p>The Service is provided "as is" without warranty. To the maximum extent permitted by law, EverythingShul is not liable for indirect, incidental, or consequential damages from your use of the platform.</p>
+<h2>11. Changes to These Terms</h2>
+<p>We may update these Terms at any time. Continued use constitutes acceptance. Check this page periodically.</p>
+<h2>12. Contact Us</h2>
+<p>For questions about these Terms, use the <a href="/index.html#contact">Contact Us</a> form on our website.</p>`;
+  }
+  if (!content['terms.title']) content['terms.title'] = 'Terms and Conditions';
+  if (!content['faq.title']) content['faq.title'] = 'Frequently Asked Questions';
+  res.json({ content });
 });
 
 r.patch('/site-content', auth, (req, res) => {

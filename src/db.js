@@ -414,7 +414,8 @@ db.exec(`CREATE TABLE IF NOT EXISTS event_sms_settings (
   FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 );`);
 // Keep account-level columns for backward compat (don't remove existing data)
-try { db.exec("ALTER TABLE accounts ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN google_id TEXT"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN avatar_url TEXT"); } catch {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number TEXT"); } catch {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number_expires TEXT"); } catch {}
 try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}

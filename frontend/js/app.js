@@ -234,9 +234,9 @@ function renderSidebar(activePage) {
       ${nav(`event-detail.html?id=${currentEventId}`, '↳ Attendees')}
       ${nav(`event-staff.html?id=${currentEventId}`, '↳ Staff')}
       ${nav(`event-stats.html?id=${currentEventId}`, '↳ Stats')}
-      ${nav(`event-levels.html?id=${currentEventId}`, '↳ Levels')}
+      ${nav(`event-levels.html?id=${currentEventId}`, '↳ Ticket Levels')}
       ${nav(`event-sales.html?id=${currentEventId}`, '↳ Online Sales')}
-      ${nav(`event-sell.html?id=${currentEventId}`, '↳ Sell')}
+      ${nav(`event-sell.html?id=${currentEventId}`, '↳ Sell Ticket')}
     </div>` : '';
 
   sidebar.innerHTML = `

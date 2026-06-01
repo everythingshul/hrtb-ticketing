@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import db from '../db.js';
 import { auth, JWT_SECRET } from '../middleware/auth.js';
 import { sendMail, inviteEmail, notifySignup } from '../services/mail.js';
+import { OAuth2Client } from 'google-auth-library';
 
 const r = Router();
 
@@ -112,6 +113,59 @@ r.post('/login', async (req, res) => {
       memberships
     });
   } catch (e) { res.status(500).json({ error: 'Server error' }); }
+});
+
+r.get('/google-client-id', (req, res) => {
+  res.json({ clientId: process.env.GOOGLE_CLIENT_ID || null });
+});
+
+// ── Google Sign-In ────────────────────────────────────────
+r.post('/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) return res.status(400).json({ error: 'credential required' });
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return res.status(503).json({ error: 'Google login not configured. Set GOOGLE_CLIENT_ID in environment variables.' });
+  try {
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken: credential, audience: clientId });
+    const { sub: googleId, email, name, picture } = ticket.getPayload();
+    if (!email) return res.status(400).json({ error: 'No email in Google token' });
+    const emailLower = email.toLowerCase();
+
+    // Find by Google ID, then by email (to link existing accounts)
+    let account = db.prepare('SELECT * FROM accounts WHERE google_id=?').get(googleId)
+      || db.prepare('SELECT * FROM accounts WHERE email=?').get(emailLower);
+
+    if (account) {
+      if (!account.is_active) return res.status(403).json({ error: 'Account is disabled' });
+      // Link Google ID if not already linked
+      if (!account.google_id) {
+        db.prepare('UPDATE accounts SET google_id=?, avatar_url=? WHERE id=?')
+          .run(googleId, picture || null, account.id);
+      }
+    } else {
+      // Create new demo account
+      const id = uuid();
+      const parts = (name || emailLower.split('@')[0]).split(' ');
+      db.prepare(`INSERT INTO accounts
+        (id,name,email,password_hash,role,is_active,demo_mode,account_tier,first_name,last_name,can_sell_online,can_send_email,google_id,avatar_url)
+        VALUES (?,?,?,?,?,1,1,'demo',?,?,0,0,?,?)`)
+        .run(id, name||emailLower.split('@')[0], emailLower, '', 'user',
+          parts[0]||'', parts.slice(1).join(' ')||'', googleId, picture||null);
+      account = db.prepare('SELECT * FROM accounts WHERE id=?').get(id);
+      // Seed demo event
+      try { const { seedDemoEvent } = await import('./demo.js'); await seedDemoEvent(id); } catch(e) { console.error('[google/demo]', e.message); }
+    }
+
+    const token = jwt.sign(
+      { id: account.id, email: account.email, role: account.role, v: account.token_version || 0 },
+      JWT_SECRET, { expiresIn: '90d' }
+    );
+    res.json({ token, user: { id: account.id, name: account.name, email: account.email, role: account.role, demo_mode: account.demo_mode, avatar_url: account.avatar_url } });
+  } catch(e) {
+    console.error('[google-auth]', e.message);
+    res.status(401).json({ error: 'Google sign-in failed: ' + e.message });
+  }
 });
 
 r.post('/pin-login', async (req, res) => {

@@ -2,6 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EverythingShul — Event Ticketing for Communities</title>
@@ -122,6 +128,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
     <a href="/" class="active">Home</a>
     <a href="/pricing.html">Pricing</a>
     <a href="/faq.html">FAQ</a>
+    <a href="#" onclick="openContactForm();return false">Contact</a>
     <a href="/login.html" class="btn-nav-login">Sign In</a>
     <a href="/signup.html" class="btn-nav-cta">Start Free</a>
   </div>
@@ -257,7 +264,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
       <img src="/logo.png" alt="EverythingShul">
       <p>Professional event ticketing for synagogues, community organizations, and private events. Sell online, by phone, or by SMS.</p>
       <p style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.35)">
-        <a href="mailto:everythingshul@gmail.com" style="color:rgba(255,255,255,.5)">everythingshul@gmail.com</a>
+        <a href="mailto:everythingshul@gmail.com" style="color:rgba(255,255,255,.5);display:none">everythingshul@gmail.com</a>
       </p>
     </div>
     <div class="footer-col">
@@ -278,7 +285,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
       <h4>Legal</h4>
       <a href="/terms.html">Terms &amp; Conditions</a>
       <a href="/pricing.html">Pricing</a>
-      <a href="mailto:everythingshul@gmail.com">Contact Us</a>
+      <a href="#" onclick="openContactForm();return false">Contact Us</a>
     </div>
   </div>
   <div class="footer-bottom">
@@ -286,7 +293,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
     <div>
       <a href="/terms.html">Terms</a>
       <a href="/pricing.html">Pricing</a>
-      <a href="mailto:everythingshul@gmail.com">Contact</a>
+      <a href="#" onclick="openContactForm();return false">Contact</a>
     </div>
   </div>
 </footer>
@@ -299,6 +306,79 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
   if (c['home.cta_primary']) document.getElementById('cta-primary').textContent = c['home.cta_primary'] + ' →';
   if (c['home.cta_secondary']) document.getElementById('cta-secondary').textContent = c['home.cta_secondary'];
 }).catch(() => {});
+</script>
+
+<!-- Contact Form Modal -->
+<div id="contact-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeContactForm()">
+  <div style="background:#fff;border-radius:14px;padding:32px;max-width:480px;width:100%;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <button onclick="closeContactForm()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1">&#x2715;</button>
+    <div id="cf-form">
+      <h2 style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:6px">Contact Us</h2>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px">Fill in the form below and we'll get back to you.</p>
+      <div style="margin-bottom:12px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Your Name</label>
+        <input id="cf-name" placeholder="First and last name" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit"></div>
+      <div style="margin-bottom:12px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Email Address</label>
+        <input id="cf-email" type="email" placeholder="you@example.com" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit"></div>
+      <div style="margin-bottom:12px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Subject</label>
+        <input id="cf-subject" placeholder="How can we help?" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit"></div>
+      <div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Message *</label>
+        <textarea id="cf-body" placeholder="Tell us what you need…" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;min-height:100px;resize:vertical;outline:none;font-family:inherit"></textarea></div>
+      <div id="cf-err" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:12px"></div>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeContactForm()" style="flex:1;padding:11px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit">Cancel</button>
+        <button id="cf-btn" onclick="submitContactForm()" style="flex:2;padding:11px;border:none;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Send Message</button>
+      </div>
+    </div>
+    <div id="cf-success" style="display:none;text-align:center;padding:20px 0">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#27a85f" stroke-width="2" style="margin-bottom:14px"><polyline points="20 6 9 17 4 12"/></svg>
+      <div style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px">Message sent!</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">We'll get back to you at the email you provided.</div>
+      <button onclick="closeContactForm()" style="padding:10px 24px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('contact-modal').style.display = 'none';
+function openContactForm() {
+  document.getElementById('contact-modal').style.display = 'flex';
+  document.getElementById('cf-form').style.display = 'block';
+  document.getElementById('cf-success').style.display = 'none';
+  document.getElementById('cf-err').style.display = 'none';
+  document.getElementById('cf-btn').disabled = false;
+  document.getElementById('cf-btn').textContent = 'Send Message';
+}
+function closeContactForm() { document.getElementById('contact-modal').style.display = 'none'; }
+async function submitContactForm() {
+  const name    = document.getElementById('cf-name').value.trim();
+  const email   = document.getElementById('cf-email').value.trim();
+  const subject = document.getElementById('cf-subject').value.trim();
+  const body    = document.getElementById('cf-body').value.trim();
+  const errEl   = document.getElementById('cf-err');
+  errEl.style.display = 'none';
+  if (!body) { errEl.textContent = 'Please enter a message.'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('cf-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch('/api/admin/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_name: name, from_email: email, subject: subject || 'Contact form inquiry', message: body })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('cf-form').style.display = 'none';
+    document.getElementById('cf-success').style.display = 'block';
+  } catch(e) {
+    errEl.textContent = 'Failed to send. Please try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Send Message';
+  }
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
