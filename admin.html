@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Site Content</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb16">
+      <div class="ph-left"><h1>Site Content</h1></div>
+      <div class="ph-actions">
+        <button class="btn btn-sm btn-gold" onclick="saveAll()">Save All Changes</button>
+      </div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div class="row mb20" style="gap:6px;border-bottom:2px solid var(--border);padding-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-gold" id="stab-pages" onclick="subTab('pages')">Public Pages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-sms" onclick="subTab('sms')">SMS Messages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-ivr" onclick="subTab('ivr')">IVR Messages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-pricing" onclick="subTab('pricing')">Pricing Plans</button>
+      <button class="btn btn-sm btn-ghost" id="stab-platform" onclick="subTab('platform')">Platform Settings</button>
+      <button class="btn btn-sm btn-ghost" id="stab-pci" onclick="subTab('pci')">PCI Compliance</button>
+    </div>
+
+    <div id="content-area"><div class="text2">Loading…</div></div>
+
+  </div></main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+if (!Auth.requireAdmin()) throw 0;
+renderSidebar();
+
+let siteContent = {}, currentSubTab = 'pages';
+let allKeys = [];
+
+async function load() {
+  try {
+    const [cData, psData] = await Promise.all([
+      api.admin.getSiteContent(),
+      api.connect.getSettings()
+    ]);
+    siteContent = { ...cData.content, ...psData.settings };
+    subTab('pages');
+  } catch(e) {
+    document.getElementById('content-area').innerHTML = `<div class="info-box warn">Error loading: ${esc(e.message)}</div>`;
+  }
+}
+
+function subTab(tab) {
+  currentSubTab = tab;
+  ['pages','sms','ivr','pricing','platform','pci'].forEach(t => {
+    document.getElementById('stab-'+t).className = 'btn btn-sm ' + (t===tab?'btn-gold':'btn-ghost');
+  });
+  renderSubTab(tab);
+}
+
+function field(key, label, hint='', tall=false) {
+  const val = siteContent[key] || '';
+  const id = 'sc-' + key.replace(/[^a-z0-9]/gi,'-');
+  allKeys.push({ key, id });
+  return `<div class="fg"><label style="font-size:12px">${esc(label)} ${hint?`<span class="tip-icon" data-tip="${esc(hint)}">i</span>`:''}
+    </label>${tall
+      ? `<textarea id="${id}" style="min-height:${tall===true?70:tall}px;font-size:12px">${esc(val)}</textarea>`
+      : `<input id="${id}" value="${esc(val)}" style="font-size:12px">`
+    }</div>`;
+}
+
+function sectionTitle(t) { return `<div class="section-title mt20 mb10">${t}</div>`; }
+
+function renderSubTab(tab) {
+  allKeys = [];
+  const area = document.getElementById('content-area');
+
+  if (tab === 'pages') {
+    area.innerHTML = `
+      ${sectionTitle('Home Page')}
+      ${field('home.hero_title','Hero Title')}
+      ${field('home.hero_subtitle','Hero Subtitle','')}
+      ${field('home.cta_primary','Primary Button Text')}
+      ${field('home.cta_secondary','Secondary Button Text')}
+      ${field('home.feature1_title','Feature 1 Title')} ${field('home.feature1_body','Feature 1 Body','')}
+      ${field('home.feature2_title','Feature 2 Title')} ${field('home.feature2_body','Feature 2 Body','')}
+      ${field('home.feature3_title','Feature 3 Title')} ${field('home.feature3_body','Feature 3 Body','')}
+      ${field('home.feature4_title','Feature 4 Title')} ${field('home.feature4_body','Feature 4 Body','')}
+      ${sectionTitle('Pricing Page')}
+      ${field('pricing.title','Page Title')} ${field('pricing.subtitle','Subtitle','')}
+      <div class="form-row" style="gap:12px">
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 1 (Demo/Free)</div>
+          ${field('pricing.tier1_name','Name')}${field('pricing.tier1_price','Price')}${field('pricing.tier1_period','Period','e.g. per event, per month')}${field('pricing.tier1_desc','Description','')}${field('pricing.tier1_features','Features (one per line)','',80)}</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 2</div>
+          ${field('pricing.tier2_name','Name')}${field('pricing.tier2_price','Price')}${field('pricing.tier2_period','Period')}${field('pricing.tier2_desc','Description','')}${field('pricing.tier2_features','Features','',80)}</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 3</div>
+          ${field('pricing.tier3_name','Name')}${field('pricing.tier3_price','Price')}${field('pricing.tier3_period','Period')}${field('pricing.tier3_desc','Description','')}${field('pricing.tier3_features','Features','',80)}</div>
+      </div>
+      ${sectionTitle('FAQ')}
+      ${field('faq.title','FAQ Page Title')}
+      <div class="fg"><label style="font-size:12px">FAQ Items (JSON array)</label>
+        <textarea id="sc-faq-items" style="min-height:200px;font-family:monospace;font-size:11px">${esc(siteContent['faq.items']||'[]')}</textarea></div>
+      ${sectionTitle('Terms &amp; Conditions')}
+      ${field('terms.title','Page Title')}${field('terms.last_updated','Last Updated Date')}
+      <div class="fg"><label style="font-size:12px">Content (HTML supported)</label>
+        <textarea id="sc-terms-content" style="min-height:250px;font-family:monospace;font-size:12px">${esc(siteContent['terms.content']||'')}</textarea></div>
+      <div class="row mt12" style="gap:8px;flex-wrap:wrap">
+        <a href="/landing.html" target="_blank" class="btn btn-sm">Preview Home ↗</a>
+        <a href="/pricing.html" target="_blank" class="btn btn-sm">Preview Pricing ↗</a>
+        <a href="/faq.html" target="_blank" class="btn btn-sm">Preview FAQ ↗</a>
+        <a href="/terms.html" target="_blank" class="btn btn-sm">Preview Terms ↗</a>
+      </div>`;
+    allKeys.push({ key:'faq.items', id:'sc-faq-items' });
+    allKeys.push({ key:'terms.content', id:'sc-terms-content' });
+  }
+
+  else if (tab === 'sms') {
+    const msgs = [
+      ['sms.welcome','Welcome Message'],['sms.help','Help Message'],
+      ['sms.invalid_code','Invalid Event Code'],['sms.no_levels','No Levels Available'],
+      ['sms.select_level','Select Level Prompt','{{event_name}} {{event_date}} {{levels}}'],
+      ['sms.select_quantity','Select Quantity Prompt','{{level_name}} {{price}}'],
+      ['sms.get_name','Ask for Name','{{quantity}} {{level_name}} {{total}}'],
+      ['sms.get_email','Ask for Email','{{first_name}}'],
+      ['sms.confirm','Order Confirmation (await YES/NO)','{{quantity}} {{level_name}} {{total}} {{email}}'],
+      ['sms.get_card','Ask for Card Number'],['sms.get_expiry','Ask for Expiry','{{last4}}'],
+      ['sms.get_cvv','Ask for CVV'],['sms.processing','Processing Message'],
+      ['sms.success','Payment Success','{{total}} {{quantity}} {{event_name}} {{email}}'],
+      ['sms.declined','Payment Declined'],['sms.cancelled','Order Cancelled'],
+      ['sms.session_expired','Session Expired'],['sms.error','Error Message'],
+    ];
+    area.innerHTML = `<p class="text2 sm mb16">Variables: <code>{{event_name}} {{event_date}} {{levels}} {{level_name}} {{price}} {{quantity}} {{total}} {{email}} {{first_name}} {{last4}}</code></p>
+      ${msgs.map(([key,label,hint]) => field(key,label,hint||'',55)).join('')}`;
+  }
+
+  else if (tab === 'ivr') {
+    const voice = siteContent['ivr.tts_voice'] || 'Polly.Joanna';
+    const voiceId = 'sc-ivr-tts-voice';
+    allKeys.push({ key:'ivr.tts_voice', id:voiceId });
+    const msgs = [
+      ['ivr.welcome','Welcome Menu'],['ivr.select_event','Select Event Prompt'],
+      ['ivr.select_level','Select Level Prompt'],['ivr.select_quantity','Select Quantity Prompt'],
+      ['ivr.confirm','Order Confirmation (Press 1/2)'],['ivr.get_card','Enter Card Number'],
+      ['ivr.get_expiry','Enter Expiry'],['ivr.get_cvv','Enter CVV'],
+      ['ivr.processing','Processing Hold Message'],['ivr.success','Payment Success'],
+      ['ivr.declined','Payment Declined'],['ivr.invalid','Invalid Input'],
+      ['ivr.error','General Error'],['ivr.no_available','No Events Available'],
+    ];
+    area.innerHTML = `
+      <div class="fg mb12">
+        <label style="font-size:12px">Global TTS Voice <span class="tip-icon" data-tip="Used when no recording URL is set. Can be overridden per event in Admin Events.">i</span></label>
+        <div class="row" style="gap:8px">
+          <select id="${voiceId}" style="flex:1">
+            <option value="Polly.Joanna" ${voice==='Polly.Joanna'?'selected':''}>Joanna (Female, US)</option>
+            <option value="Polly.Matthew" ${voice==='Polly.Matthew'?'selected':''}>Matthew (Male, US)</option>
+            <option value="Polly.Amy" ${voice==='Polly.Amy'?'selected':''}>Amy (Female, UK)</option>
+            <option value="Polly.Brian" ${voice==='Polly.Brian'?'selected':''}>Brian (Male, UK)</option>
+          </select>
+          <button class="btn btn-sm" onclick="previewGlobalVoice()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Preview Voice
+          </button>
+        </div>
+      </div>
+      <p class="text2 sm mb12">For each step: enter TTS text OR paste a recording URL (.mp3/.wav). Recording overrides TTS. Per-event overrides can be set in Admin → All Events → phone button.</p>
+      ${msgs.map(([key,label]) => {
+        const recKey = key+'_recording';
+        const textId = 'sc-'+key.replace(/[^a-z0-9]/gi,'-');
+        const recId  = 'sc-'+recKey.replace(/[^a-z0-9]/gi,'-');
+        allKeys.push({ key, id:textId });
+        allKeys.push({ key:recKey, id:recId });
+        return `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${label}</div>
+          <div class="form-row" style="gap:8px;margin:0">
+            <div class="fg" style="margin:0">
+              <div class="row" style="gap:6px;align-items:center;margin-bottom:3px">
+                <label style="font-size:11px;margin:0">TTS Text</label>
+                <button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 7px" onclick="previewTTSGlobal('${textId}')">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Preview
+                </button>
+              </div>
+              <textarea id="${textId}" style="min-height:45px;font-size:11px">${esc(siteContent[key]||'')}</textarea>
+            </div>
+            <div class="fg" style="margin:0"><label style="font-size:11px">Recording URL (overrides TTS)</label><input id="${recId}" placeholder="https://... .mp3" value="${esc(siteContent[recKey]||'')}" style="font-size:11px"></div>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }
+
+  else if (tab === 'pricing') {
+    area.innerHTML = `<div id="plans-wrap"><div class="text2 sm">Loading…</div></div>
+      <div class="section-title mt20 mb10">Add New Plan</div>
+      <div style="background:var(--bg3);border-radius:var(--r);padding:14px;border:1px solid var(--border)">
+        <div class="form-row mb8">
+          <div class="fg" style="margin:0"><label>Name *</label><input id="np-name" placeholder="Single Event"></div>
+          <div class="fg" style="margin:0"><label>Price (USD) *</label><input id="np-price" type="number" min="0" step="0.01" placeholder="49.00"></div>
+        </div>
+        <div class="fg mb8"><label>Description</label><input id="np-desc" placeholder="Everything for one event"></div>
+        <div class="fg mb8"><label>Features (one per line)</label><textarea id="np-features" style="min-height:70px" placeholder="Online ticket sales&#10;Email delivery&#10;Door scanner"></textarea></div>
+        <button class="btn btn-sm btn-primary" onclick="createPlan()">+ Add Plan</button>
+      </div>`;
+    loadPlans();
+  }
+
+  else if (tab === 'platform') {
+    const s = siteContent;
+    const selField = (key,label,options) => {
+      const id = 'sc-'+key.replace(/[^a-z0-9]/gi,'-');
+      allKeys.push({ key, id });
+      return `<div class="fg"><label style="font-size:12px">${label}</label><select id="${id}">${options.map(([v,l])=>`<option value="${v}" ${s[key]===v?'selected':''}>${l}</option>`).join('')}</select></div>`;
+    };
+    area.innerHTML = `
+      ${sectionTitle('Billing')}
+      <div class="form-row">
+        ${field('platform_fee_percent','Platform Fee %','Percentage of each ticket sale you keep via Connect (0 = no fee)')}
+        ${selField('currency','Currency',[['usd','USD ($)'],['ils','ILS (₪)'],['eur','EUR (€)'],['gbp','GBP (£)']])}
+      </div>
+      ${sectionTitle('SMS/IVR')}
+      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a> → 📞.</p>
+      <div class="form-row">
+        ${selField('sms.enabled','SMS Ordering',[['0','Disabled'],['1','Enabled']])}
+        ${selField('ivr.enabled','IVR Phone Ordering',[['0','Disabled'],['1','Enabled']])}
+      </div>`;
+  }
+
+  else if (tab === 'pci') {
+    const pciFields = [
+      ['pci.merchant_name','Merchant / Business Name','As on your Stripe account'],
+      ['pci.dba','DBA (if different)','Leave blank if same'],
+      ['pci.contact_name','Primary Contact Name','Responsible for PCI compliance'],
+      ['pci.contact_title','Contact Title','e.g. Owner, CTO'],
+      ['pci.contact_phone','Contact Phone',''],
+      ['pci.contact_email','Contact Email',''],
+      ['pci.business_address','Business Address','Street, City, State, ZIP'],
+      ['pci.business_url','Website URL','e.g. https://tickets.everythingshul.com'],
+      ['pci.acquirer_name','Payment Processor','e.g. Stripe'],
+      ['pci.merchant_id','Stripe Merchant ID','Stripe Dashboard → Settings → Account'],
+      ['pci.transaction_volume','Annual Card Transactions','e.g. under 1,000'],
+      ['pci.asv_vendor','ASV Scan Vendor','e.g. SecurityMetrics, Qualys'],
+      ['pci.asv_last_scan','Last ASV Scan Date','YYYY-MM-DD'],
+      ['pci.saq_last_filed','Last SAQ-D Filed','YYYY-MM-DD'],
+      ['pci.saq_next_due','Next SAQ-D Due','YYYY-MM-DD — 12 months from last'],
+      ['pci.ip_ranges','Server IP Address','Find in Render Dashboard'],
+      ['pci.hosting_provider','Hosting Provider','Render.com'],
+      ['pci.cde_description','Cardholder Data Environment','Describe how card data flows',true],
+      ['pci.notes','Notes / Remediation Items','',true],
+    ];
+    area.innerHTML = `
+      <div class="info-box tip mb16" style="font-size:13px;line-height:1.8">
+        <strong>SAQ Required: SAQ-D Merchant</strong> (MOTO transactions) &nbsp;·&nbsp; Annual self-assessment &nbsp;·&nbsp; Quarterly ASV scans<br>
+        Card data flow: Customer → Twilio → server RAM → Stripe API → tokenized. Never stored.<br>
+        <a href="https://listings.pcisecuritystandards.org/documents/PCI-DSS-v4-0-SAQ-D-Merchant.pdf" target="_blank" style="color:var(--navy);font-weight:600">Download SAQ-D Form ↗</a> &nbsp;·&nbsp;
+        <a href="https://stripe.com/docs/payments/payment-intents/moto" target="_blank" style="color:var(--navy);font-weight:600">Stripe MOTO Docs ↗</a>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${pciFields.map(([key,label,hint,tall]) => {
+          const id = 'sc-pci-'+key.replace(/[^a-z0-9]/gi,'-');
+          allKeys.push({ key, id });
+          const val = siteContent[key]||'';
+          return `<div class="fg" style="margin:0;${tall?'grid-column:1/-1':''}">
+            <label style="font-size:12px">${esc(label)} ${hint?`<span class="tip-icon" data-tip="${esc(hint)}">i</span>`:''}
+            </label>${tall
+              ? `<textarea id="${id}" style="min-height:65px;font-size:12px">${esc(val)}</textarea>`
+              : `<input id="${id}" value="${esc(val)}" style="font-size:12px">`
+            }</div>`;
+        }).join('')}
+      </div>
+      <div class="row mt16" style="gap:8px;flex-wrap:wrap">
+        <a href="https://www.pcisecuritystandards.org/document_library/" target="_blank" class="btn btn-sm">PCI Document Library ↗</a>
+        <a href="https://www.pcisecuritystandards.org/assessors_and_solutions/approved_scanning_vendors" target="_blank" class="btn btn-sm">Find ASV Vendor ↗</a>
+        <button class="btn btn-sm btn-primary" onclick="checkPhoneExpiry()">Check Number Expiries Now</button>
+      </div>`;
+  }
+}
+
+async function saveAll() {
+  // Save current tab's visible fields
+  const updates = {};
+  for (const { key, id } of allKeys) {
+    const el = document.getElementById(id);
+    if (el) updates[key] = el.value;
+  }
+  const siteKeys = Object.keys(updates).filter(k =>
+    !k.startsWith('platform_fee') && !k.startsWith('currency') &&
+    !k.startsWith('sms.enabled') && !k.startsWith('ivr.enabled') && !k.startsWith('pci.')
+  );
+  const platformKeys = Object.keys(updates).filter(k =>
+    k.startsWith('platform_fee') || k.startsWith('currency') ||
+    k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.')
+  );
+  const promises = [];
+  if (siteKeys.length) promises.push(api.admin.updateSiteContent(Object.fromEntries(siteKeys.map(k=>[k,updates[k]]))));
+  if (platformKeys.length) promises.push(api.connect.updateSettings(Object.fromEntries(platformKeys.map(k=>[k,updates[k]]))));
+  try {
+    await Promise.all(promises);
+    // Refresh cached content
+    const [cData, psData] = await Promise.all([api.admin.getSiteContent(), api.connect.getSettings()]);
+    siteContent = { ...cData.content, ...psData.settings };
+    toast('Saved!');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// Pricing plans
+async function loadPlans() {
+  try {
+    const { plans } = await api.connect.pricingPlansAdmin();
+    document.getElementById('plans-wrap').innerHTML = plans.length
+      ? `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Status</th><th></th></tr></thead><tbody>
+          ${plans.map(p=>`<tr>
+            <td><strong>${esc(p.name)}</strong></td>
+            <td>$${(p.price_cents/100).toFixed(2)}</td>
+            <td class="text2 sm">${esc(p.description||'')}</td>
+            <td>${p.is_active?'<span class="badge badge-checked" style="font-size:10px">Active</span>':'<span class="badge badge-deactivated" style="font-size:10px">Off</span>'}</td>
+            <td><div class="row" style="gap:4px">
+              <button class="btn btn-sm" onclick="togglePlan('${p.id}',${p.is_active?0:1})">${p.is_active?'Disable':'Enable'}</button>
+              <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}')">Delete</button>
+            </div></td>
+          </tr>`).join('')}
+        </tbody></table></div>`
+      : '<div class="text2 sm mb12">No plans yet. Add one below.</div>';
+  } catch(e) { document.getElementById('plans-wrap').innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function createPlan() {
+  const name = document.getElementById('np-name').value.trim();
+  const price = parseFloat(document.getElementById('np-price').value||0);
+  const desc = document.getElementById('np-desc').value.trim();
+  const feats = (document.getElementById('np-features').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  if (!name) { toast('Plan name required','error'); return; }
+  try { await api.connect.createPlan({ name, price_cents:Math.round(price*100), description:desc, features:feats }); toast('Plan created'); loadPlans(); ['np-name','np-price','np-desc','np-features'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function togglePlan(id, active) {
+  try { await api.connect.updatePlan(id,{is_active:active}); toast(active?'Enabled':'Disabled'); loadPlans(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function deletePlan(id) {
+  if (!confirm('Delete this pricing plan?')) return;
+  try { await api.connect.deletePlan(id); toast('Deleted'); loadPlans(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function checkPhoneExpiry() {
+  try {
+    const r = await fetch('/api/phone/check-expiry',{method:'POST',headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
+    toast(`Expired: ${r.expired}, Notified: ${r.notified}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function speakText(text, voiceKey) {
+  if (!window.speechSynthesis) { toast('Speech not supported in this browser','error'); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text.replace(/{{[^}]+}}/g,'example'));
+  const langMap = {'Polly.Joanna':'en-US','Polly.Matthew':'en-US','Polly.Amy':'en-GB','Polly.Brian':'en-GB'};
+  const genderMap = {'Polly.Joanna':'female','Polly.Matthew':'male','Polly.Amy':'female','Polly.Brian':'male'};
+  utt.lang = langMap[voiceKey]||'en-US';
+  const voices = window.speechSynthesis.getVoices();
+  const match = voices.find(v=>v.lang.startsWith((langMap[voiceKey]||'en-US').split('-')[0]) && v.name.toLowerCase().includes(genderMap[voiceKey]||'female'))
+    || voices.find(v=>v.lang.startsWith((langMap[voiceKey]||'en-US').split('-')[0])) || voices[0];
+  if (match) utt.voice = match;
+  utt.rate=0.95; utt.pitch=(voiceKey||'').includes('Matthew')||(voiceKey||'').includes('Brian')?0.9:1.1;
+  window.speechSynthesis.speak(utt);
+  toast('Playing preview…');
+}
+
+function previewGlobalVoice() {
+  const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
+  speakText('Hello, welcome to EverythingShul Tickets. Press 1 to buy tickets.', voice);
+}
+
+function previewTTSGlobal(textareaId) {
+  const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
+  const text = document.getElementById(textareaId)?.value?.trim();
+  if (!text) { toast('Enter TTS text first','error'); return; }
+  speakText(text, voice);
+}
+
+window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined
+  ? (window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices())
+  : window.speechSynthesis?.getVoices();
+
+load();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

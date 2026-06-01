@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul.com — Event Stats</title>
+<link rel="stylesheet" href="/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+    <div class="ph">
+      <div class="ph-left">
+        <h1 id="ev-title">Loading…</h1>
+        <p id="ev-sub" class="text2"></p>
+      </div>
+      <div class="ph-actions">
+        <a id="back-btn" href="#" class="btn">← Back to Event</a>
+      </div>
+    </div>
+
+    <div id="stat-grid" class="stat-grid mb22"></div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px">
+      <!-- Ticket Status Pie -->
+      <div class="card">
+        <div class="section-title mb16">Tickets by Status</div>
+        <canvas id="chart-status" height="260"></canvas>
+        <div id="legend-status" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Confirmation Pie -->
+      <div class="card">
+        <div class="section-title mb16">Confirmation Status</div>
+        <canvas id="chart-confirm" height="260"></canvas>
+        <div id="legend-confirm" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Per Level: check-in rate -->
+      <div class="card" id="card-level-checkin">
+        <div class="section-title mb16">Check-in Rate by Ticket Level</div>
+        <canvas id="chart-level-checkin" height="260"></canvas>
+        <div id="legend-level-checkin" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Per Level: ticket count -->
+      <div class="card" id="card-level-count">
+        <div class="section-title mb16">Ticket Count by Level</div>
+        <canvas id="chart-level-count" height="260"></canvas>
+        <div id="legend-level-count" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Online vs Offline -->
+      <div class="card" id="card-source">
+        <div class="section-title mb16">Online vs Offline Sales</div>
+        <canvas id="chart-source" height="260"></canvas>
+        <div id="legend-source" style="margin-top:14px"></div>
+      </div>
+
+      <!-- Staff tickets -->
+      <div class="card" id="card-staff">
+        <div class="section-title mb16">Staff Tickets by Level</div>
+        <canvas id="chart-staff" height="260"></canvas>
+        <div id="legend-staff" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+  </div></main>
+</div>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+const params   = new URLSearchParams(location.search);
+const eventId  = params.get('id');
+if (!eventId) window.location = '/events.html';
+
+document.getElementById('back-btn').href = `/event-detail.html?id=${eventId}`;
+
+const STATUS_COLORS = {
+  pending:     '#d97706',
+  sent:        '#00aadd',
+  checked:     '#27a85f',
+  preprint:    '#7c5cbe',
+  deactivated: '#d93535',
+};
+const STATUS_LABELS = {
+  pending: 'Pending', sent: 'Sent', checked: 'Checked In',
+  preprint: 'Pre-printed', deactivated: 'Deactivated'
+};
+
+const LEVEL_PALETTE = [
+  '#00aadd','#27a85f','#d97706','#7c5cbe','#d93535',
+  '#1a3a6b','#e11d48','#0891b2','#65a30d','#9333ea'
+];
+
+function makeLegend(items) {
+  return items.map(i => `
+    <div class="row" style="gap:8px;margin-bottom:5px;align-items:center">
+      <div style="width:12px;height:12px;border-radius:3px;background:${i.color};flex-shrink:0"></div>
+      <span class="sm" style="flex:1">${esc(i.label)}</span>
+      <span class="sm" style="color:var(--text2);font-weight:600">${i.value} <span style="color:var(--text3)">(${i.pct}%)</span></span>
+    </div>`).join('');
+}
+
+function buildPie(canvasId, labels, data, colors) {
+  const ctx = document.getElementById(canvasId)?.getContext('2d');
+  if (!ctx) return;
+  const total = data.reduce((s,v) => s+v, 0);
+  // If no data, show a grey empty ring
+  const chartData = total > 0 ? data : [1];
+  const chartColors = total > 0 ? colors : ['#e5e7eb'];
+  const chartLabels = total > 0 ? labels : ['No data yet'];
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: total > 0 ? 2 : 0, borderColor: '#fff' }] },
+    options: {
+      cutout: '60%',
+      plugins: {
+        legend: { display: false },
+        tooltip: total > 0
+          ? { callbacks: { label: c => ` ${c.label}: ${c.raw}` } }
+          : { enabled: false }
+      },
+      responsive: true
+    }
+  });
+}
+
+async function load() {
+  const [eventData, statsData, staffStats] = await Promise.all([
+    api.events.list().then(d => d.events?.find(e => e.id === eventId)),
+    api.attendees.getStats(eventId),
+    api.staff.stats(eventId).catch(() => ({ total: 0, byLevel: [] }))
+  ]);
+
+  if (eventData) {
+    document.getElementById('ev-title').textContent = eventData.name + ' — Stats';
+    localStorage.setItem('hrtb_current_event_name', eventData.name);
+    renderSidebar();
+    document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
+    document.title = `Stats — ${eventData.name}`;
+  }
+
+  const { byStatus, confirmed, unconfirmed, byLevel, byStaffLevel, noLevel, total, online, offline, totalStaff } = statsData;
+
+  // Summary stats
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat"><div class="stat-label">Total Tickets</div><div class="stat-val">${total}</div></div>
+    <div class="stat"><div class="stat-label">Checked In</div><div class="stat-val green">${byStatus.checked||0}</div></div>
+    <div class="stat"><div class="stat-label">Sent</div><div class="stat-val blue">${byStatus.sent||0}</div></div>
+    <div class="stat"><div class="stat-label">Pending</div><div class="stat-val orange">${byStatus.pending||0}</div></div>
+    <div class="stat"><div class="stat-label">Confirmed</div><div class="stat-val green">${confirmed}</div></div>
+    <div class="stat"><div class="stat-label">Not Confirmed</div><div class="stat-val orange">${unconfirmed}</div></div>`;
+
+  // Status pie — always show all categories
+  const statusAllKeys = ['pending','sent','checked','preprint','deactivated'];
+  const statusValues = statusAllKeys.map(k => byStatus[k]||0);
+  const statusTotal = statusValues.reduce((s,v)=>s+v, 0);
+  buildPie('chart-status', statusAllKeys.map(k=>STATUS_LABELS[k]), statusValues, statusAllKeys.map(k=>STATUS_COLORS[k]));
+  document.getElementById('legend-status').innerHTML = makeLegend(
+    statusAllKeys.map(k => ({ color:STATUS_COLORS[k], label:STATUS_LABELS[k], value:byStatus[k]||0, pct:statusTotal?Math.round((byStatus[k]||0)/statusTotal*100):0 }))
+  );
+
+  // Confirmation pie
+  const confTotal = confirmed + unconfirmed;
+  buildPie('chart-confirm',
+    ['Confirmed', 'Not Confirmed'],
+    [confirmed, unconfirmed],
+    ['#27a85f', '#d97706']
+  );
+  document.getElementById('legend-confirm').innerHTML = makeLegend([
+    { color: '#27a85f', label: 'Confirmed',     value: confirmed,   pct: confTotal ? Math.round(confirmed/confTotal*100) : 0 },
+    { color: '#d97706', label: 'Not Confirmed',  value: unconfirmed, pct: confTotal ? Math.round(unconfirmed/confTotal*100) : 0 },
+  ]);
+
+  // Online vs offline pie
+  const sourceTotal = (online||0) + (offline||0);
+  buildPie('chart-source', ['Online','Offline'], [online||0, offline||0], ['#27a85f','#00aadd']);
+  document.getElementById('legend-source').innerHTML = makeLegend([
+    { color:'#27a85f', label:'Online (Stripe)',  value: online||0,  pct: sourceTotal ? Math.round((online||0)/sourceTotal*100) : 0 },
+    { color:'#00aadd', label:'Offline (Manual)', value: offline||0, pct: sourceTotal ? Math.round((offline||0)/sourceTotal*100) : 0 },
+  ]);
+  // Staff pie — always show, empty if no data
+  const staffColors = (staffStats.byLevel||[]).map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
+  if (staffStats.byLevel && staffStats.byLevel.length > 0 && staffStats.total > 0) {
+    buildPie('chart-staff', staffStats.byLevel.map(l=>l.name), staffStats.byLevel.map(l=>l.total), staffColors);
+    document.getElementById('legend-staff').innerHTML = makeLegend(
+      staffStats.byLevel.map((l,i) => ({ color: staffColors[i], label: l.name, value: l.total, pct: staffStats.total ? Math.round(l.total/staffStats.total*100) : 0 }))
+    );
+  } else {
+    buildPie('chart-staff', [], [], []);
+    document.getElementById('legend-staff').innerHTML = '<div class="text2 xs" style="text-align:center">No staff tickets yet</div>';
+  }
+  document.getElementById('card-staff').style.display = 'block';
+
+  // Level pies — always show
+  document.getElementById('card-level-checkin').style.display = 'block';
+  document.getElementById('card-level-count').style.display = 'block';
+  if (byLevel && byLevel.length > 0) {
+    const allLevels = [...byLevel];
+    if (noLevel > 0) allLevels.push({ name: 'No Level', total: noLevel, checked: 0, sent: 0, color: '#aaa' });
+    const levelColors = allLevels.map((l, i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
+    const levelLabels = allLevels.map(l => l.name);
+    const levelTotals = allLevels.map(l => l.total);
+    const levelChecked = allLevels.map(l => l.checked);
+    const levelTotal = allLevels.reduce((s,l) => s+l.total, 0);
+    buildPie('chart-level-checkin', levelLabels, levelChecked, levelColors);
+    document.getElementById('legend-level-checkin').innerHTML = makeLegend(
+      allLevels.map((l,i) => ({ color: levelColors[i], label: l.name, value: `${l.checked}/${l.total}`, pct: l.total ? Math.round(l.checked/l.total*100) : 0 }))
+    );
+    buildPie('chart-level-count', levelLabels, levelTotals, levelColors);
+    document.getElementById('legend-level-count').innerHTML = makeLegend(
+      allLevels.map((l,i) => ({ color: levelColors[i], label: l.name, value: l.total, pct: levelTotal ? Math.round(l.total/levelTotal*100) : 0 }))
+    );
+  } else {
+    buildPie('chart-level-checkin', [], [], []);
+    buildPie('chart-level-count', [], [], []);
+    document.getElementById('legend-level-checkin').innerHTML = '<div class="text2 xs" style="text-align:center">No ticket levels yet</div>';
+    document.getElementById('legend-level-count').innerHTML = '<div class="text2 xs" style="text-align:center">No ticket levels yet</div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

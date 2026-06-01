@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EverythingShul.com Tickets — Event</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+    <button class="btn btn-ghost btn-sm mb8" onclick="window.location='/events.html'" style="padding-left:0">← Events</button>
+    <div class="ph">
+      <div class="ph-left"><h1 id="ev-title">Loading…</h1><p id="ev-sub" class="text2"></p><p id="ev-desc" class="sm text2" style="margin-top:4px;display:none"></p></div>
+      <div class="ph-actions">
+        <button class="btn btn-sm" onclick="doExport()">Export</button>
+        <button class="btn btn-sm" id="btn-design" onclick="document.getElementById('design-input').click()">Ticket Design</button>
+        <button class="btn btn-sm" onclick="previewTicketPDF()">Preview PDF</button>
+        <button class="btn btn-sm" onclick="showModal('modal-invite')">Invite</button>
+        <button class="btn btn-sm btn-primary" onclick="openPins()">Door Scanner</button>
+      </div>
+      <input type="file" id="design-input" accept="image/png,image/jpeg" style="display:none" onchange="confirmDesignUpload(event)">
+    </div>
+    <div class="stat-grid" id="stats"></div>
+
+    <!-- Toolbar -->
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">
+      <!-- Search -->
+      <input id="search" placeholder="Search name, phone, email, ID…"
+        style="width:220px;flex-shrink:0" oninput="debouncedFilter()">
+      <!-- Filters -->
+      <select id="status-filter" style="width:130px" onchange="filterTable()">
+        <option value="">All statuses</option>
+        <option value="preprint">Pre-printed</option>
+        <option value="pending">Pending</option>
+        <option value="sent">Sent</option>
+        <option value="checked">Checked In</option>
+        <option value="deactivated">Deactivated</option>
+      </select>
+      <select id="level-filter" style="width:120px" onchange="filterTable()">
+        <option value="">All levels</option>
+        <option value="__none">No level</option>
+      </select>
+      <select id="confirm-filter" style="width:130px" onchange="filterTable()">
+        <option value="">Confirmed?</option>
+        <option value="confirmed">Activated</option>
+        <option value="unconfirmed">Not activated</option>
+      </select>
+      <select id="source-filter" style="width:120px" onchange="filterTable()">
+        <option value="">All sources</option>
+        <option value="online">Online</option>
+        <option value="offline">Offline</option>
+      </select>
+      <button class="btn btn-sm btn-ghost" onclick="clearFilters()" style="font-size:11px;padding:5px 10px;opacity:.7">Clear filters</button>
+      <select id="page-size-select" style="width:95px;font-size:12px;margin:0" onchange="changePageSize(+this.value)" title="Rows per page">
+        <option value="25">25 / page</option>
+        <option value="50">50 / page</option>
+        <option value="100">100 / page</option>
+        <option value="500">500 / page</option>
+        <option value="1000">1000 / page</option>
+      </select>
+      <!-- Spacer -->
+      <div style="flex:1"></div>
+      <!-- Actions -->
+      <span id="sel-count" class="chip" style="display:none"></span>
+      <select id="bulk-status-select" style="width:150px;font-size:12px;display:none" onchange="bulkStatusChange(this.value)">
+        <option value="">Change status…</option>
+        <option value="checked">Mark Checked In</option>
+        <option value="pending">Mark Pending</option>
+        <option value="sent">Mark Sent</option>
+        <option value="deactivated">Deactivate</option>
+      </select>
+      <select id="bulk-level-select" style="width:140px;font-size:12px;display:none" onchange="bulkChangeLevel(this.value)">
+        <option value="">Change level…</option>
+        <option value="__none">Remove level</option>
+      </select>
+      <button id="bulk-delete-btn" class="btn btn-sm btn-danger" style="display:none" onclick="bulkDelete()">Delete</button>
+      <button class="btn btn-sm" onclick="sendAll()">Send All</button>
+      <button class="btn btn-sm" onclick="showModal('modal-digest')">Bulk Email</button>
+      <!-- Add ▾ dropdown -->
+      <div style="position:relative;display:inline-block" id="add-menu-wrap">
+        <button class="btn btn-sm btn-primary" onclick="toggleAddMenu()">+ Add ▾</button>
+        <div id="add-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-lg);min-width:190px;z-index:200">
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideAddMenu();openAddModal()">+ Add Attendee</button>
+          <div style="height:1px;background:var(--border);margin:0 10px"></div>
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideAddMenu();openPreprint()">Pre-print Tickets</button>
+          <div style="height:1px;background:var(--border);margin:0 10px"></div>
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideAddMenu();showModal('modal-assign')">Assign Ticket</button>
+        </div>
+      </div>
+      <!-- Upload ▾ dropdown -->
+      <div style="position:relative;display:inline-block" id="upload-menu-wrap">
+        <button class="btn btn-sm" onclick="toggleUploadMenu()">Upload ▾</button>
+        <div id="upload-menu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-lg);min-width:210px;z-index:200">
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideUploadMenu();showModal('modal-upload-list')">Upload Attendee List</button>
+          <div style="height:1px;background:var(--border);margin:0 10px"></div>
+          <button class="btn btn-ghost" style="width:100%;text-align:left;padding:10px 14px;border:none;border-radius:0;font-size:13px" onclick="hideUploadMenu();showModal('modal-confirm-bulk')">Upload Activated Tickets</button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleUpload(event)">
+
+    <div id="table-wrap"></div>
+
+    <!-- Ticket Levels moved to /event-levels.html -->
+
+    <!-- Event Settings panel -->
+
+    <!-- Check-in settings moved to Online Sales page -->
+
+    <!-- Online Sales moved to /event-sales.html -->
+
+  </div></main>
+</div>
+
+<!-- Contact Admin Modal -->
+<div id="modal-contact-admin" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-contact-admin')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Contact Administrator</h2><button class="modal-x" onclick="hideModal('modal-contact-admin')">&#x2715;</button></div>
+    <div id="ca-form-wrap">
+      <p class="text2 sm mb14">Fill in the form below and click Send. We'll get back to you at the email you provide.</p>
+      <div class="fg"><label>Your Name</label><input id="ca-name" placeholder="Your name"></div>
+      <div class="fg"><label>Your Email <span class="tip-icon" data-tip="We'll reply to this address">i</span></label><input id="ca-email-field" type="email" placeholder="your@email.com"></div>
+      <div class="fg"><label>Subject</label><input id="ca-subject"></div>
+      <div class="fg"><label>Message *</label><textarea id="ca-body" style="min-height:100px" placeholder="Describe your request…"></textarea></div>
+      <div id="ca-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+      <div class="modal-ft">
+        <button class="btn" onclick="hideModal('modal-contact-admin')">Cancel</button>
+        <button class="btn btn-gold" id="ca-send-btn" onclick="sendContactAdmin()">Send Message</button>
+      </div>
+    </div>
+    <div id="ca-sent-msg" style="display:none;text-align:center;padding:24px">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" style="margin-bottom:12px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px">Message sent!</div>
+      <div class="text2 sm mb16">We received your request and will get back to you shortly.</div>
+      <button class="btn btn-sm" onclick="hideModal('modal-contact-admin');document.getElementById('ca-sent-msg').style.display='none';document.getElementById('ca-form-wrap').style.display='block'">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Undo Upload Bar -->
+<div id="undo-bar" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a3a6b;color:#fff;border-radius:10px;padding:14px 22px;box-shadow:0 4px 20px rgba(0,0,0,.25);display:none;align-items:center;gap:16px;z-index:9999;font-size:14px;font-weight:500">
+  <span id="undo-msg"></span>
+  <button id="undo-btn" class="btn btn-sm" style="background:#fff;color:#1a3a6b;padding:6px 16px;margin:0" onclick="doUndoUpload()">Undo Upload</button>
+  <button style="background:none;border:none;color:rgba(255,255,255,.6);font-size:18px;cursor:pointer;padding:0 4px" onclick="hideUndoBar()">&#x2715;</button>
+</div>
+
+<!-- Upload Attendee List Modal -->
+<div id="modal-upload-list" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-upload-list')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Upload Attendee List</h2><button class="modal-x" onclick="hideModal('modal-upload-list')">&#x2715;</button></div>
+
+    <div class="info-box tip mb16">
+      Upload a CSV or Excel file to import attendees. Duplicate phone numbers or emails will be detected automatically.
+    </div>
+
+    <div class="section-title mb8">Instructions</div>
+    <ol style="padding-left:18px;font-size:13px;color:var(--text2);line-height:2;margin-bottom:16px">
+      <li>Download the template below — it shows all required columns</li>
+      <li>Fill in <strong>First Name</strong> and <strong>Last Name</strong> (required)</li>
+      <li>Add Phone, Email, Table, Seat as needed</li>
+      <li id="upload-level-hint" style="display:none">Add a <strong>Ticket Level</strong> column — valid names shown in the template</li>
+      <li>Save as <strong>.csv</strong> or <strong>.xlsx</strong> and upload here</li>
+    </ol>
+
+    <div class="row mb16" style="gap:10px">
+      <button class="btn btn-sm" onclick="dlTemplate()">Download Template</button>
+      <span class="xs text2">EverythingShul-Ticket-Template.csv</span>
+    </div>
+
+    <div class="upload-zone" onclick="document.getElementById('file-input').click()" style="padding:22px">
+      <div style="font-size:20px;margin-bottom:6px">📄</div>
+      <h3 style="font-size:14px;margin-bottom:4px">Click to select your attendee list</h3>
+      <p style="font-size:12px">.csv, .xlsx or .xls file</p>
+    </div>
+
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-upload-list')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout Info Modal -->
+<div id="modal-checkout-info" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-checkout-info')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Online Checkout Info</h2><button class="modal-x" onclick="hideModal('modal-checkout-info')">&#x2715;</button></div>
+    <div id="checkout-info-body" style="padding:4px 0"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-checkout-info')">Close</button></div>
+  </div>
+</div>
+
+<!-- Bulk Confirm Modal -->
+<div id="modal-confirm-bulk" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-confirm-bulk')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Upload Activated List</h2><button class="modal-x" onclick="hideModal('modal-confirm-bulk')">&#x2715;</button></div>
+
+    <div class="info-box tip mb16">
+      Upload a CSV file containing ticket IDs of guests who have confirmed attendance.
+      All matched tickets will be automatically marked as <strong>Confirmed</strong>.
+    </div>
+
+    <div class="section-title mb8">Instructions</div>
+    <ol style="padding-left:18px;font-size:13px;color:var(--text2);line-height:2;margin-bottom:16px">
+      <li>Download the template below to see the required format</li>
+      <li>Fill in the <strong>Ticket ID</strong> column with codes like <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">TKT-ABC12345</code></li>
+      <li>One ticket ID per row — you can add as many rows as needed</li>
+      <li>Upload the completed file here</li>
+    </ol>
+
+    <div class="row mb16" style="gap:10px">
+      <button class="btn btn-sm" onclick="dlConfirmTemplate()">Download Template</button>
+      <span class="xs text2">EverythingShul-Confirm-Template.csv</span>
+    </div>
+
+    <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
+      <div style="font-size:20px;margin-bottom:6px">📋</div>
+      <h3 style="font-size:14px;margin-bottom:4px">Click to select your confirmed list</h3>
+      <p style="font-size:12px">.csv or .txt file — one ticket ID per row</p>
+    </div>
+    <input type="file" id="confirm-file-input" accept=".csv,.txt" style="display:none" onchange="processConfirmUpload(event)">
+
+    <div id="confirm-result" style="display:none;margin-top:12px"></div>
+
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-confirm-bulk')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Design upload confirm modal -->
+<div id="modal-design-confirm" class="backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-hd"><h2>Upload Ticket Design</h2><button class="modal-x" onclick="hideModal('modal-design-confirm')">&#x2715;</button></div>
+    <p class="text2 sm mb16">You are about to set the ticket design for this event. This will be printed on every ticket.</p>
+    <div id="design-preview-wrap" style="margin-bottom:16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;max-height:200px;display:flex;align-items:center;justify-content:center;padding:10px">
+      <img id="design-preview-img" style="max-width:100%;max-height:180px;object-fit:contain;border-radius:6px" src="" alt="Preview">
+    </div>
+    <div id="design-file-name" class="sm text2 mb16" style="text-align:center"></div>
+    <div class="info-box tip mb4">
+      The image will fill the left 2.5 inches of the ticket. Use a horizontal image for best results. Transparent PNG works great.
+    </div>
+    <div class="modal-ft">
+      <button class="btn" onclick="cancelDesignUpload()">Cancel</button>
+      <button class="btn btn-gold" onclick="doUploadDesign()">Save Design</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add attendee modal -->
+<div id="modal-add" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-add')">
+  <div class="modal"><div class="modal-hd"><h2>Add Attendee</h2><button class="modal-x" onclick="hideModal('modal-add')">&#x2715;</button></div>
+    <div class="form-row"><div class="fg"><label>First name *</label><input id="a-fn" placeholder="Jane"></div><div class="fg"><label>Last name *</label><input id="a-ln" placeholder="Doe"></div></div>
+    <div class="form-row"><div class="fg"><label>Phone</label><input id="a-ph" placeholder="+1 555 000 0000"></div><div class="fg"><label>Email</label><input id="a-em" type="email" placeholder="jane@example.com"></div></div>
+    <div class="form-row"><div class="fg"><label>Table</label><input id="a-tb" placeholder="A / 1 / VIP"></div><div class="fg"><label>Seat</label><input id="a-st" placeholder="3"></div></div>
+    <div class="fg"><label>Ticket Level</label><select id="a-level"><option value="">— No level —</option></select></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-add')">Cancel</button><button class="btn btn-gold" onclick="addAttendee()">Add Attendee</button></div>
+  </div>
+</div>
+
+<!-- Pre-print modal -->
+<div id="modal-preprint" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-preprint')">
+  <div class="modal"><div class="modal-hd"><h2>Generate Pre-printed Tickets</h2><button class="modal-x" onclick="hideModal('modal-preprint')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Creates blank tickets with unique QR codes. Assign names later by scanning or entering the ticket ID.</p>
+    <div class="fg"><label>Number of tickets</label><input id="pp-count" type="number" value="10" min="1" max="500"></div>
+    <div class="fg"><label>Ticket Level (optional)</label><select id="pp-level"><option value="">— No level —</option></select></div>
+    <div class="form-row">
+      <div class="fg"><label>Table (optional)</label><input id="pp-table" placeholder="A / VIP"><div class="hint">Applied to all tickets</div></div>
+      <div class="fg"><label>Starting seat # (optional)</label><input id="pp-seat" type="number" placeholder="1"><div class="hint">Auto-increments: 1, 2, 3…</div></div>
+    </div>
+    <div class="fg"><label>Send to email (optional) <span class="hint" style="display:inline">comma-separated for multiple</span></label><input id="pp-email" placeholder="coordinator@example.com"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-preprint')">Cancel</button><button class="btn btn-gold" onclick="doPrint()">Generate Tickets</button></div>
+  </div>
+</div>
+
+<!-- Assign modal -->
+<div id="modal-assign" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-assign')">
+  <div class="modal"><div class="modal-hd"><h2>Assign Ticket to Person</h2><button class="modal-x" onclick="hideModal('modal-assign')">&#x2715;</button></div>
+    <div class="fg"><label>Ticket ID</label>
+      <div class="row" style="gap:8px"><input id="as-tid" value="TKT-" placeholder="TKT-XXXXXXXX" style="flex:1;font-family:monospace;text-transform:uppercase" oninput="enforceTktPrefix(this)" onkeydown="if(event.key==='Enter')lookupTicket()"><button class="btn" onclick="lookupTicket()">Look up</button></div>
+      <div class="hint">Type the ticket ID or scan the QR code with your camera app, then paste</div>
+    </div>
+    <div id="as-found" style="display:none">
+      <div id="as-status" class="info-box ok mb12"></div>
+      <div class="form-row"><div class="fg"><label>First name *</label><input id="as-fn"></div><div class="fg"><label>Last name *</label><input id="as-ln"></div></div>
+      <div class="form-row"><div class="fg"><label>Phone</label><input id="as-ph"></div><div class="fg"><label>Email</label><input id="as-em" type="email"></div></div>
+      <div class="form-row"><div class="fg"><label>Table</label><input id="as-tb"></div><div class="fg"><label>Seat</label><input id="as-st"></div></div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-assign')">Cancel</button><button class="btn btn-gold" id="as-btn" style="display:none" onclick="doAssign()">Assign Ticket</button></div>
+  </div>
+</div>
+
+<!-- Send ticket modal -->
+<div id="modal-send" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-send')">
+  <div class="modal"><div class="modal-hd"><h2>Send Ticket</h2><button class="modal-x" onclick="hideModal('modal-send')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Sending to: <strong id="send-name"></strong></p>
+    <div class="fg"><label>Email address</label><input id="send-email" type="email" placeholder="recipient@email.com"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-send')">Cancel</button><button class="btn btn-gold" onclick="confirmSend()">Send Ticket ↗</button></div>
+  </div>
+</div>
+
+<!-- Preview ticket modal -->
+<!-- Edit Attendee Modal -->
+<div id="modal-edit" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-edit')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Edit Attendee</h2><button class="modal-x" onclick="hideModal('modal-edit')">&#x2715;</button></div>
+    <div class="form-row">
+      <div class="fg"><label>First Name</label><input id="ed-first" placeholder="First name"></div>
+      <div class="fg"><label>Last Name</label><input id="ed-last" placeholder="Last name"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Phone</label><input id="ed-phone" placeholder="Phone number"></div>
+      <div class="fg"><label>Email</label><input id="ed-email" type="email" placeholder="Email address"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Table</label><input id="ed-table" placeholder="Table number"></div>
+      <div class="fg"><label>Seat</label><input id="ed-seat" placeholder="Seat number"></div>
+    </div>
+    <div class="fg">
+      <label>Ticket Level</label>
+      <select id="ed-level">
+        <option value="">No level</option>
+      </select>
+    </div>
+    <div id="ed-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-edit')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-preview" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-preview')">
+  <div class="modal"><div class="modal-hd"><h2>Ticket Preview</h2><button class="modal-x" onclick="hideModal('modal-preview')">&#x2715;</button></div>
+    <div style="display:flex;justify-content:center"><div id="ticket-preview"></div></div>
+  </div>
+</div>
+
+<!-- Digest modal -->
+<div id="modal-digest" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-digest')">
+  <div class="modal"><div class="modal-hd"><h2>Bulk Email Tickets</h2><button class="modal-x" onclick="hideModal('modal-digest')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Send all selected (or all pending/pre-printed) tickets bundled into one email — perfect for a coordinator to print and distribute.</p>
+    <div class="fg"><label>Send to * <span class="hint" style="display:inline">separate multiple emails with commas</span></label><input id="dg-email" placeholder="coordinator@example.com, other@example.com"></div>
+    <div class="fg"><label>Subject (optional)</label><input id="dg-subject" placeholder="Auto-generated if blank"></div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-digest')">Cancel</button><button class="btn btn-gold" onclick="sendDigest()">Send ↗</button></div>
+  </div>
+</div>
+
+<!-- Conflict modal -->
+<div id="modal-conflict" class="backdrop" style="display:none">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><h2>⚠️ Duplicate Attendees Found</h2></div>
+    <div class="info-box tip mb12" style="font-size:13px;line-height:1.6">
+      <strong>What this means:</strong> The file you're uploading contains people whose phone number or email already exists in your attendee list.<br><br>
+      For each duplicate, choose one of three options:<br>
+      &nbsp;&nbsp;<strong style="color:var(--gold)">Update existing</strong> — keep the existing ticket &amp; ID, but update their table/seat/name with the new data from your file.<br>
+      &nbsp;&nbsp;<strong style="color:var(--green)">Keep as-is</strong> — do nothing. Skip this person, keep everything exactly as it was.<br>
+      &nbsp;&nbsp;<strong style="color:#7c5cbe">Add as duplicate</strong> — add them again as a brand new attendee with a new ticket ID, even though they already exist.
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-gold" onclick="setAllOverride('update')">Set All → Update</button>
+      <button class="btn btn-sm btn-success" onclick="setAllOverride('keep')">Set All → Keep</button>
+      <button class="btn btn-sm" style="background:#7c5cbe;color:#fff" onclick="setAllOverride('duplicate')">Set All → Add as Duplicate</button>
+    </div>
+    <div id="conflict-list" style="max-height:400px;overflow-y:auto"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-conflict');pendingUpload=null">Cancel Upload</button>
+      <button class="btn btn-gold" onclick="commitUpload()">Apply &amp; Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invite modal -->
+<div id="modal-invite" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-invite')">
+  <div class="modal"><div class="modal-hd"><h2>Invite Team Member</h2><button class="modal-x" onclick="hideModal('modal-invite')">&#x2715;</button></div>
+    <p class="text2 sm mb16">They'll get an email with a link to create their own account and password. You don't need to set their password.</p>
+    <div class="fg"><label>Email address</label><input id="inv-email" type="email" placeholder="colleague@example.com" autofocus></div>
+    <div class="fg">
+      <label>Role</label>
+      <select id="inv-role">
+        <option value="member">Member — can view attendees and scan tickets</option>
+        <option value="owner">Owner — full access to this account's events</option>
+      </select>
+      <div class="hint">Members and owners can also use the door scanner with a PIN. Roles only apply to this account.</div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-invite')">Cancel</button><button class="btn btn-gold" onclick="sendInvite()">Send Invite ↗</button></div>
+  </div>
+</div>
+
+<!-- Scanner PINs modal -->
+<div id="modal-pins" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-pins')">
+  <div class="modal modal-lg"><div class="modal-hd"><h2>Door Scanner PINs</h2><button class="modal-x" onclick="hideModal('modal-pins')">&#x2715;</button></div>
+    <p class="text2 sm mb16">Create PINs for door staff to log into the scanner kiosk. Each PIN gives access <strong style="color:var(--text)">only to this event's check-in</strong> — no other pages.</p>
+    <div class="info-box tip mb16">
+      Scanner URL: <strong style="color:var(--text);font-family:monospace" id="scanner-url"></strong>
+    </div>
+    <div class="form-row mb8">
+      <div class="fg" style="margin-bottom:0"><label>Label</label><input id="pin-label" placeholder="Main Entrance, Gate B, etc."></div>
+      <div class="fg" style="margin-bottom:0">
+        <label>Name/Phone Lookup</label>
+        <select id="pin-lookup">
+          <option value="1">Allowed — staff can search by name or phone</option>
+          <option value="0">Disabled — ticket ID or QR only</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg mb12">
+      <label>Restrict to Ticket Levels <span class="hint" style="display:inline">leave empty = allow all levels</span></label>
+      <div id="pin-levels-wrap" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 0"></div>
+    </div>
+    <button class="btn btn-gold mb4" onclick="createPin()">+ Create PIN</button>
+    <div id="pins-list"></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+const eventId = new URLSearchParams(location.search).get('id');
+if (!eventId) window.location = '/events.html';
+
+let eventData = null, attendees = [], filtered = [], selected = new Set(), pendingUpload = null, currentSendId = null, levels = [];
+let pageSize = parseInt(localStorage.getItem('hrtb_page_size_'+location.search) || '25');
+let currentPage = 1;
+let sortCol = null, sortDir = 1; // stable sort state — persists across renders
+
+// Debounced search — runs immediately on first keypress, then waits 200ms
+let _searchTimer = null;
+function debouncedFilter() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(filterTable, 150);
+}
+
+async function load() {
+  let attData;
+  try { attData = await api.attendees.list(eventId); }
+  catch(e) {
+    if (e.message === 'EVENT_CLOSED') {
+      // Try to fetch event info — admins can still see data
+      try {
+        const r = await fetch(`/api/attendees/event/${eventId}`, { headers: { 'Authorization': 'Bearer ' + Auth.token() } });
+        const d = await r.json();
+        if (d.event && Auth.user()?.role === 'admin') {
+          // Admin: load full data anyway
+          attData = d;
+          // Proceed but show a banner
+          if (!attData.attendees) attData.attendees = [];
+          if (!attData.levels) attData.levels = [];
+        } else {
+          showClosedPage(d.event);
+          return;
+        }
+      } catch {
+        showClosedPage(null);
+        return;
+      }
+    } else {
+      throw e;
+    }
+  }
+  const att = attData.attendees;
+  levels = (attData.levels || []).filter(l => !l.is_staff); // staff levels shown on Staff page only
+  // Event comes directly from the attendees endpoint — works for all roles including admin
+  eventData = attData.event;
+  if (!eventData) {
+    // Fallback: try events list
+    try {
+      const { events } = await api.events.list();
+      eventData = events?.find(e => e.id === eventId);
+    } catch {}
+  }
+  if (!eventData) { window.location = '/events.html'; return; }
+  attendees = att;
+  document.getElementById('ev-title').textContent = eventData.name;
+  document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
+  document.title = `EverythingShul — ${eventData.name}`;
+  localStorage.setItem('hrtb_current_event_name', eventData.name);
+  renderSidebar(); // re-render with event name
+  const descEl = document.getElementById('ev-desc');
+  if (eventData.description) {
+    descEl.textContent = eventData.description;
+    descEl.style.display = 'block';
+  }
+
+  // Check if event has a design uploaded
+  try {
+    const d = await api.attendees.hasDesign(eventId);
+    if (d.hasDesign) document.getElementById('btn-design').textContent = 'Update Ticket Design';
+  } catch {}
+
+  // Closed events: show info only for non-admins. Admins see everything.
+  if (eventData.closed_at && Auth.user()?.role !== 'admin') {
+    showClosedPage(eventData);
+    return;
+  }
+
+  // Admin: show a warning banner when viewing a closed event
+  if (eventData.closed_at && Auth.user()?.role === 'admin') {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#fff8e1;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap';
+    banner.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span style="font-size:13px;color:#92400e;flex:1"><strong>Closed event — admin view.</strong> Non-admins cannot access this data.</span>
+      <button class="btn btn-sm btn-success" onclick="reopenEventAdmin()">Reopen Event</button>`;
+    const pageEl = document.querySelector('.page');
+    pageEl.insertBefore(banner, pageEl.firstChild);
+  }
+
+  renderStats(); filterTable();
+
+  // Populate bulk level dropdown with current levels
+  const bls = document.getElementById('bulk-level-select');
+  if (bls) {
+    bls.innerHTML = '<option value="">Change level…</option><option value="__none">— Remove level —</option>' +
+      levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  }
+
+  // Show ticket level hint in upload modal if levels exist
+  const lvlHint = document.getElementById('upload-level-hint');
+  if (lvlHint) lvlHint.style.display = levels.length ? '' : 'none';
+}
+
+function renderStats() {
+  const s = { total:0, preprint:0, pending:0, sent:0, checked:0, deactivated:0, confirmed:0, staff:0 };
+  attendees.forEach(a => {
+    s.total++;
+    s[a.status]=(s[a.status]||0)+1;
+    if(a.confirmed) s.confirmed++;
+  });
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Total <span class="tip-icon" data-tip="All attendees added to this event, excluding staff and deactivated tickets.">i</span></div><div class="stat-val">${s.total}</div></div>
+    ${eventData.allow_activation ? `<div class="stat"><div class="stat-label">Activated <span class="tip-icon" data-tip="Attendees who have activated their ticket via the activation link.">i</span></div><div class="stat-val">${s.confirmed}</div></div>` : ""}
+    <div class="stat"><div class="stat-label">Pre-printed <span class="tip-icon" data-tip="Blank tickets with QR codes printed in advance, not yet assigned to a specific person.">i</span></div><div class="stat-val">${s.preprint}</div></div>
+    <div class="stat"><div class="stat-label">Pending <span class="tip-icon" data-tip="Attendees added but ticket not yet sent. Use 'Send All' to email tickets.">i</span></div><div class="stat-val">${s.pending}</div></div>
+    <div class="stat"><div class="stat-label">Sent <span class="tip-icon" data-tip="Attendees whose tickets have been emailed to them.">i</span></div><div class="stat-val blue">${s.sent}</div></div>
+    <div class="stat"><div class="stat-label">Checked In <span class="tip-icon" data-tip="Attendees who have been scanned at the door.">i</span></div><div class="stat-val green">${s.checked}</div></div>
+`;
+}
+
+function clearFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('status-filter').value = '';
+  const lf = document.getElementById('level-filter'); if (lf) lf.value = '';
+  const cf = document.getElementById('confirm-filter'); if (cf) cf.value = '';
+  const sf = document.getElementById('source-filter'); if (sf) sf.value = '';
+  filterTable();
+}
+
+function filterTable() {
+  // Keep level filter options in sync — exclude staff levels
+  const lf = document.getElementById('level-filter');
+  if (lf) {
+    const cur = lf.value;
+    lf.innerHTML = '<option value="">All levels</option><option value="__none">No level</option>' +
+      levels.map(l => `<option value="${l.id}" ${cur===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+    lf.value = cur;
+  }
+
+  const q   = document.getElementById('search').value.toLowerCase().trim();
+  const sf  = document.getElementById('status-filter').value;
+  const lv  = lf ? lf.value : '';
+  const cf  = document.getElementById('confirm-filter')?.value || '';
+  const src = document.getElementById('source-filter')?.value || '';
+
+  filtered = attendees.filter(a => {
+    if (sf  && a.status !== sf) return false;
+    if (lv  && (lv === '__none' ? a.level_id : a.level_id !== lv)) return false;
+    if (cf  && (cf === 'confirmed' ? !a.confirmed : a.confirmed)) return false;
+    if (src && (src === 'online' ? a.source !== 'online' : a.source === 'online')) return false;
+    if (q   && !`${a.first_name} ${a.last_name} ${a.email||''} ${a.phone||''} ${a.ticket_id}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  currentPage = 1;
+  // Apply current sort if any
+  if (sortCol !== null) applySort();
+  else renderTable();
+}
+
+function renderTable() {
+  const selCount = document.getElementById('sel-count');
+  const bulkSel  = document.getElementById('bulk-status-select');
+  const bulkLvl  = document.getElementById('bulk-level-select');
+  const bulkDel  = document.getElementById('bulk-delete-btn');
+  if (selected.size) {
+    selCount.style.display='inline-flex'; selCount.textContent=`${selected.size} selected`;
+    if(bulkSel) bulkSel.style.display='';
+    if(bulkLvl) bulkLvl.style.display='';
+    if(bulkDel) bulkDel.style.display='';
+  } else {
+    selCount.style.display='none';
+    if(bulkSel){bulkSel.style.display='none';bulkSel.value='';}
+    if(bulkLvl){bulkLvl.style.display='none';bulkLvl.value='';}
+    if(bulkDel) bulkDel.style.display='none';
+  }
+  if (!filtered.length) {
+    document.getElementById('table-wrap').innerHTML = `<div class="empty"><div class="ico"></div><h3>${attendees.length?'No results':'No attendees yet'}</h3><p>${attendees.length?'Try adjusting your filters':'Upload a list or add attendees manually'}</p></div>`;
+    return;
+  }
+  const allSel = filtered.length > 0 && filtered.every(a => selected.has(a.id));
+  const showActivation = eventData?.allow_activation;
+  const showSeating = eventData?.show_seating;
+  const cols = ['Name','Phone','Email',...(showSeating?['Table']:[]),'Level',...(showActivation?['Activated']:[]),'Source','Status','ID'];
+  const arrow = i => sortCol===i ? (sortDir>0?' ↑':' ↓') : '';
+  // Pagination
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  if (currentPage > totalPages) currentPage = 1;
+  const start = (currentPage - 1) * pageSize;
+  const pageRows = filtered.slice(start, start + pageSize);
+  const pageSel = document.getElementById('page-size-select');
+  if (pageSel) pageSel.value = String(pageSize);
+
+  const pagerHtml = totalPages > 1 ? `<div style="display:flex;align-items:center;gap:8px;padding:12px 0;font-size:13px;color:var(--text2)">
+    <button class="btn btn-sm btn-ghost" onclick="gotoPage(${currentPage-1})" ${currentPage<=1?'disabled':''}>&#8592;</button>
+    <span>Page ${currentPage} of ${totalPages} &nbsp;(${filtered.length} total)</span>
+    <button class="btn btn-sm btn-ghost" onclick="gotoPage(${currentPage+1})" ${currentPage>=totalPages?'disabled':''}>&#8594;</button>
+  </div>` : `<div style="padding:8px 0;font-size:12px;color:var(--text2)">${filtered.length} attendee${filtered.length!==1?'s':''}</div>`;
+
+  document.getElementById('table-wrap').innerHTML = pagerHtml + `<div class="table-wrap"><table>
+    <thead><tr>
+      <th data-nosort style="width:32px"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)"></th>
+      ${cols.map((c,i)=>`<th style="cursor:pointer;user-select:none;white-space:nowrap" onclick="sortByCol(${i})">${c}${arrow(i)}</th>`).join('')}
+      <th data-nosort>Actions</th>
+    </tr></thead>
+    <tbody>${pageRows.map(a => {
+      const lvl = levels.find(l => l.id === a.level_id);
+      return `<tr>
+      <td><input type="checkbox" ${selected.has(a.id)?'checked':''} onchange="toggleOne('${a.id}',this)"></td>
+      <td style="white-space:nowrap"><strong>${esc(a.first_name||'')} ${esc(a.last_name||'')}</strong></td>
+      <td class="text2 mono" style="font-size:12px">${esc(a.phone||'—')}</td>
+      <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'—')}</td>
+      ${showSeating ? `<td class="text2" style="font-size:12px;white-space:nowrap">${a.table_number?`${esc(a.table_number)}${a.seat_number?' / '+esc(a.seat_number):''}`:'-'}</td>` : ''}
+      <td>${lvl?`<span class="badge" style="font-size:11px;background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44">${esc(lvl.name)}</span>`:'<span class="text3" style="font-size:11px">—</span>'}</td>
+      ${showActivation ? `<td><button class="btn btn-sm ${a.confirmed?'btn-success':'btn-ghost'}" style="min-width:88px;font-size:11px" onclick="toggleConfirm('${a.id}',${a.confirmed?0:1})">${a.confirmed?'✓ Activated':'Activate'}</button></td>` : ""}
+      <td style="text-align:center">
+        ${a.source==='online'
+          ?`<span onclick="showCheckoutInfo('${a.id}')" title="Online — click for details" style="cursor:pointer;display:inline-flex">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="var(--green)"/></svg></span>`
+          :`<span title="Offline / manual" style="display:inline-flex">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a11 11 0 0 1 10.5-2.56"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="var(--orange)"/></svg></span>`}
+      </td>
+      <td>${badgeHTML(a.status)}</td>
+      <td class="mono" style="font-size:11px;color:var(--text2)">${esc(a.ticket_id)}</td>
+      <td><div class="row" style="gap:3px;flex-wrap:nowrap">
+        <button class="btn btn-sm" onclick="openEdit('${a.id}')">Edit</button>
+        ${a.status==='preprint'
+          ?`<button class="btn btn-sm btn-primary" onclick="openAssign('${a.ticket_id}')">Assign</button>`
+          :`<button class="btn btn-sm" onclick="openSend('${a.id}')">Send</button>`}
+        ${(a.status==='sent'||a.status==='pending')?`<button class="btn btn-sm btn-primary" onclick="setStatus('${a.id}','checked')" title="Check In" style="font-size:11px">In</button>`:''}
+        ${a.status==='checked'?`<button class="btn btn-sm" onclick="confirmUncheck('${a.id}','${esc(a.first_name)} ${esc(a.last_name)}')" title="Undo check-in">↺</button>`:''}
+        ${a.status!=='deactivated'
+          ?`<button class="btn btn-sm btn-danger" onclick="setStatus('${a.id}','deactivated')" title="Deactivate">✕</button>`
+          :`<button class="btn btn-sm btn-success" onclick="setStatus('${a.id}','pending')" title="Reactivate">↺</button>`}
+        <button class="btn btn-sm btn-danger" onclick="delAttendee('${a.id}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+      </div></td></tr>`;
+    }).join('')}</tbody>
+  </table></div>` + (totalPages > 1 ? pagerHtml : '');
+}
+
+function gotoPage(p) {
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  currentPage = Math.max(1, Math.min(p, totalPages));
+  renderTable();
+  document.getElementById('table-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function changePageSize(n) {
+  pageSize = n;
+  currentPage = 1;
+  localStorage.setItem('hrtb_page_size_' + location.search, n);
+  renderTable();
+}
+function sortByCol(i) {
+  sortDir = (sortCol===i) ? -sortDir : 1;
+  sortCol = i;
+  applySort();
+}
+function applySort() {
+  const get = (a,i) => {
+    const lvl = levels.find(l=>l.id===a.level_id);
+    const vals = [`${a.last_name||''} ${a.first_name||''}`,a.phone||'',a.email||'',a.table_number||'',lvl?.name||'',a.confirmed?1:0,a.source||'',a.status||'',a.ticket_id||''];
+    return vals[i];
+  };
+  filtered.sort((a,b)=>{
+    const va=get(a,sortCol), vb=get(b,sortCol);
+    return va<vb?-sortDir:va>vb?sortDir:0;
+  });
+  renderTable();
+}
+
+function toggleAll(cb) { filtered.forEach(a => cb.checked ? selected.add(a.id) : selected.delete(a.id)); renderTable(); }
+function toggleOne(id, cb) { cb.checked ? selected.add(id) : selected.delete(id); renderTable(); }
+
+function openPreprint() {
+  const sel = document.getElementById('pp-level');
+  if (sel) {
+    sel.innerHTML = '<option value="">— No level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  }
+  showModal('modal-preprint');
+}
+
+function openAddModal() {
+  // Populate level dropdown — exclude staff levels
+  const sel = document.getElementById('a-level');
+  if (sel) {
+    sel.innerHTML = '<option value="">— No level —</option>' +
+      levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  }
+  showModal('modal-add');
+}
+
+async function addAttendee(forceBypass) {
+  const fn=document.getElementById('a-fn').value.trim(), ln=document.getElementById('a-ln').value.trim();
+  if (!fn||!ln) { toast('First and last name required','error'); return; }
+
+  // Get selected level if any
+  const levelSel = document.getElementById('a-level');
+  const levelId = levelSel?.value || null;
+
+  if (!forceBypass) {
+    // Check capacity before adding
+    try {
+      const cap = await fetch(`/api/attendees/event/${eventId}/capacity-check`, {
+        method: 'POST', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${Auth.token()}` },
+        body: JSON.stringify({ level_id: levelId })
+      }).then(r => r.json());
+
+      if (!cap.ok) {
+        // Show warning popup — allow bypass
+        const msg = cap.warnings.join('\n') + '\n\nThis ticket will exceed the limit. Add anyway as a bypass?';
+        if (!confirm('⚠️ Capacity Warning\n\n' + msg)) return;
+        // User confirmed bypass — proceed
+      } else if (cap.warnings.length) {
+        toast('⚠️ ' + cap.warnings[0], 'info');
+      }
+    } catch {}
+  }
+
+  try {
+    const { attendee } = await api.attendees.create(eventId, {
+      first_name:fn, last_name:ln,
+      phone:document.getElementById('a-ph').value,
+      email:document.getElementById('a-em').value,
+      table_number:document.getElementById('a-tb').value,
+      seat_number:document.getElementById('a-st').value,
+      level_id: levelId || undefined
+    });
+    attendees.push(attendee); hideModal('modal-add'); toast('Attendee added'); renderStats(); filterTable();
+    ['a-fn','a-ln','a-ph','a-em','a-tb','a-st'].forEach(id=>document.getElementById(id).value='');
+    if (levelSel) levelSel.value = '';
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function handleUpload(ev) {
+  const file = ev.target.files[0]; ev.target.value='';
+  if (!file) return;
+  hideModal('modal-upload-list');
+  toast('Parsing file…','info');
+  const data = await api.attendees.previewUpload(eventId, file);
+  if (data.error) { toast(data.error,'error'); return; }
+  if (data.conflicts?.length) {
+    pendingUpload = data;
+    // default: update existing
+    data.conflicts.forEach(c => c.action = 'update');
+
+    function fieldLabel(f) {
+      return { first_name:'First name', last_name:'Last name', phone:'Phone', email:'Email', table_number:'Table', seat_number:'Seat' }[f] || f;
+    }
+
+    function renderConflicts() {
+      document.getElementById('conflict-list').innerHTML = pendingUpload.conflicts.map((c,i) => `
+        <div class="conflict-box" style="margin-bottom:12px;padding:14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <strong>${esc(c.existing.first_name)} ${esc(c.existing.last_name)}</strong>
+            <span class="xs text2">already in your list • matched by ${c.existing.phone&&c.incoming.phone&&c.existing.phone===c.incoming.phone?.replace(/\D/g,'') ? 'phone' : 'email'}</span>
+          </div>
+          ${Object.entries(c.changes).map(([f,v])=>`
+            <div style="display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:4px">
+              <span style="width:80px;color:var(--text2);font-weight:600">${fieldLabel(f)}</span>
+              <span style="background:#fff3cd;padding:2px 6px;border-radius:4px">${esc(v.old||'(empty)')}</span>
+              <span style="color:var(--text3)">→</span>
+              <span style="background:#d4edda;padding:2px 6px;border-radius:4px">${esc(v.new||'(empty)')}</span>
+            </div>`).join('')}
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+            <button id="act-update-${i}" class="btn btn-sm ${c.action==='update'?'btn-gold':''}"
+              onclick="setConflictAction(${i},'update')" title="Keep their existing ticket ID but update table/seat with the new values from your file">
+              ✏️ Update existing
+            </button>
+            <button id="act-keep-${i}" class="btn btn-sm ${c.action==='keep'?'btn-success':''}"
+              onclick="setConflictAction(${i},'keep')" title="Do nothing — skip this person and leave their record exactly as it is">
+              ✓ Keep as-is
+            </button>
+            <button id="act-duplicate-${i}" class="btn btn-sm ${c.action==='duplicate'?'':''}" style="${c.action==='duplicate'?'background:#7c5cbe;color:#fff':''}"
+              onclick="setConflictAction(${i},'duplicate')" title="Add them again as a second attendee with a brand new ticket ID — they will appear twice in your list">
+              ＋ Add as duplicate
+            </button>
+          </div>
+        </div>`).join('');
+    }
+    renderConflicts();
+    window._renderConflicts = renderConflicts;
+    showModal('modal-conflict');
+  } else await commitData(data.new, [], []);
+}
+
+function setConflictAction(i, action) {
+  pendingUpload.conflicts[i].action = action;
+  if (window._renderConflicts) window._renderConflicts();
+}
+
+function setAllOverride(action) {
+  pendingUpload.conflicts.forEach(c => c.action = action);
+  if (window._renderConflicts) window._renderConflicts();
+}
+
+// legacy compat
+function setOverride(i, val) { setConflictAction(i, val ? 'update' : 'keep'); }
+
+async function commitUpload() {
+  if (!pendingUpload) return;
+  // Split conflicts by action
+  const toUpdate = pendingUpload.conflicts.filter(c => c.action === 'update').map(c => ({ ...c, override: true }));
+  const toDuplicate = pendingUpload.conflicts.filter(c => c.action === 'duplicate').map(c => c.incoming);
+  // Merge duplicates into newRows
+  const allNew = [...pendingUpload.new, ...toDuplicate];
+  await commitData(allNew, toUpdate);
+  hideModal('modal-conflict'); pendingUpload = null;
+}
+
+async function commitData(newRows, resolved, _unused) {
+  try {
+    const r = await api.attendees.commit(eventId, { newRows, resolved });
+    await load();
+    const user = Auth.user();
+    if (r.batchId && r.added > 0 && user?.role === 'admin') {
+      showUndoBar(r.batchId, r.added);
+    } else {
+      toast(`Imported: ${r.added} added${r.updated ? ', ' + r.updated + ' updated' : ''}`);
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function doPrint() {
+  const count = parseInt(document.getElementById('pp-count').value)||1;
+  const level_id = document.getElementById('pp-level')?.value || undefined;
+  const sendEmail = document.getElementById('pp-email')?.value.trim() || '';
+  try {
+    const r = await api.attendees.preprint(eventId, { count, level_id, table_number: document.getElementById('pp-table').value||undefined, seat_start: document.getElementById('pp-seat').value||undefined });
+    toast(`Generated ${count} pre-printed ticket(s)`);
+    hideModal('modal-preprint');
+    await load();
+    // Optionally send to email(s)
+    if (sendEmail) {
+      const emails = sendEmail.split(',').map(e=>e.trim()).filter(e=>e.includes('@'));
+      const newIds = (r.tickets||[]).map(t=>t.id);
+      for (const email of emails) {
+        await api.attendees.digest(eventId, { toEmail:email, ids:newIds.length?newIds:undefined }).catch(()=>{});
+      }
+      if (emails.length) toast(`Sent to ${emails.join(', ')}`);
+    }
+    document.getElementById('pp-email').value = '';
+  } catch(e) { toast(e.message,'error'); }
+}
+
+let currentAssignId = '';
+function openAssign(ticketId) { document.getElementById('as-tid').value = ticketId || 'TKT-'; document.getElementById('as-found').style.display='none'; document.getElementById('as-btn').style.display='none'; currentAssignId=''; showModal('modal-assign'); if(ticketId && ticketId !== 'TKT-') lookupTicket(); }
+
+async function lookupTicket() {
+  const id = document.getElementById('as-tid').value.trim().toUpperCase();
+  if (!id) return;
+  try {
+    const { attendee } = await api.attendees.lookup(id);
+    currentAssignId = id;
+    document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket — fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
+    document.getElementById('as-status').className = `info-box mb12 ${attendee.status==='preprint'?'tip':'ok'}`;
+    document.getElementById('as-tb').value = attendee.table_number||'';
+    document.getElementById('as-st').value = attendee.seat_number||'';
+    document.getElementById('as-found').style.display='block';
+    document.getElementById('as-btn').style.display='inline-flex';
+  } catch(e) { toast('Ticket not found','error'); }
+}
+
+async function doAssign() {
+  const fn=document.getElementById('as-fn').value.trim(), ln=document.getElementById('as-ln').value.trim();
+  if (!fn||!ln) { toast('First and last name required','error'); return; }
+  try {
+    await api.attendees.assign({ ticketId:currentAssignId, first_name:fn, last_name:ln, phone:document.getElementById('as-ph').value, email:document.getElementById('as-em').value, table_number:document.getElementById('as-tb').value, seat_number:document.getElementById('as-st').value });
+    toast(`Assigned to ${fn} ${ln}`); hideModal('modal-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function openSend(id) { const a=attendees.find(x=>x.id===id); if(!a)return; currentSendId=id; document.getElementById('send-name').textContent=`${a.first_name} ${a.last_name}`; document.getElementById('send-email').value=a.email||''; showModal('modal-send'); }
+
+async function confirmSend() {
+  const email = document.getElementById('send-email').value.trim();
+  if (!email) { toast('Enter an email address','error'); return; }
+  try { await api.attendees.send(currentSendId, { email }); toast('Ticket sent!'); hideModal('modal-send'); await load(); }
+  catch(e) {
+    if (e.message === 'EMAIL_NOT_ALLOWED') toast('Email sending is not enabled for this account. Contact the Administrator.', 'error');
+    else toast(e.message,'error');
+  }
+}
+
+async function sendAll() {
+  const ids = selected.size ? [...selected] : null;
+  const eligible = ids ? attendees.filter(a=>ids.includes(a.id)&&a.status==='pending') : attendees.filter(a=>a.status==='pending'&&a.email);
+  if (!eligible.length) { toast('No eligible attendees (need email + pending status)','error'); return; }
+  const count = eligible.length;
+  const msg = count > 30
+    ? `Send tickets to ${count} attendee(s)?\n\nEach ticket includes a PDF. Sending ${count} emails may take a few minutes.`
+    : `Send tickets to ${count} attendee(s)? Each ticket includes a PDF attachment.`;
+  if (!confirm(msg)) return;
+  try { const r=await api.attendees.sendAll(eventId,{ids}); toast(`Sent: ${r.sent}${r.failed?`, failed: ${r.failed}`:''}`); selected.clear(); await load(); }
+  catch(e) {
+    if (e.message === 'EMAIL_NOT_ALLOWED') toast('Email sending is not enabled for this account. Contact the Administrator.', 'error');
+    else toast(e.message,'error');
+  }
+}
+
+async function sendDigest() {
+  const raw = document.getElementById('dg-email').value.trim();
+  if (!raw) { toast('Enter at least one email address','error'); return; }
+  // Support comma-separated emails
+  const emails = raw.split(',').map(e=>e.trim()).filter(e=>e.includes('@'));
+  if (!emails.length) { toast('Enter a valid email address','error'); return; }
+  const ids = selected.size ? [...selected] : undefined;
+  const eligible = ids ? attendees.filter(a=>ids.includes(a.id)) : attendees.filter(a=>a.status==='pending'||a.status==='preprint');
+  if (!confirm(`Send ${eligible.length} ticket(s) to ${emails.length} email(s)?\n\n${emails.join('\n')}`)) return;
+  try {
+    // Send to each email
+    let totalSent = 0;
+    for (const email of emails) {
+      const r = await api.attendees.digest(eventId, { toEmail:email, ids, subject:document.getElementById('dg-subject').value });
+      totalSent += r.sent||0;
+    }
+    toast(`${totalSent} ticket(s) sent to ${emails.length} recipient(s)`);
+    hideModal('modal-digest'); selected.clear(); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function setStatus(id, status) {
+  try { await api.attendees.update(id,{status}); const a=attendees.find(x=>x.id===id); if(a) a.status=status; renderStats(); filterTable(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── Edit attendee ─────────────────────────────────────────
+let editingId = null;
+function openEdit(id) {
+  const a = attendees.find(x => x.id === id);
+  if (!a) return;
+  editingId = id;
+  document.getElementById('ed-first').value = a.first_name || '';
+  document.getElementById('ed-last').value  = a.last_name  || '';
+  document.getElementById('ed-phone').value = a.phone      || '';
+  document.getElementById('ed-email').value = a.email      || '';
+  document.getElementById('ed-table').value = a.table_number || '';
+  document.getElementById('ed-seat').value  = a.seat_number  || '';
+  // Populate and set level dropdown
+  const lvlSel = document.getElementById('ed-level');
+  lvlSel.innerHTML = '<option value="">No level</option>' +
+    levels.map(l => `<option value="${l.id}" ${a.level_id===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+  document.getElementById('ed-err').style.display = 'none';
+  showModal('modal-edit');
+  setTimeout(() => document.getElementById('ed-first').focus(), 100);
+}
+
+async function saveEdit() {
+  const err = document.getElementById('ed-err');
+  err.style.display = 'none';
+  if (!editingId) return;
+  try {
+    const body = {
+      first_name:   document.getElementById('ed-first').value.trim(),
+      last_name:    document.getElementById('ed-last').value.trim(),
+      phone:        document.getElementById('ed-phone').value.trim(),
+      email:        document.getElementById('ed-email').value.trim(),
+      table_number: document.getElementById('ed-table').value.trim(),
+      seat_number:  document.getElementById('ed-seat').value.trim(),
+      level_id:     document.getElementById('ed-level').value || null,
+    };
+    const { attendee: updated } = await api.attendees.update(editingId, body);
+    // Update local array
+    const idx = attendees.findIndex(x => x.id === editingId);
+    if (idx !== -1) attendees[idx] = { ...attendees[idx], ...updated };
+    hideModal('modal-edit');
+    toast('Attendee updated');
+    renderStats();
+    filterTable();
+  } catch(e) {
+    err.textContent = e.message;
+    err.style.display = 'block';
+  }
+}
+
+function showCheckoutInfo(id) {
+  const a = attendees.find(x => x.id === id);
+  if (!a) return;
+  let data = {};
+  try { data = JSON.parse(a.checkout_data || '{}'); } catch {}
+  const billing = data.billing || {};
+  const body = document.getElementById('checkout-info-body');
+  body.innerHTML = `
+    <div class="row mb12" style="gap:8px;flex-wrap:wrap">
+      <span class="badge badge-checked">Online Purchase</span>
+      <span class="chip">${esc(a.ticket_id)}</span>
+    </div>
+    <div class="section-title mb8">Attendee</div>
+    <div class="form-row mb8">
+      <div><span class="xs text2">Name</span><div>${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div></div>
+      <div><span class="xs text2">Phone</span><div>${esc(a.phone||'—')}</div></div>
+    </div>
+    <div><span class="xs text2">Email</span><div>${esc(a.email||'—')}</div></div>
+    ${billing.name || billing.address ? `
+    <div class="section-title mb8 mt12">Billing</div>
+    ${billing.name ? `<div><span class="xs text2">Billing Name</span><div>${esc(billing.name)}</div></div>` : ''}
+    ${billing.email ? `<div><span class="xs text2">Billing Email</span><div>${esc(billing.email)}</div></div>` : ''}
+    ${billing.address ? `<div class="mt8"><span class="xs text2">Address</span>
+      <div>${[billing.address.line1, billing.address.line2, billing.address.city, billing.address.state, billing.address.postal_code, billing.address.country].filter(Boolean).map(esc).join(', ')}</div>
+    </div>` : ''}` : '<div class="info-box tip mt8">Detailed billing info collected by Stripe checkout.</div>'}`;
+  showModal('modal-checkout-info');
+}
+
+function confirmUncheck(id, name) {
+  if (!confirm(`Remove check-in for ${name}?\nThis will change their status back to Sent.`)) return;
+  setStatus(id, 'sent');
+}
+
+async function bulkDelete() {
+  if (!selected.size) return;
+  const count = selected.size;
+  if (!confirm(`Delete ${count} selected attendee(s)? They will be moved to trash and can be restored from the Admin panel within 30 days.`)) return;
+  const ids = [...selected];
+  let done = 0;
+  for (const id of ids) {
+    try { await api.attendees.delete(id); done++; } catch {}
+  }
+  selected.clear();
+  toast(`${done} attendee(s) deleted`);
+  await load();
+}
+
+async function bulkChangeLevel(levelId) {
+  if (!levelId || !selected.size) { document.getElementById('bulk-level-select').value = ''; return; }
+  const count = selected.size;
+  const lvl = levels.find(l => l.id === levelId);
+  const label = levelId === '__none' ? 'no level' : (lvl?.name || levelId);
+  if (!confirm(`Change level to "${label}" for ${count} selected attendee(s)?`)) {
+    document.getElementById('bulk-level-select').value = ''; return;
+  }
+  try {
+    const r = await api.attendees.bulkLevel(eventId, { ids: [...selected], level_id: levelId });
+    toast(`${r.updated} attendee(s) updated to ${label}`);
+    document.getElementById('bulk-level-select').value = '';
+    selected.clear();
+    await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function bulkStatusChange(status) {
+  if (!status) return;
+  const ids = [...selected];
+  if (!ids.length) return;
+  const statusLabels = { checked:'Checked In', pending:'Pending', sent:'Sent', deactivated:'Deactivated' };
+  if (!confirm(`Change ${ids.length} attendee(s) to "${statusLabels[status]}"?`)) {
+    document.getElementById('bulk-status-select').value = '';
+    return;
+  }
+  try {
+    const r = await api.attendees.bulkStatus(eventId, { ids, status });
+    toast(`${r.updated} attendee(s) updated to ${statusLabels[status]}`);
+    selected.clear();
+    await load();
+  } catch(e) { toast(e.message, 'error'); }
+  document.getElementById('bulk-status-select') && (document.getElementById('bulk-status-select').value = '');
+}
+
+async function delAttendee(id) {
+  if (!confirm('Remove this attendee?')) return;
+  try { await api.attendees.delete(id); attendees=attendees.filter(a=>a.id!==id); toast('Removed'); renderStats(); filterTable(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+function preview(id) {
+  const a=attendees.find(x=>x.id===id); if(!a||!eventData) return;
+  const lvl = levels.find(l => l.id === a.level_id);
+  document.getElementById('ticket-preview').innerHTML = `
+    <div class="ticket-card">
+      <div class="tc-head"><div class="tc-brand">EverythingShul.com Ticket System</div><div class="tc-name">${esc(eventData.name)}</div><div class="tc-sub">${esc(eventData.date||'')} ${eventData.venue?'· '+esc(eventData.venue):''}</div></div>
+      <div class="tc-body">
+        <div class="tc-person">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>
+        ${a.phone?`<div class="tc-phone">${esc(a.phone)}</div>`:''}
+        <div class="tc-div"></div>
+        <div class="tc-seats">
+          ${a.table_number?`<div><div class="tc-seat-lbl">Table</div><div class="tc-seat-val">${esc(a.table_number)}</div></div>`:''}
+          ${a.seat_number?`<div><div class="tc-seat-lbl">Seat</div><div class="tc-seat-val">${esc(a.seat_number)}</div></div>`:''}
+        </div>
+        <div class="tc-qr">
+          <img src="${qrUrl(a.ticket_id)}" loading="lazy">
+          <div class="tc-tid">${esc(a.ticket_id)}</div>
+          ${lvl ? `<div style="margin-top:4px;background:${lvl.color};border-radius:3px;padding:2px 6px;text-align:center">
+            <span style="font-size:9px;font-weight:700;color:#fff;text-shadow:-0.3px 0 #000,0 0.3px #000,0.3px 0 #000,0 -0.3px #000;text-transform:uppercase;letter-spacing:.06em">${esc(lvl.name)}</span>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  showModal('modal-preview');
+}
+
+function printSheet() {
+  const list = filtered.length ? filtered : attendees;
+  const targets = list.filter(a=>a.status!=='deactivated');
+  if (!targets.length) { toast('No tickets to print','error'); return; }
+  const ev = eventData;
+  const win = window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Tickets — ${esc(ev.name)}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.t{border:1.5px solid #ddd;border-radius:11px;overflow:hidden;page-break-inside:avoid;break-inside:avoid}.th{background:#111;color:#fff;padding:12px 15px}.brand{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-bottom:3px}.en{font-size:14px;font-weight:700}.es{font-size:10px;opacity:.5;margin-top:2px}.tb{padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.tn{font-size:14px;font-weight:700}.tp{font-size:10px;color:#888}.seats{display:flex;gap:14px;margin-top:10px}.sl{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#aaa}.sv{font-size:18px;font-weight:700}.qr img{width:88px;height:88px;border-radius:5px}.tf{border-top:1.5px dashed #e8e8e8;margin:0 15px;padding:7px 0;font-size:9px;color:#bbb;font-family:monospace;letter-spacing:.04em}@media print{@page{margin:8mm}}</style></head><body><div class="grid">${targets.map(a=>`<div class="t"><div class="th"><div class="brand">EverythingShul.com Ticket System</div><div class="en">${esc(ev.name)}</div><div class="es">${esc(ev.date||'')} ${ev.venue?'· '+esc(ev.venue):''}</div></div><div class="tb"><div><div class="tn">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>${a.phone?`<div class="tp">${esc(a.phone)}</div>`:''}<div class="seats">${a.table_number?`<div><div class="sl">Table</div><div class="sv">${esc(a.table_number)}</div></div>`:''} ${a.seat_number?`<div><div class="sl">Seat</div><div class="sv">${esc(a.seat_number)}</div></div>`:''}</div></div><div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=176x176&data=${encodeURIComponent(a.ticket_id)}&margin=6"></div></div><div class="tf">${esc(a.ticket_id)}</div></div>`).join('')}</div><script>window.onload=()=>window.print()<\/script><script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body></html>`);
+  win.document.close();
+}
+
+async function sendInvite() {
+  const email = document.getElementById('inv-email').value.trim();
+  if (!email) { toast('Enter an email','error'); return; }
+  try { await api.auth.invite({ email, accountId: eventData.account_id, role: document.getElementById('inv-role').value }); toast(`Invite sent to ${email}`); hideModal('modal-invite'); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+function doExport() {
+  if (filtered.length === attendees.length) {
+    // No filter — use server export
+    window.open(api.attendees.exportUrl(eventId));
+    return;
+  }
+  // Filtered — export only the filtered rows as CSV client-side
+  const rows = [
+    ['Ticket ID','First Name','Last Name','Phone','Email','Table','Seat','Level','Status','Activated','Source','Sent At','Checked In At'],
+    ...filtered.map(a => {
+      const lvl = levels.find(l => l.id === a.level_id);
+      return [a.ticket_id, a.first_name||'', a.last_name||'', a.phone||'', a.email||'',
+        a.table_number||'', a.seat_number||'', lvl?.name||'',
+        a.status, a.confirmed?'Yes':'No', a.source||'offline',
+        a.sent_at||'', a.checked_in_at||''];
+    })
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'attendees-filtered.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast(`Exported ${filtered.length} filtered attendees`);
+}
+
+// ── Upload dropdown menu ──────────────────────────────────
+function toggleAddMenu() {
+  const m = document.getElementById('add-menu');
+  const isOpen = m.style.display !== 'none';
+  hideAddMenu(); hideUploadMenu();
+  if (!isOpen) m.style.display = 'block';
+}
+function hideAddMenu() { document.getElementById('add-menu').style.display = 'none'; }
+
+function toggleUploadMenu() {
+  const menu = document.getElementById('upload-menu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+function hideUploadMenu() {
+  const menu = document.getElementById('upload-menu');
+  if (menu) menu.style.display = 'none';
+}
+document.addEventListener('click', e => {
+  const uploadWrap = document.getElementById('upload-menu-wrap');
+  if (uploadWrap && !uploadWrap.contains(e.target)) hideUploadMenu();
+  const addWrap = document.getElementById('add-menu-wrap');
+  if (addWrap && !addWrap.contains(e.target)) hideAddMenu();
+});
+
+// ── Undo Upload ───────────────────────────────────────────
+let undoBatchId = null;
+let undoTimer = null;
+
+function showUndoBar(batchId, count) {
+  undoBatchId = batchId;
+  const bar = document.getElementById('undo-bar');
+  document.getElementById('undo-msg').textContent = `${count} attendee(s) added`;
+  bar.style.display = 'flex';
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideUndoBar, 15000); // auto-hide after 15s
+}
+
+function hideUndoBar() {
+  document.getElementById('undo-bar').style.display = 'none';
+  undoBatchId = null;
+  clearTimeout(undoTimer);
+}
+
+async function doUndoUpload() {
+  if (!undoBatchId) return;
+  if (!confirm('Undo this upload? Newly added attendees will be removed and any overwritten fields will be restored.')) return;
+  try {
+    const r = await api.attendees.undoUpload(eventId, undoBatchId);
+    hideUndoBar();
+    toast(`Undone — ${r.removed} removed, ${r.restored} restored`);
+    await load();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Upload Activated List ─────────────────────────────────
+function dlConfirmTemplate() {
+  const csv = `Ticket ID\nTKT-EXAMPLE1\nTKT-EXAMPLE2\n# Instructions:\n# - One ticket ID per row\n# - Ticket IDs look like TKT-ABC12345\n# - Lines starting with # are ignored\n# - Save as CSV and upload using the Upload Activated List button`;
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'EverythingShul-Confirm-Template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+async function processConfirmUpload(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const resultEl = document.getElementById('confirm-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<div class="info-box tip">Reading file…</div>';
+  try {
+    const text = await file.text();
+    const ids = text.split(/[\r\n]+/)
+      .map(l => l.trim().toUpperCase())
+      .filter(l => l && !l.startsWith('#') && l !== 'TICKET ID' && l !== 'TICKET_ID');
+    if (!ids.length) {
+      resultEl.innerHTML = '<div class="info-box warn">No ticket IDs found. Each row should contain one ticket ID like TKT-ABC12345.</div>';
+      return;
+    }
+    resultEl.innerHTML = `<div class="info-box tip">Found ${ids.length} ticket ID(s). Marking as confirmed…</div>`;
+    const result = await api.attendees.confirmBulk(eventId, ids);
+    resultEl.innerHTML = `<div class="info-box ok">
+      Done! <strong>${result.confirmed}</strong> ticket(s) marked as confirmed.
+      ${result.notFound > 0 ? `<br><span style="color:var(--orange)">${result.notFound} ID(s) not found in this event.</span>` : ''}
+    </div>`;
+    await load();
+    toast(`${result.confirmed} ticket(s) confirmed`);
+  } catch(err) {
+    resultEl.innerHTML = `<div class="info-box warn">Error: ${esc(err.message)}</div>`;
+  }
+}
+
+// ── Online Sales Panel ────────────────────────────────────
+let salesSettings = null;
+
+async function loadSalesPanel() {
+  const panel = document.getElementById('sales-panel');
+  try {
+    salesSettings = await api.attendees.getSalesSettings(eventId);
+    panel.style.display = 'block';
+    renderSalesPanel();
+  } catch { panel.style.display = 'none'; }
+}
+
+function renderSalesPanel() {
+  const s = salesSettings;
+  const panel = document.getElementById('sales-panel');
+  const saleUrl = s.slug ? `${location.origin}/events/${s.slug}` : null;
+  panel.innerHTML = `
+    <div class="section-title mb12">Online Ticket Sales</div>
+    <div class="fg mb12">
+      <label>Custom URL <span class="xs text2">(letters, numbers, hyphens only)</span></label>
+      <div class="row" style="gap:8px">
+        <span class="sm text2" style="white-space:nowrap;line-height:38px">${location.origin}/events/</span>
+        <input id="slug-input" placeholder="my-event-2025" value="${esc(s.slug||'')}" style="flex:1;margin:0">
+        <button class="btn btn-sm btn-gold" onclick="saveSlug()">Save</button>
+      </div>
+      ${saleUrl ? `<div class="hint mt4"><a href="${saleUrl}" target="_blank" style="color:var(--cyan)">${saleUrl}</a>
+        <button class="btn btn-sm" style="margin-left:8px;font-size:11px" onclick="navigator.clipboard.writeText('${saleUrl}').then(()=>toast('Copied!'))">Copy</button></div>` : ''}
+    </div>
+    <div class="row-between mb12" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r)">
+      <div><div style="font-size:13px;font-weight:600">Sales Active</div><div class="xs text2">Enable to make the ticket page publicly accessible</div></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" ${s.sale_enabled?'checked':''} onchange="saveSaleSetting('sale_enabled',this.checked)" style="width:16px;height:16px">
+        <span class="sm">${s.sale_enabled?'Active':'Inactive'}</span>
+      </label>
+    </div>
+    <div class="fg mb12">
+      <label>Sale Image <span class="xs text2">(shown at top of public sale page — PNG or JPG)</span></label>
+      <div class="row" style="gap:8px">
+        <input type="file" id="sale-image-input" accept="image/png,image/jpeg" style="flex:1;margin:0">
+        <button class="btn btn-sm btn-gold" onclick="uploadSaleImage()">Upload</button>
+      </div>
+    </div>
+    <div class="fg mb16">
+      <label>Link Expiry <span class="xs text2">(sales page closes at this date/time)</span></label>
+      <div class="row" style="gap:8px">
+        <input type="datetime-local" id="expires-input" value="${s.expires_at?s.expires_at.slice(0,16):''}" style="flex:1;margin:0;color-scheme:light;background:#fff;color:#111;border:1.5px solid var(--border);border-radius:var(--r);padding:9px 11px;font-size:14px">
+        <button class="btn btn-sm btn-gold" onclick="saveExpiry()">Save</button>
+        <button class="btn btn-sm" onclick="autoSetExpiry()">Auto (+48h)</button>
+      </div>
+    </div>
+    <div class="section-title mb8">Ticket Levels for Sale</div>
+    <p class="sm text2 mb10">Set price (0 = free) and toggle online availability per level.</p>
+    ${levels.length === 0 ? '<div class="info-box tip">Add ticket levels above first.</div>' :
+      levels.map(l => `<div class="row mb8" style="gap:10px;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:var(--r)">
+        <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span>
+        <div style="flex:1"><div class="row" style="gap:6px;align-items:center">
+          <span class="xs text2">Price: $</span>
+          <input type="number" min="0" step="0.01" placeholder="0.00" value="${((l.price||0)/100).toFixed(2)}" id="price-${l.id}" style="width:80px;margin:0;padding:5px 8px;font-size:13px" onchange="saveLevelPrice('${l.id}',this.value)">
+        </div></div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="checkbox" ${l.online_sale?'checked':''} onchange="saveLevelOnline('${l.id}',this.checked)" style="width:15px;height:15px"> Sell Online
+        </label>
+      </div>`).join('')}
+    ${s.total_online_sales > 0 ? `<div class="info-box ok mt12"><strong>${s.total_online_sales}</strong> ticket(s) sold online for this event.</div>` : ''}`;
+}
+
+async function saveSlug() {
+  const slug = document.getElementById('slug-input').value.trim();
+  try { await api.attendees.updateSalesSettings(eventId, { slug }); salesSettings.slug = slug; toast('URL saved'); renderSalesPanel(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+async function saveSaleSetting(key, val) {
+  try { await api.attendees.updateSalesSettings(eventId, { [key]: val }); salesSettings[key] = val; toast(val ? 'Sales page is now live' : 'Sales page disabled'); }
+  catch(e) { toast(e.message, 'error'); }
+}
+async function saveStripeKey() {
+  const key = document.getElementById('stripe-key-input').value.trim();
+  if (!key) { toast('Enter a Stripe key', 'error'); return; }
+  try { await api.attendees.updateSalesSettings(eventId, { stripe_key: key }); salesSettings.stripe_key = '***configured***'; document.getElementById('stripe-key-input').value = ''; document.getElementById('stripe-key-input').placeholder = '●●● configured ●●●'; toast('Stripe key saved'); }
+  catch(e) { toast(e.message, 'error'); }
+}
+async function uploadSaleImage() {
+  const file = document.getElementById('sale-image-input').files[0];
+  if (!file) { toast('Select an image first', 'error'); return; }
+  try { await api.attendees.uploadSaleImage(eventId, file); toast('Image uploaded'); }
+  catch(e) { toast(e.message, 'error'); }
+}
+async function saveExpiry() {
+  const val = document.getElementById('expires-input').value;
+  try { await api.attendees.updateSalesSettings(eventId, { expires_at: val || null }); toast('Expiry saved'); }
+  catch(e) { toast(e.message, 'error'); }
+}
+async function autoSetExpiry() {
+  if (!eventData?.date) { toast('Event has no date set', 'error'); return; }
+  const d = new Date(eventData.date); if (isNaN(d)) { toast('Could not parse event date', 'error'); return; }
+  d.setHours(d.getHours() + 48);
+  const iso = d.toISOString().slice(0,16);
+  document.getElementById('expires-input').value = iso;
+  await api.attendees.updateSalesSettings(eventId, { expires_at: iso });
+  toast('Expiry set to 48h after event');
+}
+async function saveLevelPrice(levelId, dollars) {
+  const cents = Math.round(parseFloat(dollars||0)*100);
+  try { await api.attendees.updateLevelSales(levelId, { price: cents }); const lvl=levels.find(l=>l.id===levelId); if(lvl) lvl.price=cents; }
+  catch(e) { toast(e.message, 'error'); }
+}
+async function saveLevelOnline(levelId, enabled) {
+  try { await api.attendees.updateLevelSales(levelId, { online_sale: enabled }); const lvl=levels.find(l=>l.id===levelId); if(lvl) lvl.online_sale=enabled?1:0; }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Ticket Design Upload ──────────────────────────────────
+let pendingDesignFile = null;
+
+function confirmDesignUpload(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Please select an image file', 'error'); return; }
+  pendingDesignFile = file;
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('design-preview-img').src = ev.target.result;
+    document.getElementById('design-file-name').textContent = file.name + ' (' + (file.size / 1024).toFixed(0) + ' KB)';
+  };
+  reader.readAsDataURL(file);
+  showModal('modal-design-confirm');
+}
+
+function cancelDesignUpload() {
+  pendingDesignFile = null;
+  hideModal('modal-design-confirm');
+}
+
+async function doUploadDesign() {
+  if (!pendingDesignFile) return;
+  hideModal('modal-design-confirm');
+  toast('Uploading design…', 'info');
+  try {
+    const fd = new FormData();
+    fd.append('design', pendingDesignFile, pendingDesignFile.name);
+    const headers = {};
+    if (Auth.token()) headers['Authorization'] = `Bearer ${Auth.token()}`;
+    const res = await fetch(`/api/attendees/event/${eventId}/design`, { method: 'POST', headers, body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    pendingDesignFile = null;
+    toast('Ticket design saved! Opening preview…');
+    document.getElementById('btn-design').textContent = 'Update Ticket Design';
+    // Auto-open preview with cache bust so you can confirm the design
+    setTimeout(() => {
+      window.open(`/api/attendees/event/${eventId}/ticket-preview?token=${Auth.token()}&t=${Date.now()}`, '_blank');
+    }, 500);
+  } catch(e) { toast(e.message, 'error'); pendingDesignFile = null; }
+}
+
+// ── Confirm toggle ────────────────────────────────────────
+async function toggleConfirm(id, val) {
+  try {
+    await api.attendees.confirm(id, val);
+    const a = attendees.find(x => x.id === id);
+    if (a) a.confirmed = val;
+    filterTable();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Ticket Levels ─────────────────────────────────────────
+const LEVEL_PALETTE = ['#00aadd','#27a85f','#d97706','#7c5cbe','#d93535','#1a3a6b','#e11d48','#0891b2','#65a30d','#9333ea'];
+
+function renderLevelsPanel() {
+  const el = document.getElementById('levels-panel');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="section-title mb8">Ticket Levels</div>
+    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong> per name — it appears on the ticket badge. Add a description so staff know what each level means.</p>
+    ${levels.map(l => `
+      <div class="row mb8" style="gap:8px;align-items:flex-start;padding:9px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+        <div style="width:14px;height:14px;border-radius:3px;background:${l.color};flex-shrink:0;margin-top:2px"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${esc(l.name)}</div>
+          ${l.description ? `<div class="xs text2">${esc(l.description)}</div>` : ''}
+        </div>
+        <span class="xs text2">${attendees.filter(a=>a.level_id===l.id).length} tickets</span>
+        <button class="btn btn-sm btn-danger" onclick="deleteLevel('${l.id}')">Remove</button>
+      </div>`).join('')}
+    <div style="margin-top:12px;padding:12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div class="form-row mb8">
+        <div class="fg" style="margin:0">
+          <label>Level name * <span style="font-weight:400;color:var(--text3)">(max 11 chars)</span></label>
+          <input id="new-level-name" placeholder="VIP" maxlength="11" oninput="updateLevelCounter(this)">
+          <div class="hint" id="level-char-count">0 / 11 characters</div>
+        </div>
+        <div class="fg" style="margin:0">
+          <label>Color</label>
+          <input id="new-level-color" type="color" value="${LEVEL_PALETTE[levels.length % LEVEL_PALETTE.length]}" style="width:100%;height:38px;padding:2px 4px;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer">
+        </div>
+      </div>
+      <div class="fg mb8">
+        <label>Description <span style="font-weight:400;color:var(--text3)">(optional — shown to staff, not on ticket)</span></label>
+        <input id="new-level-desc" placeholder="e.g. Front row seats, complimentary dinner included">
+      </div>
+      <button class="btn btn-gold" onclick="addLevel()">+ Add Level</button>
+    </div>`;
+}
+
+function updateLevelCounter(input) {
+  const count = input.value.length;
+  const counter = document.getElementById('level-char-count');
+  if (counter) {
+    counter.textContent = `${count} / 11 characters`;
+    counter.style.color = count > 11 ? 'var(--red)' : count >= 9 ? 'var(--orange)' : 'var(--text3)';
+  }
+}
+
+async function addLevel() {
+  const name = document.getElementById('new-level-name').value.trim();
+  const color = document.getElementById('new-level-color').value;
+  const description = document.getElementById('new-level-desc')?.value.trim() || null;
+  if (!name) { toast('Enter a level name', 'error'); return; }
+  if (name.length > 11) { toast('Level name must be 11 characters or less', 'error'); return; }
+  try {
+    const { level } = await api.attendees.addLevel(eventId, { name, color, description });
+    levels.push(level);
+    document.getElementById('new-level-name').value = '';
+    if (document.getElementById('new-level-desc')) document.getElementById('new-level-desc').value = '';
+    renderLevelsPanel();
+    filterTable();
+    toast(`Level "${name}" added`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteLevel(id) {
+  const lvl = levels.find(l => l.id === id);
+  if (!confirm(`Remove level "${lvl?.name}"? Attendees assigned this level will have no level.`)) return;
+  try {
+    await api.attendees.deleteLevel(eventId, id);
+    levels = levels.filter(l => l.id !== id);
+    attendees.forEach(a => { if (a.level_id === id) a.level_id = null; });
+    renderLevelsPanel();
+    filterTable();
+    toast('Level removed');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Event settings ────────────────────────────────────────
+async function toggleUnconfirmedCheckin(val) {
+  try {
+    await api.attendees.updateEventSettings(eventId, { allow_unconfirmed_checkin: val });
+    eventData.allow_unconfirmed_checkin = val ? 1 : 0;
+    toast(val ? 'Unconfirmed check-in allowed' : 'Only confirmed guests can check in');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function openStats() {
+  window.open(`/event-stats.html?id=${eventId}`, '_blank');
+}
+
+function previewTicketPDF() {
+  if (!attendees || attendees.length === 0) {
+    toast('Add at least one attendee first to preview the ticket', 'error');
+    return;
+  }
+  // Add timestamp to bust browser cache after design upload
+  window.open(`/api/attendees/event/${eventId}/ticket-preview?token=${Auth.token()}&t=${Date.now()}`, '_blank');
+}
+
+// ── Scanner PIN management ────────────────────────────────
+async function openPins() {
+  document.getElementById('scanner-url').textContent = window.location.origin + '/scanner-login.html?event=' + eventId;
+  // Render level restriction checkboxes
+  const wrap = document.getElementById('pin-levels-wrap');
+  if (wrap) {
+    wrap.innerHTML = levels.length
+      ? levels.map(l => `<label style="display:flex;align-items:center;gap:5px;padding:5px 10px;border:1.5px solid ${l.color}44;border-radius:20px;cursor:pointer;font-size:12px;font-weight:600;background:${l.color}11;color:${l.color}">
+          <input type="checkbox" data-level-id="${l.id}" style="width:13px;height:13px;cursor:pointer;accent-color:${l.color}"> ${esc(l.name)}
+        </label>`).join('')
+      : '<span class="xs text2">No ticket levels</span>';
+  }
+  showModal('modal-pins');
+  await loadPins();
+}
+
+async function loadPins() {
+  try {
+    const { pins } = await api.auth.getScannerPins(eventId);
+    const list = document.getElementById('pins-list');
+    if (!pins.length) {
+      list.innerHTML = `<div class="empty" style="padding:24px 0"><div class="ico"></div><h3>No PINs yet</h3><p>Create a PIN for each entrance or staff member</p></div>`;
+      return;
+    }
+    list.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Label</th><th>PIN</th><th>Lookup</th><th>Level Restriction</th><th></th></tr></thead>
+      <tbody>${pins.map(p => {
+        const allowedLvls = p.allowed_levels ? JSON.parse(p.allowed_levels) : [];
+        const lvlNames = allowedLvls.map(lid => { const l = levels.find(x=>x.id===lid); return l ? `<span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44;font-size:10px">${esc(l.name)}</span>` : ''; }).join(' ');
+        return `<tr>
+        <td><strong>${esc(p.label)}</strong></td>
+        <td><span style="font-family:monospace;font-size:18px;font-weight:700;letter-spacing:.15em;color:var(--cyan)">${esc(p.pin)}</span></td>
+        <td>
+          <div class="row" style="gap:6px">
+            ${p.allow_lookup ? '<span class="badge badge-checked">Allowed</span>' : '<span class="badge badge-deactivated">Off</span>'}
+            <button class="btn btn-sm" onclick="togglePinLookup('${p.id}',${p.allow_lookup?0:1})">${p.allow_lookup?'Disable':'Enable'}</button>
+          </div>
+        </td>
+        <td>${allowedLvls.length ? lvlNames : '<span class="xs text2">All levels</span>'}
+          <button class="btn btn-sm" style="margin-left:4px;font-size:11px" onclick="editPinLevels('${p.id}')">Edit</button>
+        </td>
+        <td><button class="btn btn-sm btn-danger" onclick="deletePin('${p.id}')">Delete</button></td>
+      </tr>`;}).join('')}</tbody>
+    </table></div>`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function createPin() {
+  const label = document.getElementById('pin-label').value.trim() || 'Door Scanner';
+  const allow_lookup = parseInt(document.getElementById('pin-lookup').value);
+  const checkedLevels = [...document.querySelectorAll('#pin-levels-wrap input[type=checkbox]:checked')].map(cb => cb.dataset.levelId);
+  const allowed_levels = checkedLevels.length ? JSON.stringify(checkedLevels) : null;
+  try {
+    const { pin } = await api.auth.createScannerPin({ eventId, label, allow_lookup, allowed_levels });
+    toast(`PIN created: ${pin}`);
+    document.getElementById('pin-label').value = '';
+    document.querySelectorAll('#pin-levels-wrap input[type=checkbox]').forEach(cb => cb.checked = false);
+    await loadPins();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function togglePinLookup(id, newVal) {
+  try {
+    await api.auth.updateScannerLookup(id, newVal);
+    toast(newVal ? 'Lookup enabled' : 'Lookup disabled');
+    await loadPins();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function editPinLevels(pinId) {
+  const pin = (await api.auth.getScannerPins(eventId)).pins.find(p => p.id === pinId);
+  if (!pin) return;
+  const current = pin.allowed_levels ? JSON.parse(pin.allowed_levels) : [];
+  const checks = levels.map(l => `<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer">
+    <input type="checkbox" value="${l.id}" ${current.includes(l.id)?'checked':''} style="width:15px;height:15px">
+    <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span>
+  </label>`).join('');
+  const div = document.createElement('div');
+  div.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:24px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3>
+      <p class="xs text2 mb12">Leave all unchecked = allow all levels</p>
+      <div id="edit-lvl-checks">${checks || '<p class="text2 sm">No levels set up for this event</p>'}</div>
+      <div class="row mt16" style="gap:8px;justify-content:flex-end">
+        <button class="btn" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="this.closest('[style*=fixed]').remove()">Cancel</button>
+        <button class="btn btn-gold" onclick="savePinLevels('${pinId}',this)">Save</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+async function savePinLevels(pinId, btn) {
+  const overlay = btn.closest('[style*=fixed]');
+  const checked = [...overlay.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
+  try {
+    await api.auth.updateScannerPin(pinId, { allowed_levels: checked.length ? JSON.stringify(checked) : null });
+    toast('Level restrictions saved');
+    overlay.remove();
+    await loadPins();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deletePin(id) {
+  if (!confirm('Delete this PIN? Door staff using it will be logged out.')) return;
+  try { await api.auth.deleteScannerPin(id); toast('PIN deleted'); await loadPins(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+function dlTemplate() {
+  const levelNames = levels.map(l => l.name);
+  const lvlNote = levelNames.length ? `\n# Valid ticket levels for this event: ${levelNames.join(', ')}` : '';
+  const lvlCol = levelNames.length ? ',Ticket Level' : '';
+  const lvlEx1 = levelNames.length ? `,${levelNames[0]||'VIP'}` : '';
+  const lvlEx2 = levelNames.length ? `,${levelNames[1]||levelNames[0]||'Gold'}` : '';
+  const csv = `First Name,Last Name,Phone,Email,Table,Seat${lvlCol}${lvlNote}\nJane,Doe,+1 555 000 0001,jane@example.com,A,1${lvlEx1}\nJohn,Smith,+1 555 000 0002,john@example.com,A,2${lvlEx2}`;
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'EverythingShul-Ticket-Template.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ── Closed event + Contact Admin ──────────────────────────
+async function reopenEventAdmin() {
+  try {
+    await api.events.reopen(eventId);
+    toast('Event reopened');
+    location.reload();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function showClosedPage(ev) {
+  const name = ev?.name || 'Event';
+  const closedDate = ev?.closed_at ? new Date(ev.closed_at).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'recently';
+  document.querySelector('.page').innerHTML = `
+    <div style="max-width:560px;margin:0 auto">
+      <div class="ph mb20">
+        <div class="ph-left">
+          <h1>${esc(name)}</h1>
+          <p class="text2">${esc([ev?.date,ev?.venue].filter(Boolean).join(' · '))}</p>
+        </div>
+      </div>
+      <div style="border:1.5px solid #f59e0b;border-radius:12px;padding:28px;background:#fffbeb">
+        <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <div>
+            <div style="font-weight:700;font-size:17px;color:#92400e;margin-bottom:6px">This event is closed</div>
+            <div style="font-size:13px;color:#78350f;line-height:1.7">Closed on ${closedDate}. All attendee data is locked. To reopen this event, contact the administrator.</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <a href="/events.html" class="btn btn-sm" style="background:#fff;border:1.5px solid #f59e0b;color:#92400e">← My Events</a>
+          <button class="btn btn-sm btn-primary" id="btn-contact-reopen">Contact Admin to Reopen</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('btn-contact-reopen').onclick = () =>
+    openContactAdmin('Please reopen: ' + name, 'Hi,\n\nPlease reopen my event:\n\nEvent: ' + name + '\nEvent ID: ' + eventId + '\n\nReason:\n');
+}
+
+function openContactAdmin(subject, prefill) {
+  document.getElementById('ca-subject').value = subject || (eventData?.name ? 'Re: ' + eventData.name : 'Support Request');
+  document.getElementById('ca-body').value = prefill || '';
+  document.getElementById('ca-name').value = Auth.user()?.name || '';
+  document.getElementById('ca-email-field').value = Auth.user()?.email || '';
+  showModal('modal-contact-admin');
+}
+
+function sendContactAdmin() {
+  const subject = document.getElementById('ca-subject').value.trim();
+  const body    = document.getElementById('ca-body').value.trim();
+  const name    = document.getElementById('ca-name').value.trim();
+  const email   = document.getElementById('ca-email-field').value.trim();
+  const errEl   = document.getElementById('ca-err');
+  if (!body) { errEl.textContent = 'Please describe your request.'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('ca-send-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  errEl.style.display = 'none';
+  api.admin.contactAdmin({ from_name:name, from_email:email, subject, message:body, event_name:eventData?.name, event_id:eventId })
+    .then(() => {
+      document.getElementById('ca-sent-msg').style.display = 'block';
+      document.getElementById('ca-form-wrap').style.display = 'none';
+    })
+    .catch(e => {
+      errEl.textContent = 'Failed to send: ' + e.message;
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Send Message';
+    });
+}
+
+load();
+// Auto-refresh stats and attendee list every 20 seconds
+RealtimeSync.register(() => {
+  api.attendees.list(eventId).then(d => {
+    attendees = d.attendees;
+    renderStats(); filterTable();
+  }).catch(()=>{});
+}, 20000);
+</script>
+</body>
+</html>

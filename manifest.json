@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ticket Scanner</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.scan-panel{background:#fff;border-radius:14px;box-shadow:0 2px 16px rgba(0,0,0,.08);overflow:hidden}
+.scan-header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:10px}
+.scan-header h2{font-size:15px;font-weight:700;margin:0;flex:1}
+.cam-box{background:#0d1b3e;position:relative;min-height:240px;display:flex;align-items:center;justify-content:center}
+#qr-reader{width:100%}
+#qr-reader video{width:100%!important;max-height:280px;object-fit:cover}
+.result-wrap{padding:14px}
+.scan-result{border-radius:10px;padding:14px 16px;font-size:14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px}
+.scan-valid{background:#f0fff4;border:2px solid #27a85f;color:#145a2e}
+.scan-warn{background:#fffbeb;border:2px solid #f59e0b;color:#92400e}
+.scan-invalid{background:#fff0f0;border:2px solid #ef4444;color:#991b1b}
+.scan-assign{background:#f5f3ff;border:2px solid #8b5cf6;color:#4c1d95}
+.result-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.level-dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex-shrink:0;margin-top:2px}
+.level-badge-inline{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.log-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;border:1px solid var(--border);margin-bottom:6px;background:#fff;transition:all .2s}
+.log-item:first-child{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.manual-bar{display:flex;gap:0;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:#fff}
+.manual-bar input{flex:1;border:none;padding:10px 14px;font-family:monospace;font-size:15px;text-transform:uppercase;outline:none;background:transparent}
+.manual-bar button{background:var(--navy);color:#fff;border:none;padding:10px 18px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap}
+.manual-bar button:hover{background:var(--cyan)}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb22">
+      <div class="ph-left"><h1>Ticket Scanner</h1><p class="text2">Check in attendees by QR code or ticket ID</p></div>
+      <div class="ph-actions">
+        <span id="log-count" class="chip">0 checked in</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- Left: Camera + Result + Manual -->
+      <div>
+        <div class="scan-panel mb14">
+          <div class="scan-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10"/></svg>
+            <h2>Camera Scanner</h2>
+            <button class="btn btn-sm" id="btn-start" onclick="startScan()" style="background:var(--gold);color:#000;border:none;font-size:12px;padding:5px 12px">Start Camera</button>
+            <button class="btn btn-sm btn-danger" id="btn-stop" style="display:none;font-size:12px;padding:5px 12px" onclick="stopScan()">Stop</button>
+          </div>
+          <div class="cam-box">
+            <div id="qr-placeholder" style="text-align:center;padding:36px">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.5" style="margin-bottom:12px"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10"/></svg>
+              <p style="color:rgba(255,255,255,.4);font-size:13px">Press Start Camera to begin scanning</p>
+            </div>
+            <div id="qr-reader" style="width:100%"></div>
+          </div>
+        </div>
+
+        <!-- Manual lookup -->
+        <div class="scan-panel mb14">
+          <div class="scan-header">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <h2>Manual Lookup</h2>
+          </div>
+          <div style="padding:12px">
+            <div class="manual-bar">
+              <input id="manual-id" placeholder="TKT-XXXXXXXX or type name…" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')manualLookup()">
+              <button onclick="manualLookup()">Check In</button>
+            </div>
+            <div class="xs text2 mt8">Tip: On desktop, scan directly into the field — it auto-focuses after each scan.</div>
+          </div>
+        </div>
+
+        <!-- Scan result -->
+        <div id="scan-result" style="display:none"></div>
+      </div>
+
+      <!-- Right: Log -->
+      <div>
+        <div class="scan-panel">
+          <div class="scan-header">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <h2>Check-in Log</h2>
+            <button onclick="clearLog()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:11px;cursor:pointer;padding:0">Clear</button>
+          </div>
+          <div style="padding:12px;max-height:520px;overflow-y:auto" id="log-list">
+            <div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px">No scans yet</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div></main>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+let scanner = null, scanning = false, logEntries = [], assignTicketId = '';
+
+// Auto-focus manual input on load and after each scan
+function focusManual() {
+  const el = document.getElementById('manual-id');
+  if (el && !scanning) el.focus();
+}
+window.addEventListener('load', () => setTimeout(focusManual, 300));
+document.addEventListener('keydown', e => {
+  const el = document.getElementById('manual-id');
+  if (!el) return;
+  if (document.activeElement !== el && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    el.focus();
+  }
+});
+
+function startScan() {
+  if (scanning) return;
+  document.getElementById('qr-placeholder').style.display = 'none';
+  scanner = new Html5Qrcode('qr-reader');
+  scanner.start({ facingMode:'environment' }, { fps:10, qrbox:{ width:200, height:200 } },
+    async decoded => {
+      let tid = decoded;
+      try { const p=JSON.parse(decoded); if(p.ticketId) tid=p.ticketId; } catch {}
+      scanner.pause();
+      await processTicket(tid.trim().toUpperCase());
+      setTimeout(() => scanner?.resume(), 2800);
+    }, () => {}
+  ).then(() => {
+    scanning=true;
+    document.getElementById('btn-start').style.display='none';
+    document.getElementById('btn-stop').style.display='';
+  }).catch(e => {
+    toast('Camera error: '+e.message,'error');
+    document.getElementById('qr-placeholder').style.display='';
+  });
+}
+
+function stopScan() {
+  scanner?.stop().catch(()=>{});
+  scanner=null; scanning=false;
+  document.getElementById('btn-start').style.display='';
+  document.getElementById('btn-stop').style.display='none';
+  document.getElementById('qr-reader').innerHTML='';
+  document.getElementById('qr-placeholder').style.display='';
+  setTimeout(focusManual, 100);
+}
+
+async function manualLookup() {
+  const el = document.getElementById('manual-id');
+  const id = el.value.trim().toUpperCase();
+  if (!id) return;
+  await processTicket(id);
+  el.value = '';
+  setTimeout(focusManual, 200);
+}
+
+async function processTicket(ticketId) {
+  try {
+    const data = await api.attendees.scan(ticketId);
+    showResult(data, ticketId);
+    logEntries.unshift({ ticketId, data, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+    renderLog();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function levelTag(attendee) {
+  if (!attendee?.level_name) return '';
+  const color = attendee.level_color || '#6366f1';
+  return `<span class="level-badge-inline" style="background:${color}22;color:${color};border:1px solid ${color}44;margin-left:4px">${esc(attendee.level_name)}</span>`;
+}
+
+function showResult(data, ticketId) {
+  const box = document.getElementById('scan-result');
+  box.style.display = 'block';
+  const isPreprint = data.reason === 'Not yet assigned';
+  let cls = data.valid ? 'scan-valid' : isPreprint ? 'scan-assign' : data.reason?.includes('Already') ? 'scan-warn' : 'scan-invalid';
+  let icon = data.valid ? '✅' : isPreprint ? '🎫' : data.reason?.includes('Already') ? '⚠️' : '❌';
+  let heading = data.valid ? 'Entry Granted' : data.reason;
+
+  let body = '';
+  if (data.attendee && !isPreprint) {
+    const a = data.attendee;
+    body = `<div style="margin-top:6px">
+      <div style="font-size:16px;font-weight:700">${esc(a.first_name||'')} ${esc(a.last_name||'')}${levelTag(a)}</div>
+      ${a.table_number ? `<div class="xs mt4" style="opacity:.75">Table ${esc(a.table_number)}${a.seat_number?' · Seat '+esc(a.seat_number):''}</div>` : ''}
+      ${data.event ? `<div class="xs mt2" style="opacity:.6">${esc(data.event.name)}</div>` : ''}
+      ${data.checkedAt ? `<div class="xs mt4" style="opacity:.65">Checked in: ${new Date(data.checkedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div>` : ''}
+    </div>`;
+  }
+
+  if (isPreprint) {
+    assignTicketId = ticketId;
+    body = `<div style="margin-top:10px">
+      <div class="xs mb8" style="opacity:.75">${ticketId}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <input id="as-fn" placeholder="First name *" style="padding:8px;border-radius:7px;border:1px solid rgba(0,0,0,.15);font-size:13px">
+        <input id="as-ln" placeholder="Last name *" style="padding:8px;border-radius:7px;border:1px solid rgba(0,0,0,.15);font-size:13px">
+      </div>
+      <input id="as-ph" placeholder="Phone (optional)" style="width:100%;padding:8px;border-radius:7px;border:1px solid rgba(0,0,0,.15);font-size:13px;margin-bottom:8px">
+      <button onclick="assignAndCheckIn()" style="width:100%;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px;font-weight:600;font-size:13px;cursor:pointer">Assign & Check In →</button>
+    </div>`;
+  }
+
+  box.innerHTML = `<div class="scan-result ${cls}">
+    <div class="result-icon">${icon}</div>
+    <div style="flex:1">
+      <div style="font-weight:700;font-size:15px">${esc(heading)}</div>
+      ${body}
+    </div>
+  </div>
+  <button class="btn btn-sm" style="width:100%;background:var(--bg3);color:var(--text2);border:1px solid var(--border)" onclick="document.getElementById('scan-result').style.display='none';focusManual()">Dismiss</button>`;
+}
+
+async function assignAndCheckIn() {
+  const fn=document.getElementById('as-fn')?.value.trim();
+  const ln=document.getElementById('as-ln')?.value.trim();
+  const ph=document.getElementById('as-ph')?.value.trim();
+  if (!fn||!ln) { toast('Enter first and last name','error'); return; }
+  try {
+    await api.attendees.assign({ ticketId:assignTicketId, first_name:fn, last_name:ln, phone:ph||undefined });
+    const data = await api.attendees.scan(assignTicketId);
+    showResult(data, assignTicketId);
+    logEntries[0] = { ticketId:assignTicketId, data, time:new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) };
+    renderLog(); toast(`Assigned & checked in: ${fn} ${ln}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function clearLog() { logEntries=[]; renderLog(); }
+
+function renderLog() {
+  const checkedIn = logEntries.filter(e=>e.data.valid).length;
+  document.getElementById('log-count').textContent = `${checkedIn} checked in`;
+  if (!logEntries.length) {
+    document.getElementById('log-list').innerHTML = '<div style="text-align:center;padding:32px 0;color:var(--text3);font-size:13px">No scans yet</div>';
+    return;
+  }
+  document.getElementById('log-list').innerHTML = logEntries.slice(0,50).map(e => {
+    const a = e.data.attendee;
+    const isAlready = e.data.reason?.includes('Already');
+    const color = e.data.valid ? '#27a85f' : isAlready ? '#f59e0b' : '#ef4444';
+    const dotColor = a?.level_color || null;
+    return `<div class="log-item">
+      <span style="font-size:16px">${e.data.valid?'✅':isAlready?'⚠️':'❌'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:${color};display:flex;align-items:center;gap:6px">
+          ${a ? esc(a.first_name||'')+' '+esc(a.last_name||'') : esc(e.ticketId)}
+          ${dotColor ? `<span class="level-dot" style="background:${dotColor}" title="${esc(a.level_name||'')}"></span>` : ''}
+          ${a?.level_name ? `<span style="font-size:10px;opacity:.75">${esc(a.level_name)}</span>` : ''}
+        </div>
+        ${!e.data.valid ? `<div class="xs" style="color:${color};opacity:.8">${esc(e.data.reason)}</div>` : ''}
+        ${a?.table_number ? `<div class="xs text3">Table ${esc(a.table_number)}${a.seat_number?' · '+esc(a.seat_number):''}</div>` : ''}
+      </div>
+      <span class="xs text3">${e.time}</span>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

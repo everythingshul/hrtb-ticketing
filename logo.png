@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — All Events</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb16">
+      <div class="ph-left"><h1>All Events</h1></div>
+      <div class="ph-actions">
+        <input id="search" placeholder="Search event or account…" style="width:200px"
+          autocomplete="off" autocorrect="off" spellcheck="false" oninput="renderEvents()">
+      </div>
+    </div>
+
+    <div id="stats" class="stat-pills mb16"></div>
+    <div id="events-wrap"></div>
+
+  </div></main>
+</div>
+
+<!-- Phone/SMS/IVR Management Modal -->
+<div id="modal-phone" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-phone')">
+  <div class="modal modal-lg">
+    <div class="modal-hd">
+      <h2>Phone &amp; SMS/IVR — <span id="ph-event-name"></span></h2>
+      <button class="modal-x" onclick="hideModal('modal-phone')">&#x2715;</button>
+    </div>
+
+    <!-- Current number status -->
+    <div id="ph-status-bar" style="margin-bottom:16px;padding:12px 14px;border-radius:var(--r);border:1.5px solid var(--border)">
+      <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700" id="ph-number-display">No number assigned</div>
+          <div class="xs text2" id="ph-expiry-display"></div>
+        </div>
+        <span id="ph-active-badge"></span>
+        <div class="row" style="gap:6px">
+          <button class="btn btn-sm" id="ph-toggle-btn" style="display:none" onclick="toggleEventSms()"></button>
+          <button class="btn btn-sm btn-danger" id="ph-release-btn" style="display:none" onclick="releaseEventNumber()">Release Number</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="row mb14" style="gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <button class="btn btn-sm btn-gold" id="ptab-buy" onclick="phoneTab('buy')">Search &amp; Buy</button>
+      <button class="btn btn-sm btn-ghost" id="ptab-owned" onclick="phoneTab('owned')">Your Numbers</button>
+      <button class="btn btn-sm btn-ghost" id="ptab-manual" onclick="phoneTab('manual')">Manual Entry</button>
+      <button class="btn btn-sm btn-ghost" id="ptab-messages" onclick="phoneTab('messages')">SMS/IVR Messages</button>
+    </div>
+
+    <!-- Search & Buy -->
+    <div id="ph-tab-buy">
+      <div class="form-row mb10" style="gap:8px">
+        <div class="fg" style="margin:0"><label style="font-size:12px">Area Code</label><input id="ph-area" placeholder="212" maxlength="3"></div>
+        <div class="fg" style="margin:0"><label style="font-size:12px">Country</label>
+          <select id="ph-country">
+            <option value="US">United States</option>
+            <option value="CA">Canada</option>
+            <option value="GB">United Kingdom</option>
+            <option value="IL">Israel</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-sm btn-primary" onclick="searchNumbers()">Search</button></div>
+      </div>
+      <div id="ph-results"><div class="text2 sm">Enter an area code and click Search.</div></div>
+      <!-- Buy confirm section -->
+      <div id="ph-buy-confirm" style="display:none;margin-top:14px;padding:14px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">
+          Buy: <span id="ph-buying-num" style="font-family:monospace"></span>
+          <span class="text2" style="font-weight:400"> — ~$1.15/month billed to your Twilio account</span>
+        </div>
+        <div class="fg mb10"><label style="font-size:12px">Expiry Date <span class="tip-icon" data-tip="System sends 1-day warning then auto-releases the number and stops billing.">i</span></label>
+          <input id="ph-buy-expires" type="date"></div>
+        <div class="row" style="gap:8px">
+          <button class="btn btn-gold" onclick="confirmBuy()">Buy &amp; Assign</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('ph-buy-confirm').style.display='none'">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Owned numbers -->
+    <div id="ph-tab-owned" style="display:none">
+      <button class="btn btn-sm mb10" onclick="loadOwnedNumbers()">Refresh</button>
+      <div id="ph-owned-list"><div class="text2 sm">Click Refresh to load your Twilio numbers.</div></div>
+    </div>
+
+    <!-- Manual entry -->
+    <div id="ph-tab-manual" style="display:none">
+      <p class="text2 sm mb12">Enter a Twilio number you purchased directly. You'll need to configure webhooks in the Twilio console manually.</p>
+      <div class="fg"><label>Phone Number (with country code)</label><input id="ph-manual-num" placeholder="+12125551234"></div>
+      <div class="fg"><label>Expiry Date <span class="tip-icon" data-tip="Leave blank for no expiry.">i</span></label><input id="ph-manual-expires" type="date"></div>
+      <button class="btn btn-gold" onclick="saveManualNumber()">Assign Number</button>
+    </div>
+
+    <!-- SMS/IVR Messages (per-event overrides) -->
+    <div id="ph-tab-messages" style="display:none">
+      <div class="info-box tip mb14" style="font-size:12px">
+        These settings override the global defaults for this event only. Leave a field blank to use the global default set in Site Content.
+        <button class="btn btn-sm btn-ghost" style="margin-left:8px;font-size:11px" onclick="resetEventMessages()">Reset All to Global Defaults</button>
+      </div>
+
+      <div class="row mb12" style="gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px">
+        <button class="btn btn-sm btn-gold" id="msgtab-sms" onclick="msgTab('sms')">SMS Messages</button>
+        <button class="btn btn-sm btn-ghost" id="msgtab-ivr" onclick="msgTab('ivr')">IVR Messages</button>
+      </div>
+
+      <div id="ph-msg-sms">
+        <div id="ph-sms-fields"></div>
+      </div>
+      <div id="ph-msg-ivr" style="display:none">
+        <div class="fg mb12">
+          <label style="font-size:12px">TTS Voice</label>
+          <div class="row" style="gap:8px">
+            <select id="ph-ivr-voice" style="flex:1">
+              <option value="">— Use global default —</option>
+              <option value="Polly.Joanna">Joanna (Female, US)</option>
+              <option value="Polly.Matthew">Matthew (Male, US)</option>
+              <option value="Polly.Amy">Amy (Female, UK)</option>
+              <option value="Polly.Brian">Brian (Male, UK)</option>
+            </select>
+            <button class="btn btn-sm" onclick="previewVoice()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Preview Voice
+            </button>
+          </div>
+        </div>
+        <div id="ph-ivr-fields"></div>
+      </div>
+
+      <button class="btn btn-gold mt12" onclick="saveEventMessages()">Save Message Overrides</button>
+    </div>
+
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-phone')">Close</button></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+if (!Auth.requireAdmin()) throw 0;
+renderSidebar();
+
+let events = [], _phoneEventId = null, _pendingBuyNum = null, _eventSettings = {};
+
+async function load() {
+  try {
+    const [eData, sData] = await Promise.all([api.admin.events(), api.admin.stats()]);
+    events = eData.events || [];
+    const s = sData.stats || {};
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-label">Total Events</div><div class="stat-val">${events.length}</div></div>
+      <div class="stat"><div class="stat-label">Open</div><div class="stat-val">${events.filter(e=>!e.closed_at&&!e.deleted_at).length}</div></div>
+      <div class="stat"><div class="stat-label">Closed</div><div class="stat-val">${events.filter(e=>e.closed_at&&!e.deleted_at).length}</div></div>
+      <div class="stat"><div class="stat-label">Attendees</div><div class="stat-val">${s.attendees||0}</div></div>`;
+    renderEvents();
+  } catch(e) {
+    document.getElementById('events-wrap').innerHTML = `<div class="info-box warn">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderEvents() {
+  const q = (document.getElementById('search').value||'').toLowerCase();
+  const filtered = events.filter(e => !q || e.name?.toLowerCase().includes(q) || e.account_name?.toLowerCase().includes(q));
+  if (!filtered.length) { document.getElementById('events-wrap').innerHTML = '<div class="empty"><div class="ico"></div><h3>No events</h3></div>'; return; }
+  document.getElementById('events-wrap').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Account</th><th>Date</th><th>Attendees</th><th>Phone Number</th><th>Status</th><th></th></tr></thead>
+    <tbody>${filtered.map(e=>`<tr>
+      <td><strong>${esc(e.name)}</strong>${e.is_demo?'<span class="badge" style="background:#e8f4fb;color:#1a6b9a;border:1px solid #b3d4f2;font-size:10px;margin-left:6px">DEMO</span>':''}</td>
+      <td class="text2 sm">${esc(e.account_name||'—')}</td>
+      <td class="text2 sm">${esc(e.date||'—')}</td>
+      <td>${e.attendee_count||0}</td>
+      <td>${e.phone_number
+        ? `<span style="font-family:monospace;font-size:12px;color:var(--navy)">${esc(e.phone_number)}</span><span class="badge badge-${e.sms_ivr_enabled?'checked':'deactivated'}" style="font-size:9px;margin-left:5px">${e.sms_ivr_enabled?'On':'Off'}</span>`
+        : '<span class="text3 xs">None</span>'}</td>
+      <td>${e.closed_at?'<span class="badge badge-deactivated" style="font-size:10px">Closed</span>':e.deleted_at?'<span class="badge badge-warn" style="font-size:10px">Deleted</span>':'<span class="badge badge-checked" style="font-size:10px">Open</span>'}</td>
+      <td><div class="row" style="gap:4px">
+        <button class="btn btn-sm" onclick="window.open('/event-detail.html?id=${e.id}','_blank')">Open</button>
+        ${e.closed_at
+          ? `<button class="btn btn-sm btn-success" onclick="reopenEvent('${e.id}')">Reopen</button>`
+          : `<button class="btn btn-sm btn-danger" onclick="closeEvent('${e.id}')">Close</button>`}
+        <button class="btn btn-sm" title="Phone &amp; SMS/IVR settings" onclick="openPhoneModal('${e.id}','${esc(e.name)}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+      </div></td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+async function closeEvent(id) {
+  if (!confirm('Close this event? Users will see it as locked.')) return;
+  try { await api.events.close(id); toast('Event closed'); await load(); } catch(e) { toast(e.message,'error'); }
+}
+async function reopenEvent(id) {
+  try { await api.events.reopen(id); toast('Event reopened'); await load(); } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Phone Modal ────────────────────────────────────────────
+async function openPhoneModal(eventId, name) {
+  _phoneEventId = eventId;
+  document.getElementById('ph-event-name').textContent = name;
+  document.getElementById('ph-results').innerHTML = '<div class="text2 sm">Enter an area code and click Search.</div>';
+  document.getElementById('ph-buy-confirm').style.display = 'none';
+  phoneTab('buy');
+  showModal('modal-phone');
+  updatePhoneStatus();
+  // Load event settings
+  try {
+    const data = await fetch(`/api/phone/event/${eventId}/settings`,{headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
+    _eventSettings = data.overrides || {};
+  } catch { _eventSettings = {}; }
+}
+
+function updatePhoneStatus() {
+  const ev = events.find(e=>e.id===_phoneEventId);
+  if (!ev) return;
+  const num = ev.phone_number;
+  const enabled = !!ev.sms_ivr_enabled;
+  const expires = ev.phone_number_expires ? new Date(ev.phone_number_expires).toLocaleDateString() : null;
+  document.getElementById('ph-number-display').textContent = num || 'No number assigned';
+  document.getElementById('ph-number-display').style.color = num ? 'var(--navy)' : 'var(--text2)';
+  document.getElementById('ph-expiry-display').textContent = expires ? 'Expires: ' + expires : num ? 'No expiry set' : '';
+  document.getElementById('ph-active-badge').innerHTML = num
+    ? (enabled ? '<span class="badge badge-checked">Active</span>' : '<span class="badge badge-deactivated">Disabled</span>')
+    : '';
+  document.getElementById('ph-toggle-btn').style.display = num ? 'inline-flex' : 'none';
+  document.getElementById('ph-toggle-btn').textContent = enabled ? 'Disable' : 'Enable';
+  document.getElementById('ph-release-btn').style.display = num ? 'inline-flex' : 'none';
+  document.getElementById('ph-status-bar').style.background = num ? (enabled ? '#f0fdf4' : '#fafafa') : '#fafafa';
+  document.getElementById('ph-status-bar').style.borderColor = num ? (enabled ? '#86efac' : 'var(--border)') : 'var(--border)';
+}
+
+function phoneTab(tab) {
+  ['buy','owned','manual','messages'].forEach(t => {
+    document.getElementById('ph-tab-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('ptab-'+t).className = 'btn btn-sm '+(t===tab?'btn-gold':'btn-ghost');
+  });
+  if (tab==='messages') loadMessageFields();
+}
+
+function msgTab(tab) {
+  ['sms','ivr'].forEach(t => {
+    document.getElementById('ph-msg-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('msgtab-'+t).className = 'btn btn-sm '+(t===tab?'btn-gold':'btn-ghost');
+  });
+}
+
+const SMS_MSGS = [
+  ['sms.welcome','Welcome'],['sms.help','Help'],['sms.invalid_code','Invalid Code'],
+  ['sms.no_levels','No Levels'],['sms.select_level','Select Level'],
+  ['sms.select_quantity','Select Quantity'],['sms.get_name','Ask Name'],
+  ['sms.get_email','Ask Email'],['sms.confirm','Confirm Order (YES/NO)'],
+  ['sms.get_card','Ask Card'],['sms.get_expiry','Ask Expiry'],
+  ['sms.get_cvv','Ask CVV'],['sms.processing','Processing'],
+  ['sms.success','Success'],['sms.declined','Declined'],
+  ['sms.cancelled','Cancelled'],['sms.error','Error'],
+];
+const IVR_MSGS = [
+  ['ivr.welcome','Welcome Menu'],['ivr.select_event','Select Event'],
+  ['ivr.select_level','Select Level'],['ivr.select_quantity','Select Quantity'],
+  ['ivr.confirm','Confirm Order'],['ivr.get_card','Enter Card'],
+  ['ivr.get_expiry','Enter Expiry'],['ivr.get_cvv','Enter CVV'],
+  ['ivr.processing','Processing Hold'],['ivr.success','Success'],
+  ['ivr.declined','Declined'],['ivr.error','Error'],
+];
+
+function loadMessageFields() {
+  const smsHtml = SMS_MSGS.map(([key,label]) => {
+    const val = _eventSettings[key] !== undefined ? _eventSettings[key] : '';
+    const id = 'evm-'+key.replace(/\./g,'-');
+    return `<div class="fg"><label style="font-size:12px">${label} <span class="tip-icon" data-tip="Leave blank to use the global default.">i</span></label>
+      <textarea id="${id}" style="min-height:50px;font-size:12px" placeholder="(global default)">${esc(val)}</textarea></div>`;
+  }).join('');
+  document.getElementById('ph-sms-fields').innerHTML = smsHtml;
+
+  const ivrHtml = IVR_MSGS.map(([key,label]) => {
+    const textVal = _eventSettings[key] !== undefined ? _eventSettings[key] : '';
+    const recVal  = _eventSettings[key+'_recording'] !== undefined ? _eventSettings[key+'_recording'] : '';
+    const textId  = 'evm-'+key.replace(/\./g,'-');
+    const recId   = 'evm-'+key.replace(/\./g,'-')+'-recording';
+    return `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+      <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${label}</div>
+      <div class="form-row" style="gap:8px;margin:0">
+        <div class="fg" style="margin:0">
+          <div class="row" style="gap:6px;align-items:center;margin-bottom:4px">
+            <label style="font-size:11px;margin:0">TTS Text</label>
+            <button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 8px" onclick="previewTTS('${id}','${textId}')">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Preview
+            </button>
+          </div>
+          <textarea id="${textId}" style="min-height:45px;font-size:11px" placeholder="(global default)">${esc(textVal)}</textarea>
+        </div>
+        <div class="fg" style="margin:0"><label style="font-size:11px">Recording URL (overrides TTS)</label>
+          <input id="${recId}" placeholder="https://... .mp3" value="${esc(recVal)}" style="font-size:11px"></div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('ph-ivr-fields').innerHTML = ivrHtml;
+
+  // Set voice select
+  const voiceSel = document.getElementById('ph-ivr-voice');
+  voiceSel.value = _eventSettings['ivr.tts_voice'] || '';
+
+  msgTab('sms');
+}
+
+function previewTTS(label, textareaId) {
+  const voiceSel = document.getElementById('ph-ivr-voice');
+  const voice = voiceSel?.value || 'Polly.Joanna';
+  const textarea = document.getElementById(textareaId);
+  let text = textarea?.value?.trim();
+  if (!text) { toast('Enter some text first', 'error'); return; }
+  // Strip template variables for preview
+  text = text.replace(/{{[^}]+}}/g, 'example');
+  speakPreview(text, voice);
+}
+
+function previewVoice() {
+  const voice = document.getElementById('ph-ivr-voice').value || 'Polly.Joanna';
+  const voiceNames = { 'Polly.Joanna':'Joanna, Female US', 'Polly.Matthew':'Matthew, Male US', 'Polly.Amy':'Amy, Female UK', 'Polly.Brian':'Brian, Male UK' };
+  speakPreview('Hello, welcome to EverythingShul Tickets. This is how I sound.', voice);
+}
+
+function speakPreview(text, voice) {
+  if (!window.speechSynthesis) { toast('Speech preview not supported in this browser', 'error'); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  // Map Polly voices to browser voices
+  const langMap = { 'Polly.Joanna':'en-US', 'Polly.Matthew':'en-US', 'Polly.Amy':'en-GB', 'Polly.Brian':'en-GB' };
+  const genderMap = { 'Polly.Joanna':'female', 'Polly.Matthew':'male', 'Polly.Amy':'female', 'Polly.Brian':'male' };
+  utt.lang = langMap[voice] || 'en-US';
+  // Try to find a matching browser voice
+  const voices = window.speechSynthesis.getVoices();
+  const lang = langMap[voice] || 'en-US';
+  const gender = genderMap[voice] || 'female';
+  const match = voices.find(v => v.lang.startsWith(lang.split('-')[0]) && v.name.toLowerCase().includes(gender))
+    || voices.find(v => v.lang.startsWith(lang.split('-')[0]))
+    || voices[0];
+  if (match) utt.voice = match;
+  utt.rate = 0.95;
+  utt.pitch = voice.includes('Joanna') || voice.includes('Amy') ? 1.1 : 0.95;
+  window.speechSynthesis.speak(utt);
+  toast('Playing preview...', 'ok');
+}
+
+async function saveEventMessages() {
+  const updates = {};
+  for (const [key] of SMS_MSGS) {
+    const el = document.getElementById('evm-'+key.replace(/\./g,'-'));
+    if (el) updates[key] = el.value.trim() || null;
+  }
+  for (const [key] of IVR_MSGS) {
+    const el = document.getElementById('evm-'+key.replace(/\./g,'-'));
+    const recEl = document.getElementById('evm-'+key.replace(/\./g,'-')+'-recording');
+    if (el) updates[key] = el.value.trim() || null;
+    if (recEl) updates[key+'_recording'] = recEl.value.trim() || null;
+  }
+  const voice = document.getElementById('ph-ivr-voice').value;
+  if (voice) updates['ivr.tts_voice'] = voice || null;
+
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/settings`, {
+      method: 'PATCH',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${Auth.token()}` },
+      body: JSON.stringify({ updates })
+    });
+    toast('Message overrides saved');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function resetEventMessages() {
+  if (!confirm('Reset all message overrides for this event? Global defaults will be used.')) return;
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/settings`, { method:'DELETE', headers:{'Authorization':`Bearer ${Auth.token()}`} });
+    _eventSettings = {};
+    loadMessageFields();
+    toast('Reset to global defaults');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Number management ──────────────────────────────────────
+async function searchNumbers() {
+  const area = document.getElementById('ph-area').value.trim();
+  const country = document.getElementById('ph-country').value;
+  const res = document.getElementById('ph-results');
+  res.innerHTML = '<div class="text2 sm">Searching…</div>';
+  try {
+    const params = new URLSearchParams({ country });
+    if (area) params.set('areaCode', area);
+    const data = await fetch(`/api/phone/numbers/search?${params}`, { headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    if (!data.numbers?.length) { res.innerHTML = '<div class="text2 sm">No numbers found. Try a different area code.</div>'; return; }
+    res.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Number</th><th>Location</th><th>Cost</th><th></th></tr></thead>
+      <tbody>${data.numbers.map(n=>`<tr>
+        <td style="font-family:monospace;font-weight:700">${esc(n.phoneNumber)}</td>
+        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+        <td class="text2 sm">${esc(n.monthly_cost||'$1.15')}/mo</td>
+        <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}')">Buy</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) { res.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+function selectBuy(num) {
+  _pendingBuyNum = num;
+  document.getElementById('ph-buying-num').textContent = num;
+  document.getElementById('ph-buy-confirm').style.display = 'block';
+  document.getElementById('ph-buy-confirm').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+async function confirmBuy() {
+  if (!_pendingBuyNum) return;
+  const expiresAt = document.getElementById('ph-buy-expires').value || null;
+  const btn = document.querySelector('#ph-buy-confirm .btn-gold');
+  btn.disabled = true; btn.textContent = 'Purchasing…';
+  try {
+    const data = await fetch('/api/phone/numbers/purchase', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ phoneNumber:_pendingBuyNum, eventId:_phoneEventId, expiresAt })
+    }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast(`${data.phoneNumber} purchased and assigned!`);
+    _pendingBuyNum = null;
+    document.getElementById('ph-buy-confirm').style.display = 'none';
+    await load(); updatePhoneStatus();
+  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Buy & Assign'; }
+}
+
+async function loadOwnedNumbers() {
+  const wrap = document.getElementById('ph-owned-list');
+  wrap.innerHTML = '<div class="text2 sm">Loading…</div>';
+  try {
+    const data = await fetch('/api/phone/numbers/owned',{headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
+    if (!data.numbers?.length) { wrap.innerHTML = '<div class="text2 sm">No numbers purchased yet.</div>'; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Number</th><th>Webhooks</th><th>Assigned To</th><th></th></tr></thead>
+      <tbody>${data.numbers.map(n=>`<tr>
+        <td style="font-family:monospace">${esc(n.phoneNumber)}</td>
+        <td>${n.configured?'<span class="badge badge-checked" style="font-size:10px">OK</span>':'<span class="badge badge-warn" style="font-size:10px">Not configured</span>'}</td>
+        <td class="text2 sm">${n.assignedEvent ? `<a href="/event-detail.html?id=${n.assignedEvent.id}" target="_blank" style="color:var(--navy)">${esc(n.assignedEvent.name)}</a>` : '—'}</td>
+        <td>${!n.assignedEvent ? `<button class="btn btn-sm" onclick="assignOwned('${esc(n.phoneNumber)}')">Assign Here</button>` : (n.assignedEvent?.id===_phoneEventId?'<span class="badge badge-checked" style="font-size:10px">This event</span>':'')}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function assignOwned(num) {
+  const exp = prompt('Expiry date? (YYYY-MM-DD or blank)') ?? null;
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/assign-number`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({phoneNumber:num,expiresAt:exp||null})});
+    toast(`${num} assigned`); await load(); updatePhoneStatus();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function saveManualNumber() {
+  const num = document.getElementById('ph-manual-num').value.trim();
+  const exp = document.getElementById('ph-manual-expires').value || null;
+  if (!num.startsWith('+')) { toast('Number must start with +','error'); return; }
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/assign-number`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({phoneNumber:num,expiresAt:exp})});
+    toast('Number assigned'); await load(); updatePhoneStatus();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function toggleEventSms() {
+  const ev = events.find(e=>e.id===_phoneEventId);
+  const newVal = !ev?.sms_ivr_enabled;
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/toggle-sms`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({enabled:newVal})});
+    toast(newVal?'Enabled':'Disabled — number kept');
+    await load(); updatePhoneStatus();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function releaseEventNumber() {
+  if (!confirm('Release this number back to Twilio? Billing stops permanently. This cannot be undone.')) return;
+  try {
+    const data = await fetch('/api/phone/numbers/release',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({eventId:_phoneEventId})}).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast('Number released'); await load(); updatePhoneStatus();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// Pre-load browser voices (async in some browsers)
+window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined
+  ? (window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices())
+  : window.speechSynthesis?.getVoices();
+
+load();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

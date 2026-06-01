@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Online Sales</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:800px){.settings-grid{grid-template-columns:1fr}}
+.setting-card{background:#fff;border:1.5px solid var(--border);border-radius:var(--r-lg);padding:18px 20px}
+.setting-card.full{grid-column:1/-1}
+.setting-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}
+.setting-title{font-size:14px;font-weight:700;color:var(--navy)}
+.setting-sub{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5}
+.toggle-pill{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle-pill input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:#ccc;border-radius:12px;cursor:pointer;transition:.2s}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle-pill input:checked + .toggle-track{background:var(--navy)}
+.toggle-pill input:checked + .toggle-track::after{transform:translateX(20px)}
+.level-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px}
+.promo-row{display:grid;grid-template-columns:1fr 80px 100px 120px auto;gap:8px;align-items:center;padding:10px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px;font-size:13px}
+.url-box{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r);padding:10px 14px;font-family:monospace;font-size:13px;color:var(--navy);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.section-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--navy);color:#fff;margin-bottom:12px}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb22">
+      <div class="ph-left">
+        <h1 id="ev-title">Online Sales</h1>
+        <p id="ev-sub" class="text2"></p>
+      </div>
+    </div>
+
+    <div id="no-access" class="info-box warn mb16" style="display:none">
+      Online sales are not enabled for your account. Contact the Administrator.
+    </div>
+
+    <div id="sales-wrap" style="display:none">
+
+      <!-- ── Section 1: Sale Link ── -->
+      <div class="mb8" style="display:flex;align-items:center;gap:8px">
+        <div class="section-badge">Sale Link</div>
+      </div>
+      <div class="card mb22">
+        <div class="fg mb12">
+          <label>Public Sale URL Slug <span class="xs text2">(letters, numbers, hyphens only)</span></label>
+          <div class="row" style="gap:8px">
+            <span class="sm text2" style="white-space:nowrap;line-height:38px;flex-shrink:0" id="url-prefix"></span>
+            <div id="slug-field"></div>
+          </div>
+        </div>
+        <div id="sale-link-box" style="display:none">
+          <label>Your sale page link</label>
+          <div class="row" style="gap:8px">
+            <div class="url-box" id="sale-url-text"></div>
+            <button class="btn btn-sm" onclick="copyLink()">Copy</button>
+            <a id="preview-link" href="#" target="_blank" class="btn btn-sm btn-primary">Preview ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section 2: Settings ── -->
+      <div class="mb8" style="display:flex;align-items:center;gap:8px">
+        <div class="section-badge">Settings</div>
+      </div>
+      <div class="settings-grid mb22">
+
+        <div class="setting-card">
+          <div class="setting-hd">
+            <div>
+              <div class="setting-title">Sales Active <span class="tip-icon" data-tip="When on, the public ticket sale page is live and anyone with the link can purchase tickets.">i</span></div>
+              <div class="setting-sub">Makes the ticket page publicly accessible</div>
+            </div>
+            <label class="toggle-pill">
+              <input type="checkbox" id="sale-enabled" onchange="saveSaleSetting('sale_enabled',this.checked)">
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+          <div id="sale-status-text" class="xs mt8"></div>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-hd">
+            <div>
+              <div class="setting-title">Ticket Activation <span class="tip-icon" data-tip="Allows attendees to self-activate by entering their ticket ID on the sale page — useful for offline-assigned tickets.">i</span></div>
+              <div class="setting-sub">Attendees can self-activate by entering their ticket ID on the sale page</div>
+            </div>
+            <label class="toggle-pill">
+              <input type="checkbox" id="allow-activation" onchange="saveSaleSetting('allow_activation',this.checked)">
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-card">
+          <div class="setting-hd">
+            <div>
+              <div class="setting-title">Allow unconfirmed check-in <span class="tip-icon" data-tip="When off, only guests who have been activated can check in at the door.">i</span></div>
+              <div class="setting-sub">When off, only activated guests can scan at the door</div>
+            </div>
+            <label class="toggle-pill">
+              <input type="checkbox" id="allow-unconfirmed" onchange="saveSaleSetting('allow_unconfirmed_checkin',this.checked)">
+              <div class="toggle-track"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-card full">
+          <div class="setting-title mb12">Sale Page Image</div>
+          <div class="row" style="gap:8px">
+            <input type="file" id="sale-image-input" accept="image/png,image/jpeg" style="flex:1;margin:0">
+            <button class="btn btn-sm btn-primary" onclick="uploadSaleImage()">Upload</button>
+          </div>
+          <div class="hint mt6">Recommended: landscape, at least 1200×400px</div>
+          <div id="img-preview" style="margin-top:10px;display:none"><img id="img-preview-img" style="max-width:100%;max-height:120px;border-radius:var(--r);border:1px solid var(--border)"></div>
+        </div>
+
+        <div class="setting-card full">
+          <div class="setting-title mb4">Link Expiry <span class="tip-icon" data-tip="After this date/time, the sale page closes automatically. Use Auto +48h to set it to 48 hours after your event starts.">i</span></div>
+          <div class="setting-sub mb10">Sales page closes at this date/time. 48h auto-sets expiry to 48 hours after the event starts.</div>
+          <div class="row" style="gap:8px">
+            <input type="datetime-local" id="expires-input" style="flex:1;margin:0;color-scheme:light">
+            <button class="btn btn-sm btn-primary" onclick="saveExpiry()">Save</button>
+            <button class="btn btn-sm" onclick="autoSetExpiry()">Auto +48h</button>
+            <button class="btn btn-sm btn-danger" style="font-size:12px" onclick="clearExpiry()">Clear</button>
+          </div>
+          <div id="expiry-label" class="hint mt6"></div>
+        </div>
+
+      </div>
+
+      <!-- ── Section 3: Ticket Levels ── -->
+      <div class="mb8" style="display:flex;align-items:center;gap:8px">
+        <div class="section-badge">Ticket Levels</div>
+      </div>
+      <div class="card mb22">
+        <p class="sm text2 mb12">Set price and toggle online availability per level. <a href="/event-levels.html?id=" id="levels-link" style="color:var(--cyan)">Manage levels →</a></p>
+        <div id="levels-list"><div class="text2 sm">No ticket levels — add them on the Ticket Levels page first.</div></div>
+        <div id="online-sales-count" style="display:none" class="info-box ok mt12"></div>
+      </div>
+
+      <!-- ── Section 4: Promo Codes ── -->
+      <div class="mb8" style="display:flex;align-items:center;gap:8px">
+        <div class="section-badge">Promo Codes</div>
+      </div>
+      <div class="card mb22">
+        <p class="sm text2 mb16">Create discount codes for your buyers. Codes are entered on the checkout page.</p>
+
+        <!-- Create new promo -->
+        <div style="background:var(--bg3);border-radius:var(--r);padding:16px;border:1px solid var(--border);margin-bottom:16px">
+          <div class="section-title mb12" style="font-size:12px">Create New Promo Code</div>
+          <div class="form-row mb8">
+            <div class="fg" style="margin:0"><label>Code *</label><input id="pc-code" placeholder="SAVE20" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')"></div>
+            <div class="fg" style="margin:0">
+              <label>Type *</label>
+              <select id="pc-type" onchange="renderPromoValueLabel()">
+                <option value="percent">Percent off (%)</option>
+                <option value="fixed">Fixed amount off ($)</option>
+              </select>
+            </div>
+            <div class="fg" style="margin:0"><label id="pc-value-label">Value (%) * <span class="tip-icon" data-tip="For percent: enter 20 for 20% off. For fixed: enter the dollar amount (e.g. 10 for $10 off).">i</span></label><input type="number" id="pc-value" min="0" max="100" placeholder="20"></div>
+          </div>
+          <div class="form-row mb8">
+            <div class="fg" style="margin:0"><label>Expires At <span class="xs text2">(optional)</span></label><input type="datetime-local" id="pc-expires" style="color-scheme:light"></div>
+            <div class="fg" style="margin:0"><label>Max Uses <span class="xs text2">(optional)</span></label><input type="number" id="pc-max-uses" min="1" placeholder="e.g. 50"></div>
+            <div class="fg" style="margin:0"><label>Max $ Discount <span class="tip-icon" data-tip="The maximum total dollar amount this code can give away across all uses combined.">i</span> <span class="xs text2">(optional)</span></label><input type="number" id="pc-max-money" min="1" placeholder="e.g. 500" step="0.01"></div>
+          </div>
+          <div class="fg mb8">
+            <label>Max Total Tickets <span class="xs text2">(across all levels, optional)</span></label>
+            <input type="number" id="pc-max-total" min="1" placeholder="e.g. 100">
+          </div>
+          <div id="pc-level-limits" class="mb8" style="display:none">
+            <label class="mb6">Max Tickets Per Level <span class="xs text2">(optional — leave blank = unlimited)</span></label>
+            <div id="pc-level-limits-rows"></div>
+          </div>
+          <div class="fg mb8">
+            <label>Restrict to Emails <span class="tip-icon" data-tip="If set, only these email addresses can use this promo code. Separate multiple emails with commas.">i</span> <span class="xs text2">(comma-separated, optional)</span></label>
+            <input id="pc-emails" placeholder="alice@example.com, bob@example.com" type="text">
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="createPromo()">+ Create Promo Code</button>
+        </div>
+
+        <!-- Existing promos -->
+        <div id="promos-list"><div class="text2 sm">No promo codes yet.</div></div>
+      </div>
+
+    </div><!-- end sales-wrap -->
+
+    <!-- Phone & SMS ordering section — always visible -->
+    <div id="phone-ordering-wrap" style="display:none">
+      <div class="mb8 mt4" style="display:flex;align-items:center;gap:8px">
+        <div class="section-badge" style="background:#0d2454">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Phone &amp; SMS Ordering
+        </div>
+      </div>
+      <div class="card mb22" id="phone-ordering-card">
+        <div id="phone-ordering-body"><div class="text2 sm">Loading…</div></div>
+      </div>
+    </div>
+
+  </div></main>
+</div>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+const params = new URLSearchParams(location.search);
+const eventId = params.get('id');
+if (!eventId) window.location = '/events.html';
+
+let eventData = null;
+let levels = [];
+let salesSettings = null;
+let promos = [];
+
+async function load() {
+  const attData = await api.attendees.list(eventId);
+  levels = attData.levels || [];
+  eventData = attData.event;
+  if (!eventData) { window.location = '/events.html'; return; }
+  document.getElementById('ev-title').textContent = eventData.name + ' — Online Sales';
+  document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
+  document.title = `Online Sales — ${eventData.name}`;
+  localStorage.setItem('hrtb_current_event_name', eventData.name);
+  document.getElementById('levels-link').href = `/event-levels.html?id=${eventId}`;
+  renderSidebar();
+
+  try {
+    salesSettings = await api.attendees.getSalesSettings(eventId);
+    document.getElementById('sales-wrap').style.display = 'block';
+    renderSettings();
+    await loadPromos();
+  } catch(e) {
+    document.getElementById('no-access').style.display = 'block';
+  }
+  await loadPhoneOrdering();
+}
+
+function renderSettings() {
+  const s = salesSettings;
+  const prefix = location.origin + '/events/';
+  document.getElementById('url-prefix').textContent = prefix;
+  document.getElementById('sale-enabled').checked = !!s.sale_enabled;
+  document.getElementById('allow-activation').checked = !!s.allow_activation;
+  document.getElementById('allow-unconfirmed').checked = s.allow_unconfirmed_checkin !== 0;
+
+  // Slug field
+  const isAdmin = Auth.user()?.role === 'admin';
+  const slugField = document.getElementById('slug-field');
+  if (s.slug && !isAdmin) {
+    slugField.innerHTML = `<input value="${esc(s.slug)}" disabled style="flex:1;margin:0;background:var(--bg3);color:var(--text2)"><span class="xs text2" style="line-height:38px;white-space:nowrap;flex-shrink:0"> Admin only</span>`;
+  } else {
+    slugField.innerHTML = `<input id="slug-input" placeholder="my-event-2025" value="${esc(s.slug||'')}" style="flex:1;margin:0"><button class="btn btn-sm btn-primary" onclick="saveSlug()">Save</button>`;
+  }
+
+  // Sale link
+  const saleUrl = s.slug ? `${location.origin}/events/${s.slug}` : null;
+  if (saleUrl) {
+    document.getElementById('sale-link-box').style.display = 'block';
+    document.getElementById('sale-url-text').textContent = saleUrl;
+    document.getElementById('preview-link').href = saleUrl;
+  }
+
+  // Sale status text
+  document.getElementById('sale-status-text').textContent = s.sale_enabled ? ' Sale page is live' : ' Sale page is inactive';
+  document.getElementById('sale-status-text').style.color = s.sale_enabled ? 'var(--green)' : 'var(--text3)';
+
+  // Expiry
+  if (s.expires_at) {
+    document.getElementById('expires-input').value = s.expires_at.slice(0,16);
+    const d = new Date(s.expires_at);
+    document.getElementById('expiry-label').textContent = 'Closes: ' + d.toLocaleString('en-US', { timeZone: eventData?.timezone||'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+  }
+
+  // Image preview
+  if (s.sale_image) {
+    document.getElementById('img-preview').style.display = 'block';
+    document.getElementById('img-preview-img').src = `/api/sales/image/${eventId}`;
+  }
+
+  // Levels
+  renderLevels();
+
+  // Online sales count
+  if (s.total_online_sales > 0) {
+    document.getElementById('online-sales-count').style.display = 'block';
+    document.getElementById('online-sales-count').innerHTML = `<strong>${s.total_online_sales}</strong> ticket(s) sold online so far.`;
+  }
+}
+
+function renderLevels() {
+  const list = document.getElementById('levels-list');
+  if (!levels.length) { list.innerHTML = '<div class="text2 sm">No ticket levels — add them on the Ticket Levels page first.</div>'; return; }
+  list.innerHTML = levels.map(l => `
+    <div class="level-card">
+      <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44;min-width:80px;text-align:center">${esc(l.name)}</span>
+      <div style="flex:1">
+        <div class="row" style="gap:6px;align-items:center">
+          <span class="xs text2">Price $</span>
+          <input type="number" min="0" step="0.01" placeholder="0.00" value="${((l.price||0)/100).toFixed(2)}"
+            id="price-${l.id}" style="width:90px;margin:0;padding:6px 8px;font-size:13px"
+            onchange="saveLevelPrice('${l.id}',this.value)">
+          ${l.price > 0 ? `<span class="xs text2">(${((l.price||0)/100).toFixed(2)}/ticket)</span>` : '<span class="badge" style="font-size:10px;background:#f0fff4;color:var(--green);border:1px solid #b2f5ca">Free</span>'}
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600">
+        <input type="checkbox" ${l.online_sale?'checked':''} onchange="saveLevelOnline('${l.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--navy)">
+        Sell Online
+      </label>
+    </div>`).join('');
+}
+
+function copyLink() {
+  const url = document.getElementById('sale-url-text').textContent;
+  navigator.clipboard.writeText(url).then(() => toast('Link copied!'));
+}
+
+async function saveSlug() {
+  const slug = document.getElementById('slug-input')?.value.trim();
+  if (!slug) { toast('Enter a slug', 'error'); return; }
+  try {
+    await api.attendees.updateSalesSettings(eventId, { slug });
+    salesSettings.slug = slug;
+    toast('URL saved'); renderSettings();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveSaleSetting(key, val) {
+  try {
+    await api.attendees.updateSalesSettings(eventId, { [key]: val });
+    salesSettings[key] = val;
+    if (key === 'sale_enabled') {
+      const el = document.getElementById('sale-status-text');
+      if (el) { el.textContent = val ? ' Sale page is live' : ' Sale page is inactive'; el.style.color = val ? 'var(--green)' : 'var(--text3)'; }
+      toast(val ? 'Sales page is now live' : 'Sales page disabled');
+    } else {
+      toast('Setting saved');
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function uploadSaleImage() {
+  const file = document.getElementById('sale-image-input').files[0];
+  if (!file) { toast('Select an image first', 'error'); return; }
+  try {
+    await api.attendees.uploadSaleImage(eventId, file);
+    toast('Image uploaded');
+    salesSettings.sale_image = true;
+    document.getElementById('img-preview').style.display = 'block';
+    document.getElementById('img-preview-img').src = `/api/sales/image/${eventId}?t=${Date.now()}`;
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveExpiry() {
+  const val = document.getElementById('expires-input').value;
+  try {
+    await api.attendees.updateSalesSettings(eventId, { expires_at: val || null });
+    salesSettings.expires_at = val;
+    toast('Expiry saved');
+    if (val) {
+      const d = new Date(val);
+      document.getElementById('expiry-label').textContent = 'Closes: ' + d.toLocaleString('en-US', { timeZone: eventData?.timezone||'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function clearExpiry() {
+  try {
+    await api.attendees.updateSalesSettings(eventId, { expires_at: null });
+    salesSettings.expires_at = null;
+    document.getElementById('expires-input').value = '';
+    document.getElementById('expiry-label').textContent = '';
+    toast('Expiry cleared');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function autoSetExpiry() {
+  if (!eventData?.date) { toast('Event has no date set', 'error'); return; }
+  const raw = eventData.date;
+  let cleaned = raw.replace(/^[A-Za-z]+,?\s*/, '').trim();
+  const parts = cleaned.split('·').map(s => s.trim());
+  const datePart = parts[0], timePart = parts[1] || '';
+  let d = new Date(timePart ? (datePart + ' ' + timePart) : datePart);
+  if (isNaN(d)) d = new Date(datePart);
+  if (isNaN(d)) { toast('Could not parse event date: "' + raw + '"', 'error'); return; }
+  const year=d.getFullYear(), month=d.getMonth(), day=d.getDate(), hour=d.getHours(), min=d.getMinutes();
+  const estStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}:00`;
+  const tempDate = new Date(estStr + 'Z');
+  const eventTz = eventData?.timezone || 'America/New_York';
+  const estOffset = new Date(tempDate.toLocaleString('en-US', { timeZone: eventTz })) - tempDate;
+  const eventDateEST = new Date(tempDate.getTime() - estOffset);
+  const expiryUTC = new Date(eventDateEST.getTime() + 48 * 60 * 60 * 1000);
+  const iso = expiryUTC.toISOString().slice(0, 16);
+  document.getElementById('expires-input').value = iso;
+  await api.attendees.updateSalesSettings(eventId, { expires_at: iso });
+  salesSettings.expires_at = iso;
+  const label = expiryUTC.toLocaleString('en-US', { timeZone: eventData?.timezone||'America/New_York', month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' });
+  document.getElementById('expiry-label').textContent = 'Closes: ' + label;
+  toast('Expiry set: ' + label);
+}
+
+async function saveLevelPrice(levelId, dollars) {
+  const cents = Math.round(parseFloat(dollars||0)*100);
+  try { await api.attendees.updateLevelSales(levelId, { price: cents }); const lvl=levels.find(l=>l.id===levelId); if(lvl) lvl.price=cents; }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveLevelOnline(levelId, enabled) {
+  try { await api.attendees.updateLevelSales(levelId, { online_sale: enabled }); const lvl=levels.find(l=>l.id===levelId); if(lvl) lvl.online_sale=enabled?1:0; }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Promo Codes ───────────────────────────────────────────
+async function loadPromos() {
+  try {
+    const data = await api.attendees.getPromos(eventId);
+    promos = data.promos || [];
+    renderPromos();
+    renderLevelLimitRows();
+  } catch(e) { console.warn('promos:', e.message); }
+}
+
+function renderPromoValueLabel() {
+  const type = document.getElementById('pc-type').value;
+  document.getElementById('pc-value-label').textContent = type === 'percent' ? 'Value (%) *' : 'Value ($) *';
+}
+
+function renderLevelLimitRows() {
+  if (!levels.length) { document.getElementById('pc-level-limits').style.display='none'; return; }
+  document.getElementById('pc-level-limits').style.display='block';
+  document.getElementById('pc-level-limits-rows').innerHTML = levels.map(l => `
+    <div class="row mb6" style="gap:8px;align-items:center">
+      <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44;min-width:80px;text-align:center;font-size:11px">${esc(l.name)}</span>
+      <input type="number" min="1" id="pc-lvl-${l.id}" placeholder="Unlimited" style="width:110px;margin:0;padding:6px 8px;font-size:13px">
+    </div>`).join('');
+}
+
+async function createPromo() {
+  const code = document.getElementById('pc-code').value.trim().toUpperCase();
+  const type = document.getElementById('pc-type').value;
+  const rawVal = parseFloat(document.getElementById('pc-value').value);
+  if (!code) { toast('Enter a promo code', 'error'); return; }
+  if (isNaN(rawVal) || rawVal <= 0) { toast('Enter a discount value', 'error'); return; }
+  if (type === 'percent' && rawVal > 100) { toast('Percent cannot exceed 100', 'error'); return; }
+
+  const value = type === 'percent' ? rawVal : Math.round(rawVal * 100);
+  const expires_at = document.getElementById('pc-expires').value || null;
+  const max_uses = parseInt(document.getElementById('pc-max-uses').value) || null;
+  const max_money = Math.round(parseFloat(document.getElementById('pc-max-money').value || 0) * 100) || null;
+  const max_total_tickets = parseInt(document.getElementById('pc-max-total').value) || null;
+  const allowed_emails = document.getElementById('pc-emails').value.trim() || null;
+
+  // Per-level limits
+  const perLevel = {};
+  levels.forEach(l => { const v = parseInt(document.getElementById(`pc-lvl-${l.id}`)?.value); if (v > 0) perLevel[l.id] = v; });
+  const max_tickets_per_level = Object.keys(perLevel).length ? perLevel : null;
+
+  try {
+    await api.attendees.createPromo(eventId, { code, type, value, expires_at, max_uses, max_money, max_total_tickets, max_tickets_per_level, allowed_emails });
+    toast(`Promo code "${code}" created`);
+    document.getElementById('pc-code').value = '';
+    document.getElementById('pc-value').value = '';
+    document.getElementById('pc-expires').value = '';
+    document.getElementById('pc-max-uses').value = '';
+    document.getElementById('pc-max-money').value = '';
+    document.getElementById('pc-max-total').value = '';
+    document.getElementById('pc-emails').value = '';
+    levels.forEach(l => { const el = document.getElementById(`pc-lvl-${l.id}`); if(el) el.value = ''; });
+    await loadPromos();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deletePromo(promoId) {
+  if (!confirm('Delete this promo code?')) return;
+  try { await api.attendees.deletePromo(eventId, promoId); toast('Deleted'); await loadPromos(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function togglePromo(promoId, active) {
+  try { await api.attendees.updatePromo(eventId, promoId, { active }); await loadPromos(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+function renderPromos() {
+  const list = document.getElementById('promos-list');
+  if (!promos.length) { list.innerHTML = '<div class="text2 sm">No promo codes yet.</div>'; return; }
+  list.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Code</th><th>Discount</th><th>Expires</th><th>Uses</th><th>Status</th><th></th></tr></thead>
+    <tbody>${promos.map(p => {
+      const discLabel = p.type === 'percent' ? `${p.value}%` : `$${(p.value/100).toFixed(2)}`;
+      const expires = p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '—';
+      const isExpired = p.expires_at && new Date(p.expires_at) < new Date();
+      const usesLabel = `${p.uses}${p.max_uses ? '/'+p.max_uses : ''}`;
+      const moneyLabel = p.max_money ? ` · $${(p.money_given/100).toFixed(2)}/$${(p.max_money/100).toFixed(2)} off` : '';
+      const restrictions = [];
+      if (p.allowed_emails) restrictions.push(' Restricted emails');
+      if (p.max_tickets_per_level) restrictions.push('🎫 Per-level limits');
+      if (p.max_total_tickets) restrictions.push(`Max ${p.max_total_tickets} tickets`);
+      return `<tr style="opacity:${p.active?1:.5}">
+        <td><strong style="font-family:monospace;font-size:14px;color:var(--navy)">${esc(p.code)}</strong>
+          ${restrictions.length ? `<div class="xs text2 mt2">${restrictions.join(' · ')}</div>` : ''}
+        </td>
+        <td style="font-weight:700;color:var(--green)">${discLabel} off</td>
+        <td class="text2">${expires}${isExpired ? ' <span style="color:var(--red)">Expired</span>' : ''}</td>
+        <td class="text2">${usesLabel}${moneyLabel}</td>
+        <td><span class="badge ${p.active && !isExpired ? 'badge-checked' : 'badge-deactivated'}">${p.active && !isExpired ? 'Active' : 'Inactive'}</span></td>
+        <td><div class="row" style="gap:4px">
+          <button class="btn btn-sm" onclick="togglePromo('${p.id}',${p.active?0:1})">${p.active ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deletePromo('${p.id}')">Delete</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+load();
+
+// ── Phone & SMS Ordering Section ─────────────────────────
+async function loadPhoneOrdering() {
+  try {
+    const ev = eventData;
+    const wrap = document.getElementById('phone-ordering-wrap');
+    const body = document.getElementById('phone-ordering-body');
+    if (!wrap || !body) return;
+    wrap.style.display = 'block';
+
+    const hasNumber = !!(ev.phone_number && ev.sms_ivr_enabled);
+    const number = ev.phone_number;
+    const expires = ev.phone_number_expires ? new Date(ev.phone_number_expires).toLocaleDateString() : null;
+
+    if (!hasNumber) {
+      body.innerHTML = `
+        <div style="display:flex;gap:14px;align-items:flex-start">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" style="flex-shrink:0;margin-top:2px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px">No phone number assigned</div>
+            <div class="text2 sm" style="margin-bottom:12px">Ask your administrator to assign a dedicated phone number to this event. Guests can then call or text that number to purchase tickets automatically.</div>
+            <button class="btn btn-sm btn-primary" onclick="requestPhoneNumber()">Request Phone Number</button>
+          </div>
+        </div>`;
+    } else {
+      body.innerHTML = `
+        <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" style="flex-shrink:0;margin-top:2px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:2px">Phone ordering active</div>
+            <div style="font-family:monospace;font-size:18px;color:var(--navy);font-weight:700;margin-bottom:4px">${esc(number)}</div>
+            ${expires ? `<div class="xs text2">Expires: ${expires}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px">
+          <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">SMS</div>
+            <div style="font-size:13px;font-weight:600">Guests text to buy</div>
+            <div class="xs text2 mt4">Customer texts the number → conversational checkout → card entry → ticket emailed</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">IVR Phone</div>
+            <div style="font-size:13px;font-weight:600">Guests call to buy</div>
+            <div class="xs text2 mt4">Customer calls → automated voice menu → keypad entry → card charged → ticket emailed</div>
+          </div>
+        </div>
+        <div class="info-box tip mt12" style="font-size:12px">Payments go through the platform Stripe account. Tickets are issued the same as online purchases. Card data is never stored.</div>`;
+    }
+
+    // Load recent phone orders for this event
+    try {
+      const ordersData = await fetch(`/api/phone/orders?eventId=${eventId}`, { headers:{'Authorization':'Bearer '+Auth.token()} }).then(r=>r.json());
+      const orders = (ordersData.orders||[]).filter(o=>o.event_id===eventId);
+      if (orders.length) {
+        body.innerHTML += `<div class="section-title mt16 mb8">Recent Phone/SMS Orders (${orders.length})</div>
+          <div class="table-wrap"><table><thead><tr><th>Channel</th><th>From</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead><tbody>
+          ${orders.slice(0,10).map(o=>`<tr>
+            <td><span class="badge" style="font-size:10px;background:var(--bg3)">${o.channel==='sms'?'SMS':'IVR'}</span></td>
+            <td class="mono xs">${esc(o.from_number)}</td>
+            <td class="text2">$${(o.amount_cents/100).toFixed(2)}</td>
+            <td><span class="badge badge-${o.status==='paid'?'checked':o.status==='failed'?'warn':'deactivated'}" style="font-size:10px">${o.status}</span></td>
+            <td class="text2 xs">${new Date(o.created_at).toLocaleDateString()}</td>
+          </tr>`).join('')}
+          </tbody></table></div>`;
+      }
+    } catch {}
+  } catch(e) { console.error('[phone ordering]', e.message); }
+}
+
+function requestPhoneNumber() {
+  const subject = `Phone number request for event: ${eventData?.name}`;
+  const body = `Hi,\n\nI would like a phone number assigned to my event for SMS and IVR ticket ordering.\n\nEvent: ${eventData?.name}\nEvent ID: ${eventId}\n\nPlease let me know the details.\n\nThank you`;
+  window.open(`mailto:everythingshul@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+}
+</script>
+</body>
+</html>
