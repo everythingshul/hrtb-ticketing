@@ -257,6 +257,7 @@ function renderSidebar(activePage) {
         ${nav('admin.html','Dashboard')}
         ${nav('admin-accounts.html','Accounts')}
         ${nav('admin-events.html','All Events')}
+        ${nav('admin-phone.html','Phone & SMS/IVR')}
         ${nav('admin-content.html','Site Content')}
         ${nav('admin-backup.html','Backup &amp; Trash')}
       </div>` : ''}

@@ -77,6 +77,8 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
       </div>
 
       <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;margin-top:4px" id="btn-submit" onclick="signup()">Create Free Account →</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or sign up with</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+      <div id="google-btn-signup" style="display:flex;justify-content:center"></div>
     </div>
 
     <div class="auth-foot">Already have an account? <a href="/index.html">Sign in</a></div>
@@ -131,6 +133,34 @@ async function signup() {
     err.innerHTML = msg; err.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Create Free Account →';
   }
+}
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+function initGoogleSignup(clientId) {
+  if (!clientId) return;
+  if (typeof google === 'undefined' || !google.accounts) { setTimeout(() => initGoogleSignup(clientId), 100); return; }
+  google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleSignup, auto_select: false });
+  google.accounts.id.renderButton(
+    document.getElementById('google-btn-signup'),
+    { theme: 'outline', size: 'large', width: 280, text: 'signup_with', shape: 'rectangular' }
+  );
+}
+
+fetch('/api/auth/google-client-id').then(r=>r.json()).then(d=>{ if(d.clientId) initGoogleSignup(d.clientId); }).catch(()=>{});
+
+async function handleGoogleSignup(response) {
+  const errEl = document.getElementById('err');
+  try {
+    const r = await fetch('/api/auth/google', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const d = await r.json();
+    if (d.error) { errEl.textContent = d.error; errEl.style.display='block'; return; }
+    Auth.set(d.token, d.user);
+    window.location = '/dashboard.html';
+  } catch(e) { errEl.textContent = 'Google sign-up failed. Please try again.'; errEl.style.display='block'; }
 }
 </script>
 <script>

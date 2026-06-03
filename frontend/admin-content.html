@@ -33,6 +33,7 @@
       <button class="btn btn-sm btn-ghost" id="stab-pricing" onclick="subTab('pricing')">Pricing Plans</button>
       <button class="btn btn-sm btn-ghost" id="stab-platform" onclick="subTab('platform')">Platform Settings</button>
       <button class="btn btn-sm btn-ghost" id="stab-pci" onclick="subTab('pci')">PCI Compliance</button>
+      <button class="btn btn-sm btn-ghost" id="stab-features" onclick="subTab('features')">Feature Locks</button>
     </div>
 
     <div id="content-area"><div class="text2">Loading…</div></div>
@@ -64,7 +65,7 @@ async function load() {
 
 function subTab(tab) {
   currentSubTab = tab;
-  ['pages','sms','ivr','pricing','platform','pci'].forEach(t => {
+  ['pages','sms','ivr','pricing','platform','pci','features'].forEach(t => {
     document.getElementById('stab-'+t).className = 'btn btn-sm ' + (t===tab?'btn-gold':'btn-ghost');
   });
   renderSubTab(tab);
@@ -146,7 +147,7 @@ function renderSubTab(tab) {
   }
 
   else if (tab === 'ivr') {
-    const voice = siteContent['ivr.tts_voice'] || 'Polly.Joanna';
+    const voice = siteContent['ivr.tts_voice'] || 'Polly.Matthew';
     const voiceId = 'sc-ivr-tts-voice';
     allKeys.push({ key:'ivr.tts_voice', id:voiceId });
     const msgs = [
@@ -234,6 +235,38 @@ function renderSubTab(tab) {
         ${selField('sms.enabled','SMS Ordering',[['0','Disabled'],['1','Enabled']])}
         ${selField('ivr.enabled','IVR Phone Ordering',[['0','Disabled'],['1','Enabled']])}
       </div>`;
+  }
+
+  else if (tab === 'features') {
+    area.innerHTML = `
+      <p class="text2 sm mb16">Control which features are available platform-wide. These are global defaults — admins can also override per event or per account.</p>
+      <div id="features-loading" class="text2 sm">Loading…</div>`;
+    try {
+      const { features } = await fetch('/api/admin/features',{headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
+      const rows = [
+        ['feature.google_login','Google Sign-In','Allow users to sign in and sign up with Google'],
+        ['feature.signup','New Account Signups','Allow new accounts to register via the signup page'],
+        ['feature.phone_ordering','Phone & SMS Ordering','Enable IVR and SMS ticket purchasing globally'],
+        ['feature.promo_codes','Promo Codes','Allow promo codes to be created and used'],
+        ['feature.staff_tickets','Staff Tickets','Allow staff-level tickets to be created'],
+        ['feature.activation','Ticket Activation','Allow events to use the ticket activation feature'],
+        ['feature.seating','Seat Assignments','Allow events to use table/seat assignment'],
+      ];
+      document.getElementById('features-loading').style.display = 'none';
+      area.innerHTML += rows.map(([key,label,desc]) => {
+        const isOn = features[key] !== false;
+        return \`<div class="row-between" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px">
+          <div>
+            <div style="font-size:13px;font-weight:600">\${esc(label)}</div>
+            <div class="xs text2">\${esc(desc)}</div>
+          </div>
+          <label class="toggle-pill">
+            <input type="checkbox" data-feature="\${key}" \${isOn?'checked':''} onchange="saveFeature(this)">
+            <div class="toggle-track"></div>
+          </label>
+        </div>\`;
+      }).join('') + \`<p class="text2 sm mt12">Per-event and per-account feature overrides can be set in <a href="/admin-events.html" style="color:var(--navy)">All Events</a> and <a href="/admin-accounts.html" style="color:var(--navy)">Accounts</a>.</p>\`;
+    } catch(e) { document.getElementById('features-loading').textContent = 'Error: ' + e.message; }
   }
 
   else if (tab === 'pci') {
@@ -355,6 +388,15 @@ async function deletePlan(id) {
   catch(e) { toast(e.message,'error'); }
 }
 
+async function saveFeature(checkbox) {
+  const key = checkbox.dataset.feature;
+  const val = checkbox.checked;
+  try {
+    await fetch('/api/admin/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':\`Bearer \${Auth.token()}\`},body:JSON.stringify({updates:{[key]:val}})});
+    toast(val ? 'Feature enabled' : 'Feature disabled');
+  } catch(e) { toast(e.message,'error'); checkbox.checked = !val; }
+}
+
 async function checkPhoneExpiry() {
   try {
     const r = await fetch('/api/phone/check-expiry',{method:'POST',headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
@@ -403,3 +445,4 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+

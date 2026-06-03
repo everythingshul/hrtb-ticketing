@@ -453,6 +453,72 @@ r.post('/accounts/:id/grant-access', (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Feature locks ────────────────────────────────────────────
+
+// Get all platform feature flags
+r.get('/features', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const rows = db.prepare("SELECT key, value FROM platform_settings WHERE key LIKE 'feature.%'").all();
+  res.json({ features: Object.fromEntries(rows.map(r => [r.key, r.value === '1'])) });
+});
+
+// Update platform feature flags
+r.patch('/features', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { updates } = req.body;
+  for (const [key, val] of Object.entries(updates || {})) {
+    if (!key.startsWith('feature.')) continue;
+    db.prepare('INSERT OR REPLACE INTO platform_settings (key,value) VALUES (?,?)').run(key, val ? '1' : '0');
+  }
+  res.json({ ok: true });
+});
+
+// Get feature overrides for an event
+r.get('/events/:id/features', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const ev = db.prepare('SELECT features_locked FROM events WHERE id=?').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  res.json({ features: JSON.parse(ev.features_locked || '{}') });
+});
+
+// Set feature overrides for an event (null = inherit platform default)
+r.patch('/events/:id/features', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const ev = db.prepare('SELECT features_locked FROM events WHERE id=?').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  const current = JSON.parse(ev.features_locked || '{}');
+  const { updates } = req.body;
+  for (const [key, val] of Object.entries(updates || {})) {
+    if (val === null || val === undefined) delete current[key];
+    else current[key] = val ? 1 : 0;
+  }
+  db.prepare('UPDATE events SET features_locked=? WHERE id=?').run(JSON.stringify(current), req.params.id);
+  res.json({ ok: true });
+});
+
+// Get feature overrides for an account
+r.get('/accounts/:id/features', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const acct = db.prepare('SELECT features_locked FROM accounts WHERE id=?').get(req.params.id);
+  if (!acct) return res.status(404).json({ error: 'Account not found' });
+  res.json({ features: JSON.parse(acct.features_locked || '{}') });
+});
+
+// Set feature overrides for an account
+r.patch('/accounts/:id/features', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const acct = db.prepare('SELECT features_locked FROM accounts WHERE id=?').get(req.params.id);
+  if (!acct) return res.status(404).json({ error: 'Account not found' });
+  const current = JSON.parse(acct.features_locked || '{}');
+  const { updates } = req.body;
+  for (const [key, val] of Object.entries(updates || {})) {
+    if (val === null || val === undefined) delete current[key];
+    else current[key] = val ? 1 : 0;
+  }
+  db.prepare('UPDATE accounts SET features_locked=? WHERE id=?').run(JSON.stringify(current), req.params.id);
+  res.json({ ok: true });
+});
+
 // ── Trash & Restore (admin only) ─────────────────────────
 // List deleted items within 30 days
 

@@ -222,6 +222,12 @@ function openManage(id) {
       </button>
       <button class="btn btn-sm btn-danger" onclick="deleteAccount('${a.id}','${esc(a.name)}')">Delete Account</button>
       <button class="btn btn-sm" onclick="resetPassword('${a.id}')">Reset Password</button>
+      <button class="btn btn-sm btn-primary" onclick="openAccountFeatures('${a.id}','${esc(a.name)}')">Feature Overrides</button>
+    </div>
+    <div id="acc-features-${a.id}" style="display:none;margin-top:16px;padding:14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div class="section-title mb8" style="font-size:12px">Feature Overrides for ${esc(a.name)}</div>
+      <p class="xs text2 mb10">Override platform defaults for this account only. Toggle = force on/off regardless of global setting.</p>
+      <div id="acc-features-body-${a.id}"><div class="text2 sm">Loading…</div></div>
     </div>`;
   showModal('modal-manage');
 }
@@ -265,6 +271,59 @@ async function resetPassword(id) {
   if (!newPass || newPass.length < 8) { toast('Password too short','error'); return; }
   try { await api.auth.resetPassword(id, newPass); toast('Password reset'); }
   catch(e) { toast(e.message,'error'); }
+}
+
+const FEATURE_LABELS = [
+  ['feature.google_login','Google Sign-In'],
+  ['feature.signup','New Signups'],
+  ['feature.phone_ordering','Phone & SMS Ordering'],
+  ['feature.promo_codes','Promo Codes'],
+  ['feature.staff_tickets','Staff Tickets'],
+  ['feature.activation','Ticket Activation'],
+  ['feature.seating','Seat Assignments'],
+];
+
+async function openAccountFeatures(accountId, name) {
+  const panel = document.getElementById('acc-features-'+accountId);
+  if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const body = document.getElementById('acc-features-body-'+accountId);
+  try {
+    const d = await fetch('/api/admin/accounts/'+accountId+'/features',{headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
+    const overrides = d.features || {};
+    body.innerHTML = FEATURE_LABELS.map(([key,label]) => {
+      const val = overrides[key]; // null/undefined = inherit, 1 = force on, 0 = force off
+      const isOverridden = val !== undefined && val !== null;
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <label class="toggle-pill" title="${isOverridden?'Override set':'Using platform default'}">
+          <input type="checkbox" data-acct="${accountId}" data-feature="${key}"
+            ${val===1?'checked':''} ${!isOverridden?'style="opacity:.5"':''}
+            onchange="saveAccountFeature(this)">
+          <div class="toggle-track" style="${!isOverridden?'opacity:.5':''}"></div>
+        </label>
+        <span style="font-size:12px">${esc(label)}</span>
+        ${isOverridden?`<span class="badge badge-warn" style="font-size:9px">OVERRIDDEN</span>`:`<span class="xs text2">platform default</span>`}
+        ${isOverridden?`<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 8px" onclick="clearAccountFeature('${accountId}','${key}')">Clear</button>`:''}
+      </div>`;
+    }).join('');
+  } catch(e) { body.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function saveAccountFeature(cb) {
+  const accountId = cb.dataset.acct;
+  const key = cb.dataset.feature;
+  const val = cb.checked ? 1 : 0;
+  try {
+    await fetch('/api/admin/accounts/'+accountId+'/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({updates:{[key]:val}})});
+    toast('Feature override saved'); openAccountFeatures(accountId, ''); openAccountFeatures(accountId, '');
+  } catch(e) { toast(e.message,'error'); cb.checked = !cb.checked; }
+}
+
+async function clearAccountFeature(accountId, key) {
+  try {
+    await fetch('/api/admin/accounts/'+accountId+'/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({updates:{[key]:null}})});
+    toast('Override cleared'); openAccountFeatures(accountId, ''); openAccountFeatures(accountId, '');
+  } catch(e) { toast(e.message,'error'); }
 }
 
 // ── Phone number management ───────────────────────────────

@@ -1599,23 +1599,28 @@ async function editPinLevels(pinId) {
     <input type="checkbox" value="${l.id}" ${current.includes(l.id)?'checked':''} style="width:15px;height:15px">
     <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span>
   </label>`).join('');
-  const div = document.createElement('div');
-  div.innerHTML = `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center">
-    <div style="background:#fff;border-radius:12px;padding:24px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-      <h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3>
-      <p class="xs text2 mb12">Leave all unchecked = allow all levels</p>
-      <div id="edit-lvl-checks">${checks || '<p class="text2 sm">No levels set up for this event</p>'}</div>
-      <div class="row mt16" style="gap:8px;justify-content:flex-end">
-        <button class="btn" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="this.closest('[style*=fixed]').remove()">Cancel</button>
-        <button class="btn btn-gold" onclick="savePinLevels('${pinId}',this)">Save</button>
-      </div>
-    </div>
-  </div>`;
-  document.body.appendChild(div);
+
+  // Build modal using DOM methods to avoid quote-in-attribute conflicts
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:12px;padding:24px;min-width:300px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.2)';
+  box.innerHTML = `
+    <h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3>
+    <p class="xs text2 mb12">Leave all unchecked to allow all levels</p>
+    <div id="edit-lvl-checks">${checks || '<p class="text2 sm">No levels set up for this event yet</p>'}</div>
+    <div class="row mt16" style="gap:8px;justify-content:flex-end">
+      <button class="btn" id="edit-pin-cancel" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)">Cancel</button>
+      <button class="btn btn-gold" id="edit-pin-save">Save</button>
+    </div>`;
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.querySelector('#edit-pin-cancel').onclick = () => overlay.remove();
+  overlay.querySelector('#edit-pin-save').onclick = () => savePinLevels(pinId, overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
 }
 
-async function savePinLevels(pinId, btn) {
-  const overlay = btn.closest('[style*=fixed]');
+async function savePinLevels(pinId, overlay) {
   const checked = [...overlay.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value);
   try {
     await api.auth.updateScannerPin(pinId, { allowed_levels: checked.length ? JSON.stringify(checked) : null });

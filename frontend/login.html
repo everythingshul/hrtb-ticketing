@@ -164,32 +164,47 @@
 </script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
-window.addEventListener('load', () => {
-  const clientId = '__GOOGLE_CLIENT_ID__'; // replaced at runtime by meta tag
-  // Read from meta tag injected by server or env
-  fetch('/api/auth/google-client-id').then(r=>r.json()).then(d => {
-    if (!d.clientId) return; // Google login not configured
-    google.accounts.id.initialize({
-      client_id: d.clientId,
-      callback: handleGoogleLogin
-    });
-    google.accounts.id.renderButton(
-      document.getElementById('google-btn-login'),
-      { theme:'outline', size:'large', width:'100%', text:'signin_with' }
-    );
-  }).catch(()=>{});
-});
+// Google Sign-In — initializes once GSI library is ready
+function initGoogleLogin(clientId) {
+  if (!clientId) return;
+  // Wait for google.accounts to be available
+  if (typeof google === 'undefined' || !google.accounts) {
+    setTimeout(() => initGoogleLogin(clientId), 100);
+    return;
+  }
+  google.accounts.id.initialize({
+    client_id: clientId,
+    callback: handleGoogleLogin,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+  google.accounts.id.renderButton(
+    document.getElementById('google-btn-login'),
+    { theme: 'outline', size: 'large', width: 280, text: 'signin_with', shape: 'rectangular' }
+  );
+}
+
+fetch('/api/auth/google-client-id')
+  .then(r => r.json())
+  .then(d => { if (d.clientId) initGoogleLogin(d.clientId); })
+  .catch(() => {});
+
 async function handleGoogleLogin(response) {
+  const errEl = document.getElementById('err');
   try {
     const r = await fetch('/api/auth/google', {
-      method:'POST', headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ credential: response.credential })
     });
     const d = await r.json();
-    if (d.error) { document.getElementById('err').textContent = d.error; document.getElementById('err').style.display='block'; return; }
+    if (d.error) { errEl.textContent = d.error; errEl.style.display = 'block'; return; }
     Auth.set(d.token, d.user);
     window.location = '/dashboard.html';
-  } catch(e) { document.getElementById('err').textContent = 'Google sign-in failed'; document.getElementById('err').style.display='block'; }
+  } catch(e) {
+    errEl.textContent = 'Google sign-in failed. Please try again.';
+    errEl.style.display = 'block';
+  }
 }
 </script>
 <script>

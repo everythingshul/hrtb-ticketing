@@ -467,7 +467,7 @@ const smsDefaults = {
   'sms.cancelled':'Order cancelled. Text an event code anytime to start again.',
   'sms.session_expired':'Your session timed out. Text an event code to start a new order.',
   'sms.error':'Something went wrong. Please try again or text HELP.',
-  'ivr.tts_voice':'Polly.Joanna',
+  'ivr.tts_voice':'Polly.Matthew',
   'ivr.welcome':'Welcome to EverythingShul Tickets. Press 1 to buy tickets. Press 9 to repeat.',
   'ivr.welcome_recording':'',
   'ivr.select_event':'Select your event. {{event_list}} Press 0 to go back.',
@@ -495,6 +495,26 @@ const smsDefaults = {
   'ivr.no_available':'No events are available for phone ordering. Please try again later. Goodbye.',
 };
 for (const [k,v] of Object.entries(smsDefaults)) {
+  try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
+}
+// Always ensure voice default is male (update existing)
+try { db.prepare("UPDATE platform_settings SET value='Polly.Matthew' WHERE key='ivr.tts_voice' AND value='Polly.Joanna'").run(); } catch {}
+
+// ── Feature locks — admin can lock/unlock any feature per event ─
+try { db.exec("ALTER TABLE events ADD COLUMN features_locked TEXT"); } catch {}   // JSON: {feature:0|1} override map
+try { db.exec("ALTER TABLE accounts ADD COLUMN features_locked TEXT"); } catch {} // JSON: per-account feature overrides
+
+// Platform-level feature defaults (admin can disable globally)
+const featureDefaults = {
+  'feature.google_login': '1',        // 0 = disable Google login globally
+  'feature.signup': '1',              // 0 = disable new signups
+  'feature.phone_ordering': '1',      // 0 = disable phone/SMS ordering globally
+  'feature.promo_codes': '1',         // 0 = disable promo codes globally
+  'feature.staff_tickets': '1',       // 0 = disable staff tickets globally
+  'feature.activation': '1',          // 0 = disable activation globally
+  'feature.seating': '1',             // 0 = disable seating globally
+};
+for (const [k,v] of Object.entries(featureDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
 
