@@ -84,7 +84,7 @@ function field(key, label, hint='', tall=false) {
 
 function sectionTitle(t) { return `<div class="section-title mt20 mb10">${t}</div>`; }
 
-function renderSubTab(tab) {
+async function renderSubTab(tab) {
   allKeys = [];
   const area = document.getElementById('content-area');
 
