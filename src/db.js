@@ -341,7 +341,9 @@ try { db.exec("ALTER TABLE ticket_levels ADD COLUMN max_tickets INTEGER"); } cat
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN alert_at INTEGER"); } catch {}
 try { db.exec("ALTER TABLE ticket_levels ADD COLUMN show_availability INTEGER"); } catch {}
 try { db.exec("UPDATE ticket_levels SET show_availability=0 WHERE show_availability IS NULL"); } catch {}
-try { db.exec("ALTER TABLE ticket_levels ADD COLUMN is_staff INTEGER NOT NULL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN phone_enabled INTEGER NOT NULL DEFAULT 1"); } catch {}  // 1=sell via phone, 0=block
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN phone_max INTEGER"); } catch {}                          // max tickets via phone (null=unlimited)
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN phone_alert_at INTEGER"); } catch {}                     // alert when phone count reaches this
 
 // Stripe Connect per-account
 try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_id TEXT'); } catch {}        // Stripe account ID (acct_...)

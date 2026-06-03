@@ -208,7 +208,7 @@ async function smsStep(from, body, upper, session, linkedEvent) {
   if (!session || step === 'welcome') {
     const event = linkedEvent;
     if (!event) return tmpl('sms.invalid_code');
-    const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0").all(event.id);
+    const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1)").all(event.id);
     if (!levels.length) return tmpl('sms.no_levels');
     const levelList = levels.map((l,i)=>`${i+1}. ${l.name} — $${(l.price/100).toFixed(2)}`).join('\n');
     setSession(from, 'select_level', { eventId:event.id, levels:levels.map(l=>({id:l.id,name:l.name,price:l.price})) }, event.slug, event.account_id);
@@ -228,6 +228,9 @@ async function smsStep(from, body, upper, session, linkedEvent) {
   if (step === 'select_quantity') {
     const qty = parseInt(body);
     if (isNaN(qty) || qty < 1 || qty > MAX_QTY) return `Please enter a number between 1 and ${MAX_QTY}.`;
+    // Check phone capacity for this level
+    const cap = checkPhoneCapacity(data.eventId, data.levelId, qty);
+    if (cap.blocked) { clearSession(from); return cap.reason + ' Text an event code to start a new order.'; }
     const total = data.levelPrice * qty;
     setSession(from, 'get_name', { ...data, quantity:qty, totalCents:total }, session.event_slug, session.account_id);
     return tmpl('sms.get_name', { quantity:qty, level_name:data.levelName, total:(total/100).toFixed(2) });
@@ -343,7 +346,7 @@ r.post('/ivr/event', async (req, res) => {
 
 async function ivrLevelMenu(from, eventId) {
   const event  = db.prepare('SELECT * FROM events WHERE id=?').get(eventId);
-  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0").all(eventId);
+  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1)").all(eventId);
   if (!levels.length) return twimlSay('ivr.no_available',{},true);
   const levelList = levels.map((l,i)=>`Press ${i+1} for ${l.name} at ${(l.price/100).toFixed(0)} dollars.`).join(' ');
   const session = getSession('ivr:'+from);
@@ -513,14 +516,86 @@ r.get('/numbers/owned', async (req, res) => {
     const client = getTwilioClient();
     const nums = await client.incomingPhoneNumbers.list({ limit:100 });
     const appUrl = process.env.APP_URL || '';
-    const events = db.prepare('SELECT id,name,phone_number FROM events WHERE phone_number IS NOT NULL').all();
+    const events = db.prepare('SELECT id,name,phone_number,sms_ivr_enabled FROM events WHERE phone_number IS NOT NULL').all();
     const byNum = Object.fromEntries(events.map(e => [e.phone_number, e]));
     res.json({ numbers: nums.map(n => ({
       sid:n.sid, phoneNumber:n.phoneNumber, friendlyName:n.friendlyName,
       configured: !!(n.smsUrl?.includes(appUrl) && n.voiceUrl?.includes(appUrl)),
-      assignedEvent: byNum[n.phoneNumber]||null,
+      assignedEvent: byNum[n.phoneNumber] || null,
     })) });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Release a number by SID (for unassigned numbers)
+r.post('/numbers/release-sid', async (req, res) => {
+  try {
+    const { sid, phoneNumber } = req.body;
+    if (!sid) return res.status(400).json({ error: 'sid required' });
+    const client = getTwilioClient();
+    await client.incomingPhoneNumbers(sid).remove().catch(e => console.warn('[release-sid]', e.message));
+    // Also clear from any event just in case
+    if (phoneNumber) {
+      db.prepare('UPDATE events SET phone_number=NULL,phone_number_expires=NULL,sms_ivr_enabled=0,phone_number_notified=0,twilio_sid=NULL WHERE phone_number=?').run(phoneNumber);
+    }
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Phone level settings (per-event, which levels to sell and at what caps) ──
+
+r.get('/event/:id/levels', (req, res) => {
+  const levels = db.prepare(`
+    SELECT tl.*, 
+      (SELECT COUNT(*) FROM phone_orders po WHERE po.event_id=? AND po.level_id=tl.id AND po.status='paid') as phone_sold
+    FROM ticket_levels tl WHERE tl.event_id=? ORDER BY tl.created_at
+  `).all(req.params.id, req.params.id);
+  res.json({ levels });
+});
+
+r.patch('/event/:id/level/:levelId/phone', (req, res) => {
+  const { phone_enabled, phone_max, phone_alert_at } = req.body;
+  const ev = db.prepare('SELECT id FROM events WHERE id=?').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  const updates = {};
+  if (phone_enabled !== undefined) updates.phone_enabled = phone_enabled ? 1 : 0;
+  if (phone_max !== undefined) updates.phone_max = phone_max || null;
+  if (phone_alert_at !== undefined) updates.phone_alert_at = phone_alert_at || null;
+  if (!Object.keys(updates).length) return res.status(400).json({ error: 'Nothing to update' });
+  const sets = Object.keys(updates).map(k => `${k}=?`).join(',');
+  db.prepare(`UPDATE ticket_levels SET ${sets} WHERE id=? AND event_id=?`)
+    .run(...Object.values(updates), req.params.levelId, req.params.id);
+  res.json({ ok: true });
+});
+
+// ── Phone capacity check (used during SMS/IVR ordering) ──────────────────
+function checkPhoneCapacity(eventId, levelId, quantity = 1) {
+  const level = db.prepare('SELECT * FROM ticket_levels WHERE id=? AND event_id=?').get(levelId, eventId);
+  if (!level) return { ok: false, blocked: true, reason: 'Level not found' };
+  if (level.phone_enabled === 0) return { ok: false, blocked: true, reason: `${level.name} tickets are not available by phone` };
+
+  if (level.phone_max) {
+    const phoneSold = db.prepare("SELECT COUNT(*) c FROM phone_orders WHERE event_id=? AND level_id=? AND status='paid'").get(eventId, levelId).c;
+    if (phoneSold + quantity > level.phone_max) {
+      return { ok: false, blocked: true, reason: `${level.name} phone limit reached (${phoneSold}/${level.phone_max})` };
+    }
+    // Send alert if threshold hit
+    if (level.phone_alert_at && phoneSold + quantity >= level.phone_alert_at && phoneSold < level.phone_alert_at) {
+      const event = db.prepare('SELECT e.*, a.email as owner_email, a.name as owner_name FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.id=?').get(eventId);
+      if (event?.owner_email) {
+        sendMail({
+          to: event.owner_email,
+          subject: `Phone ticket alert: ${level.name} for "${event.name}"`,
+          html: `<p>Hi ${event.owner_name},</p><p>Your phone ticket alert threshold has been reached for <strong>${level.name}</strong> at <strong>${event.name}</strong>: ${phoneSold + quantity} of ${level.phone_max} tickets sold via phone/SMS.</p>`
+        }).catch(() => {});
+      }
+    }
+  }
+  return { ok: true, blocked: false };
+}
+
+r.post('/event/:id/check-capacity', (req, res) => {
+  const { levelId, quantity } = req.body;
+  res.json(checkPhoneCapacity(req.params.id, levelId, quantity || 1));
 });
 
 // ── Per-event SMS/IVR settings (overrides per event) ─────
@@ -530,7 +605,7 @@ r.get('/event/:id/settings', (req, res) => {
   const global = Object.fromEntries(globalRows.map(r => [r.key, r.value]));
   const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(req.params.id);
   const overrides = row ? JSON.parse(row.settings || '{}') : {};
-  res.json({ settings: { ...global, ...overrides }, overrides });
+  res.json({ global, overrides, settings: { ...global, ...overrides } });
 });
 
 r.patch('/event/:id/settings', (req, res) => {

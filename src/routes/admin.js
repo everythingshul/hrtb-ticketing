@@ -394,11 +394,34 @@ r.delete('/accounts/:accountId/members/:userId', (req, res) => {
 
 r.get('/events', (req, res) => {
   try {
-    const events = db.prepare(`SELECT e.*, a.name as account_name,
-      (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL) as attendee_count,
-      (SELECT COUNT(*) FROM staff WHERE event_id=e.id AND deleted_at IS NULL AND status!='deactivated') as staff_count
-      FROM events e JOIN accounts a ON a.id=e.account_id WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC`).all();
+    const events = db.prepare(`
+      SELECT e.*,
+        COALESCE(a.name, '(deleted account)') as account_name,
+        (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL AND (source IS NULL OR source!='staff')) as attendee_count,
+        (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL AND source='staff') as staff_count
+      FROM events e
+      LEFT JOIN accounts a ON a.id=e.account_id
+      WHERE e.deleted_at IS NULL
+      ORDER BY e.created_at DESC
+    `).all();
     res.json({ events });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Single event by ID (used by admin-phone and others)
+r.get('/events/:id', (req, res) => {
+  try {
+    const ev = db.prepare(`
+      SELECT e.*,
+        COALESCE(a.name, '(deleted account)') as account_name,
+        a.email as account_email,
+        (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL AND (source IS NULL OR source!='staff')) as attendee_count
+      FROM events e
+      LEFT JOIN accounts a ON a.id=e.account_id
+      WHERE e.id=?
+    `).get(req.params.id);
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
+    res.json({ event: ev });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

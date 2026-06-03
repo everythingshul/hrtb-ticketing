@@ -63,7 +63,7 @@ async function load() {
   }
 }
 
-function subTab(tab) {
+async function subTab(tab) {
   currentSubTab = tab;
   ['pages','sms','ivr','pricing','platform','pci','features'].forEach(t => {
     document.getElementById('stab-'+t).className = 'btn btn-sm ' + (t===tab?'btn-gold':'btn-ghost');
@@ -405,19 +405,36 @@ async function checkPhoneExpiry() {
 }
 
 function speakText(text, voiceKey) {
-  if (!window.speechSynthesis) { toast('Speech not supported in this browser','error'); return; }
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text.replace(/{{[^}]+}}/g,'example'));
-  const langMap = {'Polly.Joanna':'en-US','Polly.Matthew':'en-US','Polly.Amy':'en-GB','Polly.Brian':'en-GB'};
-  const genderMap = {'Polly.Joanna':'female','Polly.Matthew':'male','Polly.Amy':'female','Polly.Brian':'male'};
-  utt.lang = langMap[voiceKey]||'en-US';
-  const voices = window.speechSynthesis.getVoices();
-  const match = voices.find(v=>v.lang.startsWith((langMap[voiceKey]||'en-US').split('-')[0]) && v.name.toLowerCase().includes(genderMap[voiceKey]||'female'))
-    || voices.find(v=>v.lang.startsWith((langMap[voiceKey]||'en-US').split('-')[0])) || voices[0];
-  if (match) utt.voice = match;
-  utt.rate=0.95; utt.pitch=(voiceKey||'').includes('Matthew')||(voiceKey||'').includes('Brian')?0.9:1.1;
-  window.speechSynthesis.speak(utt);
-  toast('Playing preview…');
+  const synth = window.speechSynthesis;
+  if (!synth) { toast('Speech not supported in this browser','error'); return; }
+  synth.cancel();
+  const voicePrefs = {
+    'Polly.Matthew':['Alex','Daniel','Google US English Male','Microsoft David','Eddy (English (US))'],
+    'Polly.Justin': ['Alex','Google US English Male','Microsoft David'],
+    'Polly.Brian':  ['Daniel (English (United Kingdom))','Google UK English Male','Microsoft George','Arthur (English (UK))'],
+    'Polly.Joanna': ['Samantha','Google US English Female','Microsoft Zira','Allison (English (US))'],
+    'Polly.Kendra': ['Karen','Google US English Female','Microsoft Zira','Ava (English (US))'],
+    'Polly.Amy':    ['Kate','Google UK English Female','Microsoft Susan'],
+  };
+  const langMap   = {'Polly.Matthew':'en-US','Polly.Justin':'en-US','Polly.Joanna':'en-US','Polly.Kendra':'en-US','Polly.Brian':'en-GB','Polly.Amy':'en-GB'};
+  const genderMap = {'Polly.Matthew':'male','Polly.Justin':'male','Polly.Brian':'male','Polly.Joanna':'female','Polly.Kendra':'female','Polly.Amy':'female'};
+  function doSpeak() {
+    const voices = synth.getVoices();
+    const lang   = langMap[voiceKey]  || 'en-US';
+    const gender = genderMap[voiceKey] || 'male';
+    const prefs  = voicePrefs[voiceKey] || [];
+    let match = null;
+    for (const p of prefs) { match = voices.find(v=>v.name.toLowerCase().includes(p.toLowerCase())); if (match) break; }
+    if (!match) match = voices.find(v=>v.lang===lang && v.name.toLowerCase().includes(gender));
+    if (!match) match = voices.find(v=>v.lang.startsWith(lang.split('-')[0]) && v.name.toLowerCase().includes(gender));
+    if (!match) match = voices.find(v=>v.lang===lang) || voices.find(v=>v.lang.startsWith('en')) || voices[0];
+    const utt = new SpeechSynthesisUtterance(text.replace(/{{[^}]+}}/g,'example'));
+    utt.lang = lang; if (match) utt.voice = match;
+    utt.pitch = gender==='male'?0.9:1.1; utt.rate = 0.9;
+    synth.speak(utt);
+    toast('Playing: '+(match?match.name:'default voice'));
+  }
+  synth.getVoices().length > 0 ? doSpeak() : (synth.onvoiceschanged = ()=>{synth.onvoiceschanged=null; doSpeak();});
 }
 
 function previewGlobalVoice() {

@@ -153,6 +153,13 @@ const api = {
     purgeAccount: id => req(`/admin/trash/accounts/${id}`, { method: 'DELETE' }),
     removeMember: (accountId, userId) => req(`/admin/accounts/${accountId}/members/${userId}`, { method: 'DELETE' }),
     events: () => req('/admin/events'),
+    getEvent: id => req(`/admin/events/${id}`),
+    getFeatures: () => req('/admin/features'),
+    updateFeatures: updates => req('/admin/features', { method: 'PATCH', body: JSON.stringify({ updates }) }),
+    getAccountFeatures: id => req(`/admin/accounts/${id}/features`),
+    updateAccountFeatures: (id, updates) => req(`/admin/accounts/${id}/features`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
+    getEventFeatures: id => req(`/admin/events/${id}/features`),
+    updateEventFeatures: (id, updates) => req(`/admin/events/${id}/features`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
     restore: data => req('/admin/restore', { method: 'POST', body: JSON.stringify(data) }),
     maintenanceStatus: () => req('/admin/maintenance'),
     setMaintenance: enabled => req('/admin/maintenance', { method: 'POST', body: JSON.stringify({ enabled }) }),
@@ -258,6 +265,7 @@ function renderSidebar(activePage) {
         ${nav('admin-accounts.html','Accounts')}
         ${nav('admin-events.html','All Events')}
         ${nav('admin-phone.html','Phone & SMS/IVR')}
+        ${nav('admin-numbers.html','Phone Numbers')}
         ${nav('admin-content.html','Site Content')}
         ${nav('admin-backup.html','Backup &amp; Trash')}
       </div>` : ''}

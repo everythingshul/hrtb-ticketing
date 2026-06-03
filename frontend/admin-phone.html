@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Phone & SMS/IVR — Admin</title>
+<title>Phone & SMS/IVR</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -14,133 +14,127 @@
 
     <div class="ph mb20">
       <div class="ph-left">
-        <a href="/admin-events.html" style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;margin-bottom:4px;text-decoration:none">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          Back to All Events
+        <a href="/admin-events.html" style="font-size:12px;color:var(--text2);display:inline-flex;align-items:center;gap:4px;margin-bottom:6px;text-decoration:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Back to All Events
         </a>
         <h1 id="page-title">Phone &amp; SMS/IVR</h1>
-        <p class="text2 sm" id="page-subtitle">Loading…</p>
+        <p class="text2 sm" id="page-sub"></p>
       </div>
     </div>
 
-    <!-- Current number status bar -->
-    <div id="status-bar" class="card mb20" style="padding:16px 20px">
+    <!-- Number status bar -->
+    <div class="card mb20" id="status-card">
       <div class="row" style="gap:14px;align-items:center;flex-wrap:wrap">
         <div style="flex:1">
-          <div style="font-size:15px;font-weight:700;font-family:monospace;letter-spacing:.05em" id="num-display">No number assigned</div>
+          <div id="num-display" style="font-size:16px;font-weight:700;font-family:monospace;letter-spacing:.06em;color:var(--text2)">No number assigned</div>
           <div class="xs text2 mt4" id="expiry-display"></div>
         </div>
-        <span id="status-badge"></span>
+        <span id="num-badge"></span>
         <div class="row" style="gap:8px">
           <button class="btn btn-sm" id="toggle-btn" style="display:none" onclick="toggleSms()"></button>
-          <button class="btn btn-sm btn-danger" id="release-btn" style="display:none" onclick="releaseNumber()">Release Number</button>
+          <button class="btn btn-sm btn-danger" id="release-btn" style="display:none" onclick="releaseNum()">Release Number</button>
         </div>
       </div>
     </div>
 
     <!-- Tabs -->
     <div class="row mb20" style="gap:6px;border-bottom:2px solid var(--border);padding-bottom:12px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-gold" id="ptab-buy" onclick="showTab('buy')">Search &amp; Buy</button>
-      <button class="btn btn-sm btn-ghost" id="ptab-owned" onclick="showTab('owned')">Your Numbers</button>
-      <button class="btn btn-sm btn-ghost" id="ptab-manual" onclick="showTab('manual')">Manual Entry</button>
-      <button class="btn btn-sm btn-ghost" id="ptab-sms" onclick="showTab('sms')">SMS Messages</button>
-      <button class="btn btn-sm btn-ghost" id="ptab-ivr" onclick="showTab('ivr')">IVR Messages</button>
+      <button class="btn btn-sm btn-gold"   id="ptab-number"  onclick="tab('number')">Phone Number</button>
+      <button class="btn btn-sm btn-ghost"  id="ptab-levels"  onclick="tab('levels')">Ticket Levels</button>
+      <button class="btn btn-sm btn-ghost"  id="ptab-sms"     onclick="tab('sms')">SMS Messages</button>
+      <button class="btn btn-sm btn-ghost"  id="ptab-ivr"     onclick="tab('ivr')">IVR Messages</button>
     </div>
 
-    <!-- Search & Buy -->
-    <div id="ph-tab-buy">
-      <div class="card">
-        <div class="section-title mb12">Search Available Numbers</div>
-        <div class="form-row mb14" style="gap:10px;align-items:flex-end">
-          <div class="fg" style="margin:0"><label>Area Code <span class="tip-icon" data-tip="US 3-digit area code, e.g. 212 for NYC, 718 for Brooklyn, 323 for LA">i</span></label>
-            <input id="ph-area" placeholder="e.g. 212" maxlength="3" style="font-family:monospace;letter-spacing:.05em"></div>
+    <!-- ── NUMBER TAB ── -->
+    <div id="ph-tab-number">
+      <div class="card mb16">
+        <div class="section-title mb12">Search &amp; Buy a Number</div>
+        <div class="form-row mb12" style="gap:10px;align-items:flex-end">
+          <div class="fg" style="margin:0"><label>Area Code <span class="tip-icon" data-tip="US 3-digit area code, e.g. 212 for NYC, 718 for Brooklyn">i</span></label>
+            <input id="ph-area" placeholder="212" maxlength="3" style="font-family:monospace"></div>
           <div class="fg" style="margin:0"><label>Country</label>
             <select id="ph-country">
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="GB">United Kingdom</option>
               <option value="IL">Israel</option>
-            </select>
-          </div>
-          <div style="padding-bottom:1px"><button class="btn btn-primary" onclick="searchNumbers()">Search Numbers</button></div>
+            </select></div>
+          <div><button class="btn btn-primary" onclick="searchNums()">Search</button></div>
         </div>
         <div id="ph-results"><p class="text2 sm">Enter an area code and click Search.</p></div>
-      </div>
-
-      <!-- Buy confirm -->
-      <div id="ph-buy-confirm" style="display:none" class="card mt16" style="background:#f0f7ff;border:1.5px solid #b3d4f2">
-        <div class="section-title mb10">Purchase Number</div>
-        <div class="row mb12" style="gap:10px;align-items:center">
-          <span style="font-family:monospace;font-size:18px;font-weight:700;color:var(--navy)" id="ph-buying-num"></span>
-          <span class="text2 sm">~$1.15/month billed to your Twilio account</span>
+        <!-- Purchase confirm -->
+        <div id="ph-buy-confirm" style="display:none;margin-top:14px;padding:14px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
+          <div style="font-size:14px;font-weight:700;margin-bottom:10px">
+            Buy: <span id="ph-buying-num" style="font-family:monospace"></span>
+            <span class="text2 sm" style="font-weight:400"> — ~$1.15/month</span>
+          </div>
+          <div class="fg mb10" style="max-width:260px"><label style="font-size:12px">Expiry Date <span class="tip-icon" data-tip="System sends 1-day warning then auto-releases. Blank = never expires.">i</span></label>
+            <input id="ph-buy-expires" type="date"></div>
+          <div class="row" style="gap:8px">
+            <button class="btn btn-gold" id="ph-buy-btn" onclick="confirmBuy()">Buy &amp; Assign</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('ph-buy-confirm').style.display='none'">Cancel</button>
+          </div>
         </div>
-        <div class="fg mb12" style="max-width:280px"><label>Expiry Date <span class="tip-icon" data-tip="System sends 1-day warning then auto-releases. Leave blank = never expires.">i</span></label>
-          <input id="ph-buy-expires" type="date"></div>
-        <div class="row" style="gap:10px">
-          <button class="btn btn-gold" id="ph-buy-btn" onclick="confirmBuy()">Buy &amp; Assign to This Event</button>
-          <button class="btn btn-ghost" onclick="document.getElementById('ph-buy-confirm').style.display='none'">Cancel</button>
+      </div>
+      <div class="card mb16">
+        <div class="section-title mb4">Assign Manually</div>
+        <p class="text2 sm mb12">Enter a Twilio number you already own. You'll need to set webhooks in the Twilio console manually for this number.</p>
+        <div class="form-row" style="gap:10px;align-items:flex-end">
+          <div class="fg" style="margin:0"><label>Phone Number</label>
+            <input id="pa-number" placeholder="+1-212-555-1234" oninput="fmtInput(this)" style="font-family:monospace;letter-spacing:.05em"></div>
+          <div class="fg" style="margin:0"><label>Expiry Date</label><input id="pa-expires" type="date"></div>
+          <div><button class="btn btn-gold" onclick="saveManual()">Assign</button></div>
         </div>
       </div>
     </div>
 
-    <!-- Owned numbers -->
-    <div id="ph-tab-owned" style="display:none">
-      <div class="card">
-        <div class="row-between mb12">
-          <div class="section-title">Your Twilio Numbers</div>
-          <button class="btn btn-sm" onclick="loadOwnedNumbers()">Refresh</button>
-        </div>
-        <div id="ph-owned-list"><p class="text2 sm">Click Refresh to load.</p></div>
-      </div>
+    <!-- ── LEVELS TAB ── -->
+    <div id="ph-tab-levels" style="display:none">
+      <p class="text2 sm mb16">Control which ticket levels are available for phone and SMS ordering, and set per-level phone maximums. Alert emails go to the account owner when the threshold is reached.</p>
+      <div id="levels-wrap"><p class="text2 sm">Loading…</p></div>
+      <button class="btn btn-gold mt16" onclick="saveLevels()">Save Level Settings</button>
     </div>
 
-    <!-- Manual entry -->
-    <div id="ph-tab-manual" style="display:none">
-      <div class="card" style="max-width:480px">
-        <div class="section-title mb4">Assign Number Manually</div>
-        <p class="text2 sm mb14">Enter a Twilio number you already purchased. You must configure webhooks in the Twilio console manually.</p>
-        <div class="fg"><label>Phone Number <span class="tip-icon" data-tip="Must include country code, e.g. +12125551234">i</span></label>
-          <input id="pa-number" placeholder="+1-212-555-1234" oninput="formatPhoneInput(this)" style="font-family:monospace;letter-spacing:.08em"></div>
-        <div class="fg"><label>Expiry Date <span class="tip-icon" data-tip="Leave blank for no expiry.">i</span></label>
-          <input id="pa-expires" type="date"></div>
-        <button class="btn btn-gold" onclick="saveManualNumber()">Assign Number</button>
-      </div>
-    </div>
-
-    <!-- SMS Messages -->
+    <!-- ── SMS MESSAGES TAB ── -->
     <div id="ph-tab-sms" style="display:none">
       <div class="info-box tip mb14" style="font-size:12px">
-        <strong>Per-event overrides.</strong> These settings apply to this event only. Leave blank to use the global default (shown as placeholder text). Variables: <code>{{event_name}} {{event_date}} {{levels}} {{level_name}} {{price}} {{quantity}} {{total}} {{email}} {{first_name}} {{last4}}</code>
-        <button class="btn btn-sm btn-ghost" style="margin-left:10px;font-size:11px" onclick="resetMessages()">Reset to Global Defaults</button>
+        <strong>Per-event overrides.</strong> Each field shows the global default text. Edit to override for this event only. Clear a field to revert to global default.
+        Variables: <code style="font-size:11px">{{event_name}} {{event_date}} {{levels}} {{level_name}} {{price}} {{quantity}} {{total}} {{email}} {{first_name}} {{last4}}</code>
+        <button class="btn btn-sm btn-ghost" style="margin-left:8px;font-size:11px" onclick="resetAll()">Reset All to Global</button>
       </div>
       <div id="sms-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
-      <button class="btn btn-gold mt16" onclick="saveMessages('sms')">Save SMS Overrides</button>
+      <button class="btn btn-gold mt16" onclick="saveMsgs('sms')">Save SMS Overrides</button>
     </div>
 
-    <!-- IVR Messages -->
+    <!-- ── IVR MESSAGES TAB ── -->
     <div id="ph-tab-ivr" style="display:none">
       <div class="info-box tip mb14" style="font-size:12px">
-        <strong>Per-event overrides.</strong> Leave text blank = use global default. Paste a recording URL (.mp3/.wav) to override TTS for that step.
-        <button class="btn btn-sm btn-ghost" style="margin-left:10px;font-size:11px" onclick="resetMessages()">Reset to Global Defaults</button>
+        <strong>Per-event overrides.</strong> Shows global default text. Edit to override. Paste a recording URL to override TTS entirely for that step.
+        <button class="btn btn-sm btn-ghost" style="margin-left:8px;font-size:11px" onclick="resetAll()">Reset All to Global</button>
       </div>
-      <div class="fg mb14" style="max-width:360px">
-        <label>TTS Voice <span class="tip-icon" data-tip="Override global voice for this event only.">i</span></label>
-        <div class="row" style="gap:8px">
-          <select id="ph-ivr-voice" style="flex:1">
-            <option value="">— Use global default —</option>
-            <option value="Polly.Matthew">Matthew (Male, US)</option>
-            <option value="Polly.Joanna">Joanna (Female, US)</option>
-            <option value="Polly.Brian">Brian (Male, UK)</option>
-            <option value="Polly.Amy">Amy (Female, UK)</option>
-          </select>
-          <button class="btn btn-sm" onclick="previewVoice()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Preview
+      <!-- Voice selector -->
+      <div class="card mb14" style="padding:14px">
+        <div class="row" style="gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="fg" style="margin:0;max-width:280px">
+            <label style="font-size:12px">TTS Voice Override <span class="tip-icon" data-tip="Override the global voice for this event only. Blank = use global setting.">i</span></label>
+            <select id="ph-ivr-voice">
+              <option value="">— Use global default —</option>
+              <option value="Polly.Matthew">Matthew (Male, US) — clear &amp; natural</option>
+              <option value="Polly.Joanna">Joanna (Female, US) — warm &amp; friendly</option>
+              <option value="Polly.Brian">Brian (Male, UK) — warm &amp; authoritative</option>
+              <option value="Polly.Amy">Amy (Female, UK) — upbeat &amp; clear</option>
+              <option value="Polly.Justin">Justin (Male, US) — young &amp; energetic</option>
+              <option value="Polly.Kendra">Kendra (Female, US) — bright &amp; cheerful</option>
+            </select>
+          </div>
+          <button class="btn btn-sm btn-primary" onclick="previewVoice()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>Preview Voice
           </button>
+          <div id="preview-status" class="text2 xs" style="min-width:80px"></div>
         </div>
       </div>
       <div id="ivr-fields"></div>
-      <button class="btn btn-gold mt16" onclick="saveMessages('ivr')">Save IVR Overrides</button>
+      <button class="btn btn-gold mt16" onclick="saveMsgs('ivr')">Save IVR Overrides</button>
     </div>
 
   </div></main>
@@ -156,17 +150,18 @@ const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
 if (!eventId) window.location = '/admin-events.html';
 
-let eventData = null, globalSettings = {}, eventOverrides = {};
+let eventData = null, globalSettings = {}, eventOverrides = {}, phoneLevels = [];
 
 const SMS_KEYS = [
-  ['sms.welcome','Welcome'],['sms.help','Help'],['sms.invalid_code','Invalid Code'],
-  ['sms.no_levels','No Levels Available'],['sms.select_level','Select Level Prompt'],
-  ['sms.select_quantity','Select Quantity Prompt'],['sms.get_name','Ask for Name'],
-  ['sms.get_email','Ask for Email'],['sms.confirm','Order Confirmation (YES/NO)'],
-  ['sms.get_card','Ask for Card Number'],['sms.get_expiry','Ask for Expiry'],
-  ['sms.get_cvv','Ask for CVV'],['sms.processing','Processing'],
-  ['sms.success','Payment Success'],['sms.declined','Payment Declined'],
-  ['sms.cancelled','Order Cancelled'],['sms.session_expired','Session Expired'],['sms.error','Error'],
+  ['sms.welcome','Welcome'],['sms.help','Help'],
+  ['sms.invalid_code','Invalid Event Code'],['sms.no_levels','No Levels Available'],
+  ['sms.select_level','Select Level Prompt'],['sms.select_quantity','Select Quantity Prompt'],
+  ['sms.get_name','Ask for Name'],['sms.get_email','Ask for Email'],
+  ['sms.confirm','Order Confirmation (YES/NO)'],['sms.get_card','Ask for Card Number'],
+  ['sms.get_expiry','Ask for Expiry'],['sms.get_cvv','Ask for CVV'],
+  ['sms.processing','Processing'],['sms.success','Payment Success'],
+  ['sms.declined','Payment Declined'],['sms.cancelled','Order Cancelled'],
+  ['sms.session_expired','Session Expired'],['sms.error','Error'],
 ];
 const IVR_KEYS = [
   ['ivr.welcome','Welcome Menu'],['ivr.select_event','Select Event'],
@@ -179,149 +174,116 @@ const IVR_KEYS = [
 ];
 
 async function load() {
-  const [evRes, settingsRes, overridesRes] = await Promise.all([
-    fetch('/api/admin/events').then(r=>r.json()),
-    fetch('/api/phone/event/'+eventId+'/settings', {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json()),
-    fetch('/api/phone/event/'+eventId+'/settings', {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json()),
-  ]);
-  const events = evRes.events || [];
-  eventData = events.find(e => e.id === eventId);
-  if (!eventData) { toast('Event not found', 'error'); return; }
+  try {
+    const [evRes, settingsRes, levelsRes] = await Promise.all([
+      fetch('/api/admin/events/'+eventId, {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json()),
+      fetch('/api/phone/event/'+eventId+'/settings', {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json()),
+      fetch('/api/phone/event/'+eventId+'/levels', {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json()),
+    ]);
+    eventData = evRes.event;
+    if (!eventData) { document.querySelector('.page').innerHTML = '<div class="info-box warn">Event not found.</div>'; return; }
 
-  document.getElementById('page-title').textContent = 'Phone & SMS/IVR — ' + eventData.name;
-  document.getElementById('page-subtitle').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-  document.title = 'Phone — ' + eventData.name;
+    document.getElementById('page-title').textContent = eventData.name;
+    document.getElementById('page-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
+    document.title = eventData.name + ' — Phone';
 
-  globalSettings = settingsRes.settings || {};
-  eventOverrides = overridesRes.overrides || {};
+    // Backend returns { global, overrides, settings }
+    globalSettings = settingsRes.global || {};
+    eventOverrides = settingsRes.overrides || {};
+    phoneLevels = levelsRes.levels || [];
 
-  updateStatusBar();
-  renderSmsFields();
-  renderIvrFields();
+    updateStatusBar();
+    renderSmsFields();
+    renderIvrFields();
+    renderLevels();
+  } catch(e) {
+    document.querySelector('.page').innerHTML = `<div class="info-box warn">Error: ${esc(e.message)}</div>`;
+  }
 }
 
 function updateStatusBar() {
   const num = eventData.phone_number;
-  const enabled = !!eventData.sms_ivr_enabled;
-  const expires = eventData.phone_number_expires ? new Date(eventData.phone_number_expires).toLocaleDateString() : null;
-  const bar = document.getElementById('status-bar');
-  bar.style.background = num ? (enabled ? '#f0fdf4' : '#fafafa') : '#fafafa';
-  bar.style.border = '1.5px solid ' + (num ? (enabled ? '#86efac' : 'var(--border)') : 'var(--border)');
-  document.getElementById('num-display').textContent = num ? formatPhoneDisplay(num) : 'No number assigned';
+  const on  = !!eventData.sms_ivr_enabled;
+  const exp = eventData.phone_number_expires ? new Date(eventData.phone_number_expires).toLocaleDateString() : null;
+  const card = document.getElementById('status-card');
+  card.style.background = num ? (on ? '#f0fdf4' : '#fafafa') : '#fafafa';
+  card.style.border = '1.5px solid ' + (num ? (on ? '#86efac' : 'var(--border)') : 'var(--border)');
+  document.getElementById('num-display').textContent = num ? fmtNum(num) : 'No number assigned';
   document.getElementById('num-display').style.color = num ? 'var(--navy)' : 'var(--text2)';
-  document.getElementById('expiry-display').textContent = expires ? 'Expires: ' + expires : (num ? 'No expiry set' : '');
-  document.getElementById('status-badge').innerHTML = num
-    ? (enabled ? '<span class="badge badge-checked">Active</span>' : '<span class="badge badge-deactivated">Disabled</span>') : '';
+  document.getElementById('expiry-display').textContent = exp ? 'Expires: '+exp : (num ? 'No expiry set' : '');
+  document.getElementById('num-badge').innerHTML = num
+    ? (on ? '<span class="badge badge-checked">Active</span>' : '<span class="badge badge-deactivated">Disabled</span>') : '';
   document.getElementById('toggle-btn').style.display = num ? '' : 'none';
-  document.getElementById('toggle-btn').textContent = enabled ? 'Disable' : 'Enable';
+  document.getElementById('toggle-btn').textContent = on ? 'Disable' : 'Enable';
   document.getElementById('release-btn').style.display = num ? '' : 'none';
 }
 
-function showTab(tab) {
-  ['buy','owned','manual','sms','ivr'].forEach(t => {
-    document.getElementById('ph-tab-'+t).style.display = t===tab ? 'block' : 'none';
-    document.getElementById('ptab-'+t).className = 'btn btn-sm ' + (t===tab ? 'btn-gold' : 'btn-ghost');
+function tab(t) {
+  ['number','levels','sms','ivr'].forEach(x => {
+    document.getElementById('ph-tab-'+x).style.display = x===t ? 'block' : 'none';
+    document.getElementById('ptab-'+x).className = 'btn btn-sm '+(x===t?'btn-gold':'btn-ghost');
   });
 }
 
-// ── Phone number formatting ───────────────────────────────
-function formatPhoneDisplay(num) {
-  // +12125551234 → +1 (212) 555-1234
-  if (!num) return num;
-  const digits = num.replace(/\D/g, '');
-  if (num.startsWith('+1') && digits.length === 11) {
-    return `+1 (${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7)}`;
-  }
-  if (num.startsWith('+972') && digits.length >= 11) {
-    return `+972 ${digits.slice(3,5)}-${digits.slice(5,8)}-${digits.slice(8)}`;
-  }
-  // Generic: +CC NNN-NNN-NNNN
-  return num;
+// ── Number formatting ─────────────────────────────────────
+function fmtNum(n) {
+  if (!n) return n;
+  const d = n.replace(/\D/g,'');
+  if (n.startsWith('+1') && d.length===11) return `+1 (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+  if (n.startsWith('+972') && d.length>=11) return `+972 ${d.slice(3,5)}-${d.slice(5,8)}-${d.slice(8)}`;
+  return n;
 }
+function fmtInput(inp) { inp.value = inp.value.replace(/[^\d+\-\s()]/g,''); }
 
-function formatPhoneInput(input) {
-  // Allow digits, +, -, spaces — clean as user types
-  let val = input.value.replace(/[^\d+\-\s()]/g, '');
-  input.value = val;
-}
-
-// ── Number search & purchase ──────────────────────────────
-async function searchNumbers() {
+// ── Search & buy ──────────────────────────────────────────
+async function searchNums() {
   const area = document.getElementById('ph-area').value.trim();
   const country = document.getElementById('ph-country').value;
   const res = document.getElementById('ph-results');
   res.innerHTML = '<p class="text2 sm">Searching…</p>';
   try {
-    const p = new URLSearchParams({ country });
+    const p = new URLSearchParams({country});
     if (area) p.set('areaCode', area);
-    const data = await fetch('/api/phone/numbers/search?'+p, {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
-    if (data.error) throw new Error(data.error);
-    if (!data.numbers?.length) { res.innerHTML = '<p class="text2 sm">No numbers found for that area code. Try a different one.</p>'; return; }
-    res.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Number</th><th>Location</th><th>Monthly Cost</th><th></th></tr></thead><tbody>'
-      + data.numbers.map(n => `<tr>
-        <td style="font-family:monospace;font-weight:700;letter-spacing:.05em">${esc(formatPhoneDisplay(n.phoneNumber))}</td>
-        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
-        <td class="text2 sm">$1.15/mo</td>
-        <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}')">Select</button></td>
-      </tr>`).join('')
+    const d = await fetch('/api/phone/numbers/search?'+p, {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
+    if (d.error) throw new Error(d.error);
+    if (!d.numbers?.length) { res.innerHTML = '<p class="text2 sm">No numbers found. Try a different area code.</p>'; return; }
+    res.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Number</th><th>Location</th><th>Cost</th><th></th></tr></thead><tbody>'
+      + d.numbers.map(n=>`<tr>
+          <td style="font-family:monospace;font-weight:700;letter-spacing:.05em">${esc(fmtNum(n.phoneNumber))}</td>
+          <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+          <td class="text2 sm">$1.15/mo</td>
+          <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}')">Select</button></td>
+        </tr>`).join('')
       + '</tbody></table></div>';
   } catch(e) { res.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
 }
 
 function selectBuy(num) {
-  document.getElementById('ph-buying-num').textContent = formatPhoneDisplay(num);
-  document.getElementById('ph-buying-num').dataset.raw = num;
-  document.getElementById('ph-buy-confirm').style.display = 'block';
-  document.getElementById('ph-buy-confirm').scrollIntoView({ behavior:'smooth', block:'nearest' });
+  const el = document.getElementById('ph-buying-num');
+  el.textContent = fmtNum(num); el.dataset.raw = num;
+  const confirm = document.getElementById('ph-buy-confirm');
+  confirm.style.display = 'block';
+  confirm.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 async function confirmBuy() {
   const num = document.getElementById('ph-buying-num').dataset.raw;
-  const expires = document.getElementById('ph-buy-expires').value || null;
+  const exp = document.getElementById('ph-buy-expires').value || null;
   const btn = document.getElementById('ph-buy-btn');
   btn.disabled = true; btn.textContent = 'Purchasing…';
   try {
-    const d = await fetch('/api/phone/numbers/purchase', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},
-      body: JSON.stringify({ phoneNumber:num, eventId, expiresAt:expires })
-    }).then(r=>r.json());
+    const d = await fetch('/api/phone/numbers/purchase',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({phoneNumber:num,eventId,expiresAt:exp})}).then(r=>r.json());
     if (d.error) throw new Error(d.error);
-    toast(formatPhoneDisplay(d.phoneNumber) + ' purchased and assigned!');
-    document.getElementById('ph-buy-confirm').style.display = 'none';
+    toast(fmtNum(d.phoneNumber)+' purchased and assigned!');
+    document.getElementById('ph-buy-confirm').style.display='none';
     await load();
-  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Buy & Assign to This Event'; }
+  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Buy & Assign'; }
 }
 
-async function loadOwnedNumbers() {
-  const wrap = document.getElementById('ph-owned-list');
-  wrap.innerHTML = '<p class="text2 sm">Loading…</p>';
-  try {
-    const d = await fetch('/api/phone/numbers/owned',{headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
-    if (!d.numbers?.length) { wrap.innerHTML = '<p class="text2 sm">No numbers purchased yet.</p>'; return; }
-    wrap.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Number</th><th>Webhooks</th><th>Assigned To</th><th></th></tr></thead><tbody>'
-      + d.numbers.map(n => `<tr>
-        <td style="font-family:monospace;font-weight:600;letter-spacing:.05em">${esc(formatPhoneDisplay(n.phoneNumber))}</td>
-        <td>${n.configured?'<span class="badge badge-checked" style="font-size:10px">Configured</span>':'<span class="badge badge-warn" style="font-size:10px">Not configured</span>'}</td>
-        <td class="text2 sm">${n.assignedEvent ? esc(n.assignedEvent.name) : '—'}</td>
-        <td>${!n.assignedEvent ? `<button class="btn btn-sm" onclick="assignOwned('${esc(n.phoneNumber)}')">Assign to This Event</button>` : (n.assignedEvent?.id===eventId?'<span class="badge badge-checked" style="font-size:10px">This event</span>':'')}</td>
-      </tr>`).join('')
-      + '</tbody></table></div>';
-  } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
-}
-
-async function assignOwned(num) {
-  const exp = prompt('Expiry date? (YYYY-MM-DD or blank for none)');
-  if (exp === null) return;
-  try {
-    await fetch('/api/phone/event/'+eventId+'/assign-number',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({phoneNumber:num,expiresAt:exp||null})});
-    toast(formatPhoneDisplay(num)+' assigned'); await load();
-  } catch(e) { toast(e.message,'error'); }
-}
-
-async function saveManualNumber() {
+async function saveManual() {
   let num = document.getElementById('pa-number').value.trim().replace(/[\s\-()]/g,'');
-  if (!num.startsWith('+')) { toast('Number must start with + and country code','error'); return; }
-  const exp = document.getElementById('pa-expires').value || null;
+  if (!num.startsWith('+')) { toast('Must start with + and country code','error'); return; }
+  const exp = document.getElementById('pa-expires').value||null;
   try {
     await fetch('/api/phone/event/'+eventId+'/assign-number',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({phoneNumber:num,expiresAt:exp})});
     toast('Number assigned'); await load();
@@ -337,8 +299,8 @@ async function toggleSms() {
   } catch(e) { toast(e.message,'error'); }
 }
 
-async function releaseNumber() {
-  if (!confirm('Release '+formatPhoneDisplay(eventData.phone_number)+' back to Twilio? Billing stops permanently.')) return;
+async function releaseNum() {
+  if (!confirm('Release '+fmtNum(eventData.phone_number)+' back to Twilio? Billing stops permanently.')) return;
   try {
     const d = await fetch('/api/phone/numbers/release',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({eventId})}).then(r=>r.json());
     if (d.error) throw new Error(d.error);
@@ -346,113 +308,160 @@ async function releaseNumber() {
   } catch(e) { toast(e.message,'error'); }
 }
 
-// ── SMS/IVR message fields ────────────────────────────────
+// ── Ticket levels ─────────────────────────────────────────
+function renderLevels() {
+  const wrap = document.getElementById('levels-wrap');
+  if (!phoneLevels.length) { wrap.innerHTML = '<p class="text2 sm">No ticket levels set up for this event yet. Create them in Ticket Levels first.</p>'; return; }
+  wrap.innerHTML = phoneLevels.filter(l=>!l.is_staff).map(l => `
+    <div style="background:var(--bg3);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;border:1px solid var(--border)">
+      <div class="row-between mb12">
+        <div class="row" style="gap:8px;align-items:center">
+          <div style="width:12px;height:12px;border-radius:3px;background:${l.color||'#888'};flex-shrink:0"></div>
+          <span style="font-size:14px;font-weight:700">${esc(l.name)}</span>
+          <span class="text2 xs">${l.phone_sold||0} sold via phone</span>
+        </div>
+        <label class="toggle-pill" title="${l.phone_enabled!==0?'Available by phone':'Blocked from phone ordering'}">
+          <input type="checkbox" id="lvl-enabled-${l.id}" ${l.phone_enabled!==0?'checked':''}>
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+      <div class="form-row" style="gap:10px;margin:0">
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">Max tickets via phone <span class="tip-icon" data-tip="Leave blank for unlimited. Phone and SMS orders combined.">i</span></label>
+          <input id="lvl-max-${l.id}" type="number" min="0" placeholder="Unlimited" value="${l.phone_max||''}" style="font-size:12px">
+        </div>
+        <div class="fg" style="margin:0">
+          <label style="font-size:11px">Alert when phone sales reach <span class="tip-icon" data-tip="You'll get an email when phone ticket sales for this level reach this number.">i</span></label>
+          <input id="lvl-alert-${l.id}" type="number" min="0" placeholder="e.g. 80" value="${l.phone_alert_at||''}" style="font-size:12px">
+        </div>
+      </div>
+      <div class="xs text2 mt8">
+        ${l.max_tickets ? `Online max: ${l.max_tickets}` : 'No online max set'} &nbsp;·&nbsp;
+        ${l.phone_sold||0} sold via phone${l.phone_max ? ` of ${l.phone_max}` : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function saveLevels() {
+  const saveList = phoneLevels.filter(l=>!l.is_staff);
+  try {
+    await Promise.all(saveList.map(l => {
+      const enabled = document.getElementById('lvl-enabled-'+l.id)?.checked ? 1 : 0;
+      const max     = parseInt(document.getElementById('lvl-max-'+l.id)?.value)||null;
+      const alert   = parseInt(document.getElementById('lvl-alert-'+l.id)?.value)||null;
+      return fetch('/api/phone/event/'+eventId+'/level/'+l.id+'/phone',{
+        method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},
+        body:JSON.stringify({phone_enabled:enabled,phone_max:max,phone_alert_at:alert})
+      });
+    }));
+    toast('Level settings saved'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── SMS fields (prefilled with global text) ───────────────
 function renderSmsFields() {
-  const wrap = document.getElementById('sms-fields');
-  wrap.innerHTML = SMS_KEYS.map(([key,label]) => {
-    const globalVal = globalSettings[key] || '';
-    const overrideVal = eventOverrides[key] !== undefined ? eventOverrides[key] : '';
-    const id = 'smsf-' + key.replace(/\./g,'-');
+  document.getElementById('sms-fields').innerHTML = SMS_KEYS.map(([key,label]) => {
+    const globalVal  = globalSettings[key] || '';
+    const override   = eventOverrides[key] !== undefined ? eventOverrides[key] : '';
+    // Show global text in field. User sees and can edit it. Saving empty = use global.
+    const shown = override !== '' ? override : globalVal;
+    const id = 'smsf-'+key.replace(/\./g,'-');
     return `<div class="fg" style="margin:0">
-      <label style="font-size:12px">${esc(label)}</label>
-      <textarea id="${id}" style="min-height:52px;font-size:12px" placeholder="${esc(globalVal)}">${esc(overrideVal)}</textarea>
+      <label style="font-size:12px">${esc(label)}
+        ${override!==''?'<span class="badge badge-warn" style="font-size:9px;margin-left:4px">OVERRIDDEN</span>':''}
+      </label>
+      <textarea id="${id}" style="min-height:52px;font-size:12px"
+        data-global="${esc(globalVal)}"
+        placeholder="${esc(globalVal)}">${esc(shown)}</textarea>
     </div>`;
   }).join('');
 }
 
+// ── IVR fields (prefilled with global text, recording URL alongside) ────
 function renderIvrFields() {
-  const voice = eventOverrides['ivr.tts_voice'] || '';
-  document.getElementById('ph-ivr-voice').value = voice;
+  const voiceOverride = eventOverrides['ivr.tts_voice'] || '';
+  document.getElementById('ph-ivr-voice').value = voiceOverride;
 
-  const wrap = document.getElementById('ivr-fields');
-  wrap.innerHTML = IVR_KEYS.map(([key,label]) => {
-    const globalVal = globalSettings[key] || '';
-    const globalRec = globalSettings[key+'_recording'] || '';
-    const overrideVal = eventOverrides[key] !== undefined ? eventOverrides[key] : '';
-    const overrideRec = eventOverrides[key+'_recording'] !== undefined ? eventOverrides[key+'_recording'] : '';
-    const textId = 'ivrf-' + key.replace(/\./g,'-');
-    const recId  = 'ivrf-' + key.replace(/\./g,'-') + '-rec';
-    return `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+  document.getElementById('ivr-fields').innerHTML = IVR_KEYS.map(([key,label]) => {
+    const globalVal  = globalSettings[key] || '';
+    const globalRec  = globalSettings[key+'_recording'] || '';
+    const textOver   = eventOverrides[key] !== undefined ? eventOverrides[key] : '';
+    const recOver    = eventOverrides[key+'_recording'] !== undefined ? eventOverrides[key+'_recording'] : '';
+    const shownText  = textOver !== '' ? textOver : globalVal;
+    const shownRec   = recOver !== '' ? recOver : globalRec;
+    const textId = 'ivrf-'+key.replace(/\./g,'-');
+    const recId  = textId+'-rec';
+    const isOverridden = textOver !== '' || recOver !== '';
+    return `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid ${isOverridden?'#fbbf24':'var(--border)'}">
       <div class="row" style="justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:var(--navy)">${esc(label)}</span>
-        <button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 8px" onclick="previewTts('${textId}','${key}')">
+        <span style="font-size:12px;font-weight:600;color:var(--navy)">${esc(label)}
+          ${isOverridden?'<span class="badge badge-warn" style="font-size:9px;margin-left:4px">OVERRIDDEN</span>':''}
+        </span>
+        <button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 8px" onclick="previewTts('${textId}','${esc(key)}')">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Preview
         </button>
       </div>
       <div class="form-row" style="gap:8px;margin:0">
         <div class="fg" style="margin:0">
-          <label style="font-size:11px">TTS Text <span style="color:var(--text3);font-weight:400">(blank = global)</span></label>
-          <textarea id="${textId}" style="min-height:42px;font-size:11px" placeholder="${esc(globalVal)}">${esc(overrideVal)}</textarea>
+          <label style="font-size:11px">TTS Text</label>
+          <textarea id="${textId}" style="min-height:42px;font-size:11px"
+            data-global="${esc(globalVal)}"
+            placeholder="${esc(globalVal)}">${esc(shownText)}</textarea>
         </div>
         <div class="fg" style="margin:0">
-          <label style="font-size:11px">Recording URL <span style="color:var(--text3);font-weight:400">(overrides TTS)</span></label>
-          <input id="${recId}" placeholder="${esc(globalRec||'https://... .mp3')}" value="${esc(overrideRec)}" style="font-size:11px">
+          <label style="font-size:11px">Recording URL <span style="font-weight:400;color:var(--text3)">(overrides TTS)</span></label>
+          <input id="${recId}" style="font-size:11px"
+            placeholder="${esc(globalRec||'https://... .mp3')}"
+            value="${esc(shownRec)}">
         </div>
       </div>
     </div>`;
   }).join('');
 }
 
-function previewTts(fieldId, key) {
-  const el = document.getElementById(fieldId);
-  const voiceSel = document.getElementById('ph-ivr-voice');
-  const voice = voiceSel.value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
-  const text = (el?.value?.trim() || globalSettings[key] || '').replace(/{{[^}]+}}/g, 'example');
-  if (!text) { toast('No text to preview','error'); return; }
-  speak(text, voice);
-}
-
-function previewVoice() {
-  const voice = document.getElementById('ph-ivr-voice').value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
-  speak('Hello, welcome to EverythingShul Tickets. This is how I sound.', voice);
-}
-
-function speak(text, voiceKey) {
-  if (!window.speechSynthesis) { toast('Speech not supported in this browser','error'); return; }
-  speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  const langMap = {'Polly.Matthew':'en-US','Polly.Joanna':'en-US','Polly.Brian':'en-GB','Polly.Amy':'en-GB'};
-  const genderMap = {'Polly.Matthew':'male','Polly.Joanna':'female','Polly.Brian':'male','Polly.Amy':'female'};
-  utt.lang = langMap[voiceKey] || 'en-US';
-  const voices = speechSynthesis.getVoices();
-  const lang = langMap[voiceKey] || 'en-US';
-  const gender = genderMap[voiceKey] || 'male';
-  const match = voices.find(v => v.lang.startsWith(lang) && v.name.toLowerCase().includes(gender))
-    || voices.find(v => v.lang.startsWith(lang)) || voices[0];
-  if (match) utt.voice = match;
-  utt.rate = 0.95;
-  speechSynthesis.speak(utt);
-  toast('Playing preview…');
-}
-
-async function saveMessages(type) {
+// ── Save messages ─────────────────────────────────────────
+async function saveMsgs(type) {
   const updates = {};
   if (type === 'sms') {
     for (const [key] of SMS_KEYS) {
       const el = document.getElementById('smsf-'+key.replace(/\./g,'-'));
-      if (el) updates[key] = el.value.trim() || null;
+      if (!el) continue;
+      const globalVal = el.dataset.global || '';
+      const val = el.value.trim();
+      // If same as global, save null (means "use global"). If different, save override.
+      updates[key] = (val && val !== globalVal) ? val : null;
     }
   } else {
-    const voice = document.getElementById('ph-ivr-voice').value;
-    if (voice !== undefined) updates['ivr.tts_voice'] = voice || null;
+    const voiceSel = document.getElementById('ph-ivr-voice');
+    updates['ivr.tts_voice'] = voiceSel.value || null;
     for (const [key] of IVR_KEYS) {
       const el  = document.getElementById('ivrf-'+key.replace(/\./g,'-'));
       const rec = document.getElementById('ivrf-'+key.replace(/\./g,'-')+'-rec');
-      if (el)  updates[key] = el.value.trim() || null;
-      if (rec) updates[key+'_recording'] = rec.value.trim() || null;
+      if (el) {
+        const globalVal = el.dataset.global || '';
+        const val = el.value.trim();
+        updates[key] = (val && val !== globalVal) ? val : null;
+      }
+      if (rec) {
+        const val = rec.value.trim();
+        updates[key+'_recording'] = val || null;
+      }
     }
   }
   try {
-    await fetch('/api/phone/event/'+eventId+'/settings',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({updates})});
+    await fetch('/api/phone/event/'+eventId+'/settings',{
+      method:'PATCH',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},
+      body:JSON.stringify({updates})
+    });
     toast('Saved!');
-    // Refresh overrides
     const d = await fetch('/api/phone/event/'+eventId+'/settings',{headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
+    globalSettings = d.global || d.settings || {};
     eventOverrides = d.overrides || {};
     if (type==='sms') renderSmsFields(); else renderIvrFields();
   } catch(e) { toast(e.message,'error'); }
 }
 
-async function resetMessages() {
+async function resetAll() {
   if (!confirm('Reset all message overrides for this event? Global defaults will be used.')) return;
   try {
     await fetch('/api/phone/event/'+eventId+'/settings',{method:'DELETE',headers:{'Authorization':'Bearer '+Auth.token()}});
@@ -462,12 +471,92 @@ async function resetMessages() {
   } catch(e) { toast(e.message,'error'); }
 }
 
-// Load voices async (Chrome)
-if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
-else speechSynthesis.getVoices();
+// ── Voice preview ─────────────────────────────────────────
+function previewTts(fieldId, key) {
+  const el = document.getElementById(fieldId);
+  const v  = document.getElementById('ph-ivr-voice').value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
+  const text = (el?.value?.trim() || el?.dataset?.global || globalSettings[key] || '').replace(/{{[^}]+}}/g,'example');
+  if (!text) { toast('No text to preview','error'); return; }
+  speak(text, v);
+}
+
+function previewVoice() {
+  const v = document.getElementById('ph-ivr-voice').value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
+  speak('Hello, welcome to EverythingShul Tickets. Press 1 to buy tickets for our upcoming event.', v);
+}
+
+function speak(text, voiceKey) {
+  const synth = window.speechSynthesis;
+  if (!synth) { toast('Speech not supported in this browser', 'error'); return; }
+  synth.cancel();
+
+  const status = document.getElementById('preview-status');
+  if (status) status.textContent = 'Loading…';
+
+  // Polly → browser voice preference lists (tries each in order)
+  const voicePrefs = {
+    'Polly.Matthew':  ['Alex','Daniel','Google US English Male','en-US-Standard-B','Microsoft David','Eddy (English (US))','Samantha'],
+    'Polly.Justin':   ['Alex','Google US English Male','Microsoft David','Samantha'],
+    'Polly.Brian':    ['Daniel (English (United Kingdom))','Google UK English Male','Microsoft George','Arthur (English (UK))'],
+    'Polly.Joanna':   ['Samantha','Google US English Female','Microsoft Zira','Allison (English (US))','Victoria'],
+    'Polly.Kendra':   ['Karen','Google US English Female','Microsoft Zira','Ava (English (US))'],
+    'Polly.Amy':      ['Kate','Google UK English Female','Microsoft Susan','Martha (English (UK))'],
+  };
+  // Language + gender fallback
+  const langMap   = { 'Polly.Matthew':'en-US','Polly.Justin':'en-US','Polly.Joanna':'en-US','Polly.Kendra':'en-US','Polly.Brian':'en-GB','Polly.Amy':'en-GB' };
+  const genderMap = { 'Polly.Matthew':'male','Polly.Justin':'male','Polly.Brian':'male','Polly.Joanna':'female','Polly.Kendra':'female','Polly.Amy':'female' };
+
+  function doSpeak() {
+    const voices  = synth.getVoices();
+    const lang    = langMap[voiceKey]  || 'en-US';
+    const gender  = genderMap[voiceKey] || 'male';
+    const prefs   = voicePrefs[voiceKey] || [];
+
+    // 1. Try named preferences
+    let match = null;
+    for (const pref of prefs) {
+      match = voices.find(v => v.name.toLowerCase().includes(pref.toLowerCase()));
+      if (match) break;
+    }
+    // 2. Exact lang + gender keyword
+    if (!match) match = voices.find(v => v.lang === lang && v.name.toLowerCase().includes(gender));
+    // 3. Lang prefix + gender keyword
+    if (!match) match = voices.find(v => v.lang.startsWith(lang.split('-')[0]) && v.name.toLowerCase().includes(gender));
+    // 4. Any matching lang
+    if (!match) match = voices.find(v => v.lang === lang);
+    if (!match) match = voices.find(v => v.lang.startsWith('en'));
+    if (!match) match = voices[0];
+
+    const utt   = new SpeechSynthesisUtterance(text);
+    utt.lang    = lang;
+    if (match) utt.voice = match;
+    // Male voices sound better slightly lower and slower
+    utt.pitch   = gender === 'male' ? 0.9 : 1.1;
+    utt.rate    = 0.9;
+    utt.onend   = () => { if (status) status.textContent = ''; };
+    utt.onerror = () => { if (status) status.textContent = 'Error'; };
+    synth.speak(utt);
+    if (status) status.textContent = match ? match.name : 'Speaking…';
+    toast('Playing: ' + (match ? match.name : 'default voice'));
+  }
+
+  // Chrome loads voices async — wait for them
+  const voices = synth.getVoices();
+  if (voices.length > 0) {
+    doSpeak();
+  } else {
+    synth.onvoiceschanged = () => { synth.onvoiceschanged = null; doSpeak(); };
+  }
+}
+
+// Pre-warm voices
+if (window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined)
+    window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
 
 load();
-showTab('buy');
 </script>
 </body>
 </html>
