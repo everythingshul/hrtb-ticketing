@@ -148,7 +148,33 @@ renderSidebar();
 
 const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
-if (!eventId) window.location = '/admin-events.html';
+
+// No event selected — show picker instead of redirecting
+if (!eventId) {
+  document.getElementById('page-title').textContent = 'Phone & SMS/IVR';
+  document.getElementById('page-sub').textContent = 'Select an event to manage its phone settings';
+  document.querySelector('.ph').nextElementSibling.style.display = 'none'; // hide status bar
+  document.querySelectorAll('[id^="ph-tab-"], [id^="ptab-"]').forEach(el => el.style.display='none'); // hide tabs
+  const page = document.querySelector('.page');
+  const picker = document.createElement('div');
+  picker.id = 'event-picker';
+  picker.innerHTML = '<div class="text2 sm">Loading events…</div>';
+  page.appendChild(picker);
+  fetch('/api/admin/events', {headers:{'Authorization':'Bearer '+Auth.token()}})
+    .then(r=>r.json()).then(d => {
+      const events = (d.events||[]).filter(e=>!e.deleted_at);
+      picker.innerHTML = `<div class="section-title mb12">Select an event</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+        ${events.map(e=>`
+          <a href="/admin-phone.html?id=${e.id}" style="display:block;padding:14px 16px;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r);text-decoration:none;transition:border-color .15s" onmouseover="this.style.borderColor='var(--navy)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:13px;font-weight:700;color:var(--navy)">${esc(e.name)}</div>
+            <div class="xs text2 mt4">${esc(e.date||'')} ${e.phone_number?'· <span style="color:var(--green);font-family:monospace">'+e.phone_number+'</span>':'· No number assigned'}</div>
+          </a>`).join('')}
+        </div>`;
+    }).catch(e => { picker.innerHTML = `<div class="info-box warn">Error loading events: ${esc(e.message)}</div>`; });
+  // Skip the rest of init
+  throw 0;
+}
 
 let eventData = null, globalSettings = {}, eventOverrides = {}, phoneLevels = [];
 

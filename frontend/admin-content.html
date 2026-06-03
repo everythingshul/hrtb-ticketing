@@ -255,17 +255,17 @@ function renderSubTab(tab) {
       document.getElementById('features-loading').style.display = 'none';
       area.innerHTML += rows.map(([key,label,desc]) => {
         const isOn = features[key] !== false;
-        return \`<div class="row-between" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px">
+        return `<div class="row-between" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px">
           <div>
-            <div style="font-size:13px;font-weight:600">\${esc(label)}</div>
-            <div class="xs text2">\${esc(desc)}</div>
+            <div style="font-size:13px;font-weight:600">${esc(label)}</div>
+            <div class="xs text2">${esc(desc)}</div>
           </div>
           <label class="toggle-pill">
-            <input type="checkbox" data-feature="\${key}" \${isOn?'checked':''} onchange="saveFeature(this)">
+            <input type="checkbox" data-feature="${key}" ${isOn?'checked':''} onchange="saveFeature(this)">
             <div class="toggle-track"></div>
           </label>
-        </div>\`;
-      }).join('') + \`<p class="text2 sm mt12">Per-event and per-account feature overrides can be set in <a href="/admin-events.html" style="color:var(--navy)">All Events</a> and <a href="/admin-accounts.html" style="color:var(--navy)">Accounts</a>.</p>\`;
+        </div>`;
+      }).join('') + `<p class="text2 sm mt12">Per-event and per-account feature overrides can be set in <a href="/admin-events.html" style="color:var(--navy)">All Events</a> and <a href="/admin-accounts.html" style="color:var(--navy)">Accounts</a>.</p>`;
     } catch(e) { document.getElementById('features-loading').textContent = 'Error: ' + e.message; }
   }
 
@@ -392,7 +392,7 @@ async function saveFeature(checkbox) {
   const key = checkbox.dataset.feature;
   const val = checkbox.checked;
   try {
-    await fetch('/api/admin/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':\`Bearer \${Auth.token()}\`},body:JSON.stringify({updates:{[key]:val}})});
+    await fetch('/api/admin/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({updates:{[key]:val}})});
     toast(val ? 'Feature enabled' : 'Feature disabled');
   } catch(e) { toast(e.message,'error'); checkbox.checked = !val; }
 }

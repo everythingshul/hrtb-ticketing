@@ -10,7 +10,22 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EverythingShul — Event Ticketing for Communities</title>
+<title>EverythingShul — Event Ticketing for Synagogues & Communities</title>
+<meta name="description" content="Professional event ticketing for synagogues and community organizations. Sell tickets online, manage attendees, scan at the door, and take orders by phone or SMS.">
+<meta name="keywords" content="synagogue event ticketing, jewish community event tickets, shul ticketing system, event management synagogue, online ticket sales community, IVR phone ticket ordering">
+<meta name="robots" content="index, follow">
+<meta name="author" content="EverythingShul">
+<link rel="canonical" href="https://tickets.everythingshul.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="EverythingShul Ticket System">
+<meta property="og:title" content="EverythingShul — Event Ticketing for Communities">
+<meta property="og:description" content="The complete ticketing platform built for synagogues and community organizations. Online sales, phone/SMS ordering, door scanning, and attendee management.">
+<meta property="og:url" content="https://tickets.everythingshul.com/">
+<meta property="og:image" content="https://tickets.everythingshul.com/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="EverythingShul — Event Ticketing for Communities">
+<meta name="twitter:description" content="The complete ticketing platform built for synagogues and community organizations. Online sales, phone/SMS ordering, door scanning, and attendee management.">
+<meta name="twitter:image" content="https://tickets.everythingshul.com/icons/icon-512.png">
 <meta name="description" content="Sell tickets online, manage attendees, scan at the door, take orders by phone and SMS. Built for synagogues and community organizations.">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -60,7 +75,7 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 .section-eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
 .section-title{font-size:clamp(22px,3vw,38px);font-weight:800;color:var(--navy);margin-bottom:12px;letter-spacing:-.01em}
 .section-sub{font-size:16px;color:var(--text2);max-width:580px;margin:0 auto 48px}
-.channel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;max-width:1000px;margin:0 auto}
+.channel-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:900px;margin:0 auto}
 .channel-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:28px 22px;text-align:left;transition:all .2s}
 .channel-card:hover{border-color:var(--navy);box-shadow:0 8px 28px rgba(0,0,0,.09);transform:translateY(-2px)}
 .channel-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:20px}
@@ -78,9 +93,16 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 
 /* ── CUSTOMER LOGOS ─────────────────────────────────── */
 .customers{background:var(--bg);padding:56px 32px;text-align:center}
-.customer-logos{display:flex;align-items:center;justify-content:center;gap:36px;flex-wrap:wrap;margin-top:28px;max-width:900px;margin-left:auto;margin-right:auto}
-.customer-logo{height:48px;opacity:.55;filter:grayscale(1);transition:all .2s}
-.customer-logo:hover{opacity:.9;filter:none}
+.logo-strip-wrap{overflow:hidden;position:relative;margin-top:28px;padding:4px 0}
+.logo-strip-wrap::before,.logo-strip-wrap::after{content:'';position:absolute;top:0;bottom:0;width:80px;z-index:2;pointer-events:none}
+.logo-strip-wrap::before{left:0;background:linear-gradient(to right,var(--bg),transparent)}
+.logo-strip-wrap::after{right:0;background:linear-gradient(to left,var(--bg),transparent)}
+.logo-strip{display:flex;align-items:center;gap:48px;width:max-content;animation:logoScroll 28s linear infinite}
+.logo-strip:hover{animation-play-state:paused}
+@keyframes logoScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.logo-item{height:44px;width:auto;max-width:140px;opacity:.5;filter:grayscale(1);transition:all .25s;flex-shrink:0}
+.logo-item:hover{opacity:.9;filter:none;transform:scale(1.05)}
+.logo-placeholder{height:40px;width:110px;background:var(--border);border-radius:8px;flex-shrink:0;opacity:.4}
 .customer-placeholder{width:120px;height:48px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);font-weight:600}
 
 /* ── HOW IT WORKS ───────────────────────────────────── */
@@ -117,6 +139,9 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
   .channels,.features,.how,.customers,.cta-band{padding-left:20px;padding-right:20px}
 }
 </style>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"EverythingShul Ticket System","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free demo, then per-event pricing"},"description":"Professional event ticketing platform for synagogues and community organizations. Online ticket sales, phone/SMS ordering, door scanning, attendee management.","url":"https://tickets.everythingshul.com","author":{"@type":"Organization","name":"EverythingShul","url":"https://everythingshul.com"},"featureList":["Online ticket sales","IVR phone ordering","SMS ticket ordering","QR code door scanner","Attendee management","Staff tickets","Promo codes","Stripe payments"]}
+</script>
 </head>
 <body>
 
@@ -225,17 +250,15 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 </div>
 
 <!-- Customer logos -->
-<div class="customers" id="customers-section">
+<div class="customers" id="customers-section" style="display:none">
   <div class="section-eyebrow">Our customers</div>
   <div class="section-title">Organizations that trust us</div>
-  <div class="customer-logos" id="customer-logos">
-    <!-- Populated from admin site content or placeholder -->
-    <div class="customer-placeholder">Add Logo</div>
-    <div class="customer-placeholder">Add Logo</div>
-    <div class="customer-placeholder">Add Logo</div>
-    <div class="customer-placeholder">Add Logo</div>
+  <div class="logo-strip-wrap">
+    <div class="logo-strip" id="logo-strip">
+      <!-- Duplicated for seamless loop — populated by JS -->
+    </div>
   </div>
-  <p class="text-sm" style="font-size:12px;color:var(--text2);margin-top:20px">Contact us to have your organization featured here.</p>
+  <p style="font-size:12px;color:var(--text2);margin-top:20px">Contact us to have your organization featured here.</p>
 </div>
 
 <!-- How it works -->
@@ -305,6 +328,23 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
   if (c['home.hero_subtitle']) document.getElementById('hero-subtitle').textContent = c['home.hero_subtitle'];
   if (c['home.cta_primary']) document.getElementById('cta-primary').textContent = c['home.cta_primary'] + ' →';
   if (c['home.cta_secondary']) document.getElementById('cta-secondary').textContent = c['home.cta_secondary'];
+
+  // Customer logos — only show section if toggled on AND logos exist
+  const showLogos = c['home.show_customer_logos'] === '1';
+  let logos = [];
+  try { logos = JSON.parse(c['home.customer_logos'] || '[]'); } catch {}
+  if (showLogos && logos.length > 0) {
+    const section = document.getElementById('customers-section');
+    section.style.display = 'block';
+    const strip = document.getElementById('logo-strip');
+    // Build double set for seamless infinite scroll
+    const buildLogos = () => logos.map(l =>
+      l.url
+        ? `<img src="${l.url}" alt="${l.name||''}" class="logo-item" title="${l.name||''}">`
+        : `<div class="logo-placeholder" title="${l.name||''}"></div>`
+    ).join('');
+    strip.innerHTML = buildLogos() + buildLogos(); // duplicate for loop
+  }
 }).catch(() => {});
 </script>
 
