@@ -41,8 +41,10 @@
       <div class="fg"><label>Email</label><input id="email" type="email" placeholder="you@example.com" autofocus></div>
       <div class="fg"><label>Password</label><input id="pass" type="password" placeholder="••••••••"></div>
       <button class="btn btn-gold" style="width:100%;justify-content:center;padding:11px;margin-top:4px" onclick="login()">Sign in →</button>
-      <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
-      <div id="google-btn-login" style="display:flex;justify-content:center"></div>
+      <div id="google-section" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+        <div id="google-btn-login" style="display:flex;justify-content:center;min-height:44px"></div>
+      </div>
     </div>
 
     <!-- Dual-role picker (shown when user has multiple roles) -->
@@ -180,10 +182,12 @@ function initGoogleLogin(clientId) {
       auto_select: false,
       cancel_on_tap_outside: true,
     });
+    const section = document.getElementById('google-section');
     const btn = document.getElementById('google-btn-login');
+    if (section) section.style.display = 'block';
     if (btn) {
       google.accounts.id.renderButton(btn, {
-        theme: 'outline', size: 'large', width: btn.offsetWidth || 280,
+        theme: 'outline', size: 'large', width: 300,
         text: 'signin_with', shape: 'rectangular'
       });
     }
@@ -206,7 +210,7 @@ async function handleGoogleLogin(response) {
     const d = await r.json();
     if (d.error) { errEl.textContent = d.error; errEl.style.display = 'block'; return; }
     Auth.set(d.token, d.user);
-    window.location = '/dashboard.html';
+    window.location = d.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
   } catch(e) {
     errEl.textContent = 'Google sign-in failed. Please try again.';
     errEl.style.display = 'block';
@@ -217,6 +221,25 @@ async function handleGoogleLogin(response) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+// Show install prompt if not already installed/dismissed
+(function(){
+  if(localStorage.getItem('pwa-dismissed')) return;
+  if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  let _p=null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); _p=e;
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='flex';
+  });
+  if(isIos && isSafari && document.getElementById('pwa-mini')) {
+    document.getElementById('pwa-mini').style.display='flex';
+  }
+  window.pwaInstallMini = async function(){
+    if(_p){_p.prompt();const{outcome}=await _p.userChoice;_p=null;if(outcome==='accepted')localStorage.setItem('pwa-dismissed','1');}
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='none';
+  };
+})();
 </script>
 </body>
 </html>

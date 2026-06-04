@@ -317,7 +317,6 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
       <a href="/terms.html">Terms</a>
       <a href="/pricing.html">Pricing</a>
       <a href="#" onclick="openContactForm();return false">Contact</a>
-      <a href="/sitemap.xml" target="_blank">Sitemap</a>
     </div>
   </div>
 </footer>
@@ -416,9 +415,67 @@ async function submitContactForm() {
   }
 }
 </script>
+
+<!-- PWA Install Prompt -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.18);padding:18px 22px;max-width:380px;width:calc(100% - 40px);border:1.5px solid var(--border)">
+  <button onclick="document.getElementById('pwa-banner').style.display='none';localStorage.setItem('pwa-dismissed','1')" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:#888;line-height:1">&#x2715;</button>
+  <div style="display:flex;align-items:center;gap:14px">
+    <img src="/icons/icon-192.png" alt="" style="width:48px;height:48px;border-radius:10px;flex-shrink:0" onerror="this.style.display='none'">
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">Install EverythingShul Tickets</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px" id="pwa-subtitle">Add to your home screen for quick access</div>
+    </div>
+  </div>
+  <div id="pwa-android-btn" style="display:none;margin-top:14px">
+    <button id="pwa-install-btn" onclick="pwaInstall()" class="btn btn-gold" style="width:100%;justify-content:center;padding:10px">Install App</button>
+  </div>
+  <div id="pwa-ios-steps" style="display:none;margin-top:14px;background:#f8fafc;border-radius:10px;padding:12px">
+    <div style="font-size:12px;color:var(--text2);line-height:1.8">
+      <strong style="color:var(--navy)">Install on iPhone/iPad:</strong><br>
+      1. Tap the <strong>Share</strong> button <span style="font-size:14px">⬆</span> at the bottom of Safari<br>
+      2. Scroll down and tap <strong>"Add to Home Screen"</strong><br>
+      3. Tap <strong>Add</strong> in the top right
+    </div>
+  </div>
+</div>
+
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// PWA Install logic
+let _pwaPrompt = null;
+const _pwaDismissed = localStorage.getItem('pwa-dismissed');
+const _pwaInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+if (!_pwaDismissed && !_pwaInstalled) {
+  // Android / Chrome — capture beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    const banner = document.getElementById('pwa-banner');
+    document.getElementById('pwa-android-btn').style.display = 'block';
+    setTimeout(() => { banner.style.display = 'block'; }, 3000);
+  });
+
+  // iOS detection (Safari only, not standalone)
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if (isIos && isSafari) {
+    document.getElementById('pwa-ios-steps').style.display = 'block';
+    document.getElementById('pwa-subtitle').textContent = 'Follow steps below to add to your home screen';
+    setTimeout(() => { document.getElementById('pwa-banner').style.display = 'block'; }, 3000);
+  }
+}
+
+async function pwaInstall() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  const { outcome } = await _pwaPrompt.userChoice;
+  _pwaPrompt = null;
+  document.getElementById('pwa-banner').style.display = 'none';
+  if (outcome === 'accepted') localStorage.setItem('pwa-dismissed', '1');
 }
 </script>
 </body>

@@ -29,7 +29,7 @@
     <!-- Ticket Transactions -->
     <div id="ct-tickets">
       <div class="row mb12" style="gap:8px;flex-wrap:wrap">
-        <input id="tq" placeholder="Search name, email, ticket ID…" style="flex:1;min-width:200px" oninput="debounce(loadTickets,400)()">
+        <input id="tq" placeholder="Search name, email, ticket ID…" style="flex:1;min-width:200px" oninput="debounce(loadTickets,400)()" autocomplete="off" autocorrect="off" spellcheck="false">
         <select id="tchannel" onchange="loadTickets()">
           <option value="">All channels</option>
           <option value="online">Online</option>

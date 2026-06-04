@@ -28,7 +28,7 @@
 
     <!-- Toolbar -->
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">
-      <input id="search" placeholder="Search name, phone, email, ID…" style="width:220px;flex-shrink:0" oninput="debouncedFilter()">
+      <input id="search" placeholder="Search name, phone, email, ID…" style="width:220px;flex-shrink:0" oninput="debouncedFilter()" autocomplete="off" autocorrect="off" spellcheck="false">
       <select id="status-filter" style="width:130px" onchange="filterTable()">
         <option value="">All statuses</option>
         <option value="preprint">Pre-printed</option>

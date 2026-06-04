@@ -503,7 +503,7 @@ function renderPromos() {
       const moneyLabel = p.max_money ? ` · $${(p.money_given/100).toFixed(2)}/$${(p.max_money/100).toFixed(2)} off` : '';
       const restrictions = [];
       if (p.allowed_emails) restrictions.push(' Restricted emails');
-      if (p.max_tickets_per_level) restrictions.push('🎫 Per-level limits');
+      if (p.max_tickets_per_level) restrictions.push(' Per-level limits');
       if (p.max_total_tickets) restrictions.push(`Max ${p.max_total_tickets} tickets`);
       return `<tr style="opacity:${p.active?1:.5}">
         <td><strong style="font-family:monospace;font-size:14px;color:var(--navy)">${esc(p.code)}</strong>

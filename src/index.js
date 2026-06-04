@@ -66,6 +66,7 @@ if (!existsSync(siteContentPath)) {
 
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Required for Twilio webhooks (form-encoded)
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 
 initMail();

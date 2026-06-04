@@ -34,7 +34,7 @@
     <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">
       <!-- Search -->
       <input id="search" placeholder="Search name, phone, email, ID…"
-        style="width:220px;flex-shrink:0" oninput="debouncedFilter()">
+        style="width:220px;flex-shrink:0" oninput="debouncedFilter()" autocomplete="off" autocorrect="off" spellcheck="false">
       <!-- Filters -->
       <select id="status-filter" style="width:130px" onchange="filterTable()">
         <option value="">All statuses</option>
@@ -790,7 +790,7 @@ async function handleUpload(ev) {
           <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
             <button id="act-update-${i}" class="btn btn-sm ${c.action==='update'?'btn-gold':''}"
               onclick="setConflictAction(${i},'update')" title="Keep their existing ticket ID but update table/seat with the new values from your file">
-              ✏️ Update existing
+               Update existing
             </button>
             <button id="act-keep-${i}" class="btn btn-sm ${c.action==='keep'?'btn-success':''}"
               onclick="setConflictAction(${i},'keep')" title="Do nothing — skip this person and leave their record exactly as it is">
@@ -798,7 +798,7 @@ async function handleUpload(ev) {
             </button>
             <button id="act-duplicate-${i}" class="btn btn-sm ${c.action==='duplicate'?'':''}" style="${c.action==='duplicate'?'background:#7c5cbe;color:#fff':''}"
               onclick="setConflictAction(${i},'duplicate')" title="Add them again as a second attendee with a brand new ticket ID — they will appear twice in your list">
-              ＋ Add as duplicate
+              + Add as duplicate
             </button>
           </div>
         </div>`).join('');

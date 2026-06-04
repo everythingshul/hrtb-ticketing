@@ -151,6 +151,8 @@ r.post('/google', async (req, res) => {
     let account = db.prepare('SELECT * FROM accounts WHERE google_id=?').get(googleId)
       || db.prepare('SELECT * FROM accounts WHERE email=?').get(emailLower);
 
+    const isNew = !account; // capture before we create
+
     if (account) {
       if (!account.is_active) return res.status(403).json({ error: 'Account is disabled' });
       // Link Google ID if not already linked
@@ -176,7 +178,13 @@ r.post('/google', async (req, res) => {
       { id: account.id, email: account.email, role: account.role, v: account.token_version || 0 },
       JWT_SECRET, { expiresIn: '90d' }
     );
-    res.json({ token, user: { id: account.id, name: account.name, email: account.email, role: account.role, demo_mode: account.demo_mode, avatar_url: account.avatar_url } });
+    res.json({
+      token,
+      new_account: isNew,
+      user: { id: account.id, name: account.name, email: account.email, role: account.role,
+              demo_mode: account.demo_mode, avatar_url: account.avatar_url,
+              company: account.company || null }
+    });
   } catch(e) {
     console.error('[google-auth]', e.message);
     res.status(401).json({ error: 'Google sign-in failed: ' + e.message });

@@ -34,10 +34,10 @@
     <div class="card mb16">
       <div class="section-title mb8">Database Backup</div>
       <p class="text2 sm mb12">Download a full backup of the database. Store it somewhere safe.</p>
-      <button class="btn btn-sm btn-primary" onclick="downloadBackup()">⬇ Download Backup</button>
+      <button class="btn btn-sm btn-primary" onclick="downloadBackup()">↓ Download Backup</button>
       <input type="file" id="restore-file" accept=".db,.sqlite" style="display:none" onchange="uploadRestore(event)">
       <button class="btn btn-sm" style="margin-left:8px" onclick="document.getElementById('restore-file').click()">↑ Restore from Backup</button>
-      <p class="xs text2 mt8">⚠ Restore will replace ALL current data.</p>
+      <p class="xs text2 mt8">! Restore will replace ALL current data.</p>
     </div>
 
     <!-- Trash -->
@@ -86,7 +86,7 @@ function downloadBackup() { window.location = '/api/admin/backup?token=' + Auth.
 async function uploadRestore(e) {
   const file = e.target.files[0]; e.target.value = '';
   if (!file) return;
-  if (!confirm('⚠️ This will REPLACE all current data with the backup. Continue?')) return;
+  if (!confirm('! This will REPLACE all current data with the backup. Continue?')) return;
   const fd = new FormData(); fd.append('backup', file);
   try {
     const h = {'Authorization':`Bearer ${Auth.token()}`};

@@ -77,8 +77,10 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
       </div>
 
       <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;margin-top:4px" id="btn-submit" onclick="signup()">Create Free Account →</button>
-      <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or sign up with</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
-      <div id="google-btn-signup" style="display:flex;justify-content:center"></div>
+      <div id="google-section" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or sign up with</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+        <div id="google-btn-signup" style="display:flex;justify-content:center;min-height:44px"></div>
+      </div>
     </div>
 
     <div class="auth-foot">Already have an account? <a href="/index.html">Sign in</a></div>
@@ -147,8 +149,10 @@ function initGoogleSignup(clientId) {
   }
   try {
     google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleSignup, auto_select: false });
+    const section = document.getElementById('google-section');
     const btn = document.getElementById('google-btn-signup');
-    if (btn) google.accounts.id.renderButton(btn, { theme:'outline', size:'large', width: btn.offsetWidth||280, text:'signup_with', shape:'rectangular' });
+    if (section) section.style.display = 'block';
+    if (btn) google.accounts.id.renderButton(btn, { theme:'outline', size:'large', width: 300, text:'signup_with', shape:'rectangular' });
   } catch(e) { console.warn('[google-signup]', e); }
 }
 
@@ -163,15 +167,15 @@ async function handleGoogleSignup(response) {
     });
     const d = await r.json();
     if (d.error) { errEl.textContent = d.error; errEl.style.display='block'; return; }
-    // If new account (no company set), ask for org info before continuing
-    if (!d.user.company && !d.user.name?.includes(' ')) {
-      // Store token temporarily and show org info form
+    // New account with no org info yet → ask for it
+    if (d.new_account && !d.user.company) {
       window._pendingGoogleToken = d.token;
       window._pendingGoogleUser = d.user;
       showGoogleOrgForm(d.user);
     } else {
+      // Existing account or already has org info → just log in
       Auth.set(d.token, d.user);
-      window.location = '/dashboard.html';
+      window.location = d.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
     }
   } catch(e) { errEl.textContent = 'Google sign-up failed. Please try again.'; errEl.style.display='block'; }
 }
@@ -214,6 +218,25 @@ async function finishGoogleSignup() {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+// Show install prompt if not already installed/dismissed
+(function(){
+  if(localStorage.getItem('pwa-dismissed')) return;
+  if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  let _p=null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); _p=e;
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='flex';
+  });
+  if(isIos && isSafari && document.getElementById('pwa-mini')) {
+    document.getElementById('pwa-mini').style.display='flex';
+  }
+  window.pwaInstallMini = async function(){
+    if(_p){_p.prompt();const{outcome}=await _p.userChoice;_p=null;if(outcome==='accepted')localStorage.setItem('pwa-dismissed','1');}
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='none';
+  };
+})();
 </script>
 </body>
 </html>

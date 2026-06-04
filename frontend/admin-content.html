@@ -99,6 +99,26 @@ async function renderSubTab(tab) {
       ${field('home.feature2_title','Feature 2 Title')} ${field('home.feature2_body','Feature 2 Body','')}
       ${field('home.feature3_title','Feature 3 Title')} ${field('home.feature3_body','Feature 3 Body','')}
       ${field('home.feature4_title','Feature 4 Title')} ${field('home.feature4_body','Feature 4 Body','')}
+
+      ${sectionTitle('Customer Logos Strip')}
+      <div class="row-between mb12" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:600">Show logos on homepage</div>
+          <div class="xs text2">When off, logos are saved but hidden. Turn on to show the scrolling strip.</div>
+        </div>
+        <label class="toggle-pill">
+          <input type="checkbox" id="sc-show-logos" ${siteContent['home.show_customer_logos']==='1'?'checked':''} onchange="saveLogoToggle(this.checked)">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+      <p class="xs text2 mb8">Add each logo as a URL (hotlink from your site or image host) and a name. One per line, format: <code>Name|https://url-to-logo.png</code></p>
+      <div class="fg mb8">
+        <label>Logo URLs (one per line: Name|URL)</label>
+        <textarea id="sc-logos-raw" style="min-height:100px;font-size:12px;font-family:monospace" placeholder="Beth Israel|https://example.com/logo.png\nCongregation XYZ|https://example.com/xyz.png">${buildLogosText(siteContent['home.customer_logos'])}</textarea>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="saveLogos()">Save Logos</button>
+      <a href="/" target="_blank" class="btn btn-sm" style="margin-left:8px">Preview Homepage ↗</a>
+
       ${sectionTitle('Pricing Page')}
       ${field('pricing.title','Page Title')} ${field('pricing.subtitle','Subtitle','')}
       <div class="form-row" style="gap:12px">
@@ -118,7 +138,7 @@ async function renderSubTab(tab) {
       <div class="fg"><label style="font-size:12px">Content (HTML supported)</label>
         <textarea id="sc-terms-content" style="min-height:250px;font-family:monospace;font-size:12px">${esc(siteContent['terms.content']||'')}</textarea></div>
       <div class="row mt12" style="gap:8px;flex-wrap:wrap">
-        <a href="/landing.html" target="_blank" class="btn btn-sm">Preview Home ↗</a>
+        <a href="/index.html" target="_blank" class="btn btn-sm">Preview Home ↗</a>
         <a href="/pricing.html" target="_blank" class="btn btn-sm">Preview Pricing ↗</a>
         <a href="/faq.html" target="_blank" class="btn btn-sm">Preview FAQ ↗</a>
         <a href="/terms.html" target="_blank" class="btn btn-sm">Preview Terms ↗</a>
@@ -230,7 +250,7 @@ async function renderSubTab(tab) {
         ${selField('currency','Currency',[['usd','USD ($)'],['ils','ILS (₪)'],['eur','EUR (€)'],['gbp','GBP (£)']])}
       </div>
       ${sectionTitle('SMS/IVR')}
-      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a> → 📞.</p>
+      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a> → .</p>
       <div class="form-row">
         ${selField('sms.enabled','SMS Ordering',[['0','Disabled'],['1','Enabled']])}
         ${selField('ivr.enabled','IVR Phone Ordering',[['0','Disabled'],['1','Enabled']])}
@@ -435,6 +455,35 @@ async function deletePlan(id) {
   catch(e) { toast(e.message,'error'); }
 }
 
+function buildLogosText(stored) {
+  if (!stored) return '';
+  try {
+    const arr = JSON.parse(stored);
+    return arr.map(l => `${l.name||''}|${l.url||''}`).join('\n');
+  } catch { return stored; }
+}
+
+async function saveLogoToggle(on) {
+  try {
+    await api.admin.updateSiteContent({ 'home.show_customer_logos': on ? '1' : '0' });
+    siteContent['home.show_customer_logos'] = on ? '1' : '0';
+    toast(on ? 'Logos visible on homepage' : 'Logos hidden (saved but not shown)');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveLogos() {
+  const raw = document.getElementById('sc-logos-raw')?.value?.trim() || '';
+  const logos = raw.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const [name, ...rest] = line.split('|');
+    return { name: name.trim(), url: rest.join('|').trim() };
+  }).filter(l => l.url);
+  try {
+    await api.admin.updateSiteContent({ 'home.customer_logos': JSON.stringify(logos) });
+    siteContent['home.customer_logos'] = JSON.stringify(logos);
+    toast(`${logos.length} logo${logos.length!==1?'s':''} saved`);
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 async function saveFeature(checkbox) {
   const key = checkbox.dataset.feature;
   const val = checkbox.checked;
@@ -453,35 +502,63 @@ async function checkPhoneExpiry() {
 
 function speakText(text, voiceKey) {
   const synth = window.speechSynthesis;
-  if (!synth) { toast('Speech not supported in this browser','error'); return; }
+  if (!synth) { toast('Speech not supported in this browser', 'error'); return; }
   synth.cancel();
-  const voicePrefs = {
-    'Polly.Matthew':['Alex','Daniel','Google US English Male','Microsoft David','Eddy (English (US))'],
-    'Polly.Justin': ['Alex','Google US English Male','Microsoft David'],
-    'Polly.Brian':  ['Daniel (English (United Kingdom))','Google UK English Male','Microsoft George','Arthur (English (UK))'],
-    'Polly.Joanna': ['Samantha','Google US English Female','Microsoft Zira','Allison (English (US))'],
-    'Polly.Kendra': ['Karen','Google US English Female','Microsoft Zira','Ava (English (US))'],
-    'Polly.Amy':    ['Kate','Google UK English Female','Microsoft Susan'],
+
+  const voiceCfg = {
+    'Polly.Matthew': { lang:'en-US', gender:'male',   pref:['Alex','Fred','Daniel','Google US English','Microsoft David','Eddy'] },
+    'Polly.Justin':  { lang:'en-US', gender:'male',   pref:['Alex','Fred','Google US English','Microsoft David'] },
+    'Polly.Brian':   { lang:'en-GB', gender:'male',   pref:['Daniel','Google UK English Male','Microsoft George','Arthur'] },
+    'Polly.Joanna':  { lang:'en-US', gender:'female', pref:['Samantha','Victoria','Google US English Female','Microsoft Zira','Allison'] },
+    'Polly.Kendra':  { lang:'en-US', gender:'female', pref:['Samantha','Karen','Google US English Female','Microsoft Zira'] },
+    'Polly.Amy':     { lang:'en-GB', gender:'female', pref:['Kate','Google UK English Female','Microsoft Susan','Martha'] },
   };
-  const langMap   = {'Polly.Matthew':'en-US','Polly.Justin':'en-US','Polly.Joanna':'en-US','Polly.Kendra':'en-US','Polly.Brian':'en-GB','Polly.Amy':'en-GB'};
-  const genderMap = {'Polly.Matthew':'male','Polly.Justin':'male','Polly.Brian':'male','Polly.Joanna':'female','Polly.Kendra':'female','Polly.Amy':'female'};
+  const cfg = voiceCfg[voiceKey] || voiceCfg['Polly.Matthew'];
+
+  function pickVoice(voices) {
+    // STRICT: only English voices — never pick Portuguese, Spanish, etc.
+    const eng = voices.filter(v => /^en[-_]/.test(v.lang));
+    const pool = eng.length ? eng : voices;
+    // 1. Named preference match (case-insensitive, partial)
+    for (const name of cfg.pref) {
+      const m = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
+      if (m) return m;
+    }
+    // 2. Exact lang match
+    const exact = pool.filter(v => v.lang.toLowerCase() === cfg.lang.toLowerCase());
+    if (exact.length) return exact[0];
+    // 3. Lang prefix (en-US -> en)
+    const prefix = pool.filter(v => v.lang.toLowerCase().startsWith(cfg.lang.split('-')[0]));
+    if (prefix.length) return prefix[0];
+    // 4. Any English
+    return pool[0] || voices[0];
+  }
+
   function doSpeak() {
     const voices = synth.getVoices();
-    const lang   = langMap[voiceKey]  || 'en-US';
-    const gender = genderMap[voiceKey] || 'male';
-    const prefs  = voicePrefs[voiceKey] || [];
-    let match = null;
-    for (const p of prefs) { match = voices.find(v=>v.name.toLowerCase().includes(p.toLowerCase())); if (match) break; }
-    if (!match) match = voices.find(v=>v.lang===lang && v.name.toLowerCase().includes(gender));
-    if (!match) match = voices.find(v=>v.lang.startsWith(lang.split('-')[0]) && v.name.toLowerCase().includes(gender));
-    if (!match) match = voices.find(v=>v.lang===lang) || voices.find(v=>v.lang.startsWith('en')) || voices[0];
-    const utt = new SpeechSynthesisUtterance(text.replace(/{{[^}]+}}/g,'example'));
-    utt.lang = lang; if (match) utt.voice = match;
-    utt.pitch = gender==='male'?0.9:1.1; utt.rate = 0.9;
+    const v = pickVoice(voices);
+    const utt = new SpeechSynthesisUtterance(text.replace(/\{\{[^}]+\}\}/g, 'example'));
+    utt.lang = cfg.lang;
+    if (v) utt.voice = v;
+    utt.pitch = cfg.gender === 'male' ? 0.9 : 1.1;
+    utt.rate  = 0.9;
+    utt.onerror = (e) => { if (e.error !== 'interrupted') toast('Speech error: ' + e.error, 'error'); };
     synth.speak(utt);
-    toast('Playing: '+(match?match.name:'default voice'));
+    const statusEl = document.getElementById('preview-status');
+    if (statusEl) statusEl.textContent = v ? v.name : 'default';
+    else toast('Playing: ' + (v ? v.name : 'default voice'));
   }
-  synth.getVoices().length > 0 ? doSpeak() : (synth.onvoiceschanged = ()=>{synth.onvoiceschanged=null; doSpeak();});
+
+  // Delay slightly after cancel so the browser clears properly,
+  // then wait for voices to load if needed
+  setTimeout(() => {
+    const voices = synth.getVoices();
+    if (voices.length > 0) {
+      doSpeak();
+    } else {
+      synth.onvoiceschanged = function() { synth.onvoiceschanged = null; doSpeak(); };
+    }
+  }, 50);
 }
 
 function previewGlobalVoice() {

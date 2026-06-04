@@ -140,6 +140,25 @@ RealtimeSync.register(load, 30000);
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+// Show install prompt if not already installed/dismissed
+(function(){
+  if(localStorage.getItem('pwa-dismissed')) return;
+  if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  let _p=null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); _p=e;
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='flex';
+  });
+  if(isIos && isSafari && document.getElementById('pwa-mini')) {
+    document.getElementById('pwa-mini').style.display='flex';
+  }
+  window.pwaInstallMini = async function(){
+    if(_p){_p.prompt();const{outcome}=await _p.userChoice;_p=null;if(outcome==='accepted')localStorage.setItem('pwa-dismissed','1');}
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='none';
+  };
+})();
 </script>
 </body>
 </html>
