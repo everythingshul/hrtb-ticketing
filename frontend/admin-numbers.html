@@ -36,12 +36,13 @@ async function load() {
     if (!d.numbers?.length) { wrap.innerHTML = '<div class="empty"><div class="ico"></div><h3>No numbers yet</h3><p class="text2">Purchase numbers from the Phone menu of any event.</p></div>'; return; }
 
     wrap.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Number</th><th>Webhooks</th><th>Assigned Event</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Number</th><th>Webhooks</th><th>Account</th><th>Assigned Event</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>${d.numbers.map(n => `<tr>
         <td style="font-family:monospace;font-weight:700;font-size:14px;letter-spacing:.06em">${esc(fmtNum(n.phoneNumber))}</td>
         <td>${n.configured
-          ? '<span class="badge badge-checked" style="font-size:10px">Configured</span>'
+          ? '<span class="badge badge-checked" style="font-size:10px">OK</span>'
           : '<span class="badge badge-warn" style="font-size:10px">Not configured</span>'}</td>
+        <td class="text2 sm">${esc(n.assignedEvent?.account_name||'—')}</td>
         <td>${n.assignedEvent
           ? `<a href="/admin-phone.html?id=${n.assignedEvent.id}" style="color:var(--navy);font-weight:600;text-decoration:none">${esc(n.assignedEvent.name)}</a>`
           : '<span class="text3">Unassigned</span>'}</td>
@@ -49,12 +50,13 @@ async function load() {
           ? (n.assignedEvent.sms_ivr_enabled ? '<span class="badge badge-checked" style="font-size:10px">Active</span>' : '<span class="badge badge-deactivated" style="font-size:10px">Disabled</span>')
           : '—'}</td>
         <td><div class="row" style="gap:6px">
-          ${n.assignedEvent ? `<a href="/admin-phone.html?id=${n.assignedEvent.id}" class="btn btn-sm">Manage Event →</a>` : ''}
+          ${n.assignedEvent ? `<a href="/admin-phone.html?id=${n.assignedEvent.id}" class="btn btn-sm">Manage →</a>` : ''}
+          ${n.assignedEvent ? `<button class="btn btn-sm" onclick="moveNumber('${esc(n.assignedEvent.id)}','${esc(n.phoneNumber)}')">Move</button>` : ''}
           <button class="btn btn-sm btn-danger" onclick="releaseNumber('${esc(n.sid||'')}','${esc(n.phoneNumber)}',${n.assignedEvent?`'${n.assignedEvent.id}'`:'null'})">Release</button>
         </div></td>
       </tr>`).join('')}
       </tbody></table></div>
-    <p class="text2 xs mt12">To purchase numbers or configure settings, open an event and click the Phone &amp; SMS/IVR section.</p>`;
+    <p class="text2 xs mt12">To purchase numbers or configure settings, open an event and use Phone &amp; SMS/IVR.</p>`;
   } catch(e) { wrap.innerHTML = `<div class="info-box warn">Error: ${esc(e.message)}</div>`; }
 }
 
@@ -64,6 +66,25 @@ function fmtNum(n) {
   if (n.startsWith('+1') && d.length===11) return `+1 (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
   if (n.startsWith('+972') && d.length>=11) return `+972 ${d.slice(3,5)}-${d.slice(5,8)}-${d.slice(8)}`;
   return n;
+}
+
+async function moveNumber(fromEventId, phoneNumber) {
+  // Get all events for picker
+  const d = await fetch('/api/admin/events',{headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
+  const others = (d.events||[]).filter(e=>e.id!==fromEventId&&!e.deleted_at&&!e.closed_at);
+  if (!others.length) { toast('No other open events to move to','error'); return; }
+  const opts = others.map((e,i)=>`${i+1}. ${e.name} (${e.account_name||''})`).join('\n');
+  const ans = prompt(`Move ${fmtNum(phoneNumber)} to which event?\n\n${opts}\n\nEnter number:`);
+  if (!ans) return;
+  const idx = parseInt(ans)-1;
+  if (isNaN(idx)||idx<0||idx>=others.length) { toast('Invalid selection','error'); return; }
+  const toEvent = others[idx];
+  if (!confirm(`Move to: ${toEvent.name}?`)) return;
+  try {
+    const r = await fetch('/api/phone/numbers/move',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({fromEventId,toEventId:toEvent.id})}).then(r=>r.json());
+    if (r.error) throw new Error(r.error);
+    toast(`Moved to ${toEvent.name}`); load();
+  } catch(e) { toast(e.message,'error'); }
 }
 
 async function releaseNumber(sid, num, eventId) {

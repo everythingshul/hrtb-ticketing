@@ -149,6 +149,33 @@
   </div>
 </div>
 
+<!-- Edit Event Modal -->
+<div id="modal-edit-event" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-edit-event')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Edit Event</h2><button class="modal-x" onclick="hideModal('modal-edit-event')">&#x2715;</button></div>
+    <div class="fg"><label>Event Name *</label><input id="ee-name" placeholder="Event name"></div>
+    <div class="fg"><label>Date &amp; Time</label><input id="ee-date" type="datetime-local"></div>
+    <div class="fg"><label>Venue</label><input id="ee-venue" placeholder="Venue name or address"></div>
+    <div class="fg"><label>Description</label><textarea id="ee-desc" style="min-height:80px"></textarea></div>
+    <div class="fg"><label>Timezone</label>
+      <select id="ee-tz">
+        <option value="America/New_York">Eastern (ET)</option>
+        <option value="America/Chicago">Central (CT)</option>
+        <option value="America/Denver">Mountain (MT)</option>
+        <option value="America/Los_Angeles">Pacific (PT)</option>
+        <option value="America/Toronto">Toronto</option>
+        <option value="Europe/London">London</option>
+        <option value="Asia/Jerusalem">Jerusalem</option>
+      </select>
+    </div>
+    <div id="ee-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-edit-event')">Cancel</button>
+      <button class="btn btn-gold" id="ee-save-btn" onclick="saveEventEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script src="/js/app.js"></script>
 <script>
 if (!Auth.require()) throw 0;
@@ -190,6 +217,7 @@ function renderEvents() {
       <td>${e.closed_at?'<span class="badge badge-deactivated" style="font-size:10px">Closed</span>':e.deleted_at?'<span class="badge badge-warn" style="font-size:10px">Deleted</span>':'<span class="badge badge-checked" style="font-size:10px">Open</span>'}</td>
       <td><div class="row" style="gap:4px">
         <button class="btn btn-sm" onclick="window.open('/event-detail.html?id=${e.id}','_blank')">Open</button>
+        <button class="btn btn-sm" onclick="editEvent('${e.id}')">Edit</button>
         ${e.closed_at
           ? `<button class="btn btn-sm btn-success" onclick="reopenEvent('${e.id}')">Reopen</button>`
           : `<button class="btn btn-sm btn-danger" onclick="closeEvent('${e.id}')">Close</button>`}
@@ -335,26 +363,38 @@ function previewVoice() {
   speakPreview('Hello, welcome to EverythingShul Tickets. This is how I sound.', voice);
 }
 
-function speakPreview(text, voice) {
-  if (!window.speechSynthesis) { toast('Speech preview not supported in this browser', 'error'); return; }
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  // Map Polly voices to browser voices
-  const langMap = { 'Polly.Joanna':'en-US', 'Polly.Matthew':'en-US', 'Polly.Amy':'en-GB', 'Polly.Brian':'en-GB' };
-  const genderMap = { 'Polly.Joanna':'female', 'Polly.Matthew':'male', 'Polly.Amy':'female', 'Polly.Brian':'male' };
-  utt.lang = langMap[voice] || 'en-US';
-  // Try to find a matching browser voice
-  const voices = window.speechSynthesis.getVoices();
-  const lang = langMap[voice] || 'en-US';
-  const gender = genderMap[voice] || 'female';
-  const match = voices.find(v => v.lang.startsWith(lang.split('-')[0]) && v.name.toLowerCase().includes(gender))
-    || voices.find(v => v.lang.startsWith(lang.split('-')[0]))
-    || voices[0];
-  if (match) utt.voice = match;
-  utt.rate = 0.95;
-  utt.pitch = voice.includes('Joanna') || voice.includes('Amy') ? 1.1 : 0.95;
-  window.speechSynthesis.speak(utt);
-  toast('Playing preview...', 'ok');
+function speakPreview(text, voiceKey) {
+  const synth = window.speechSynthesis;
+  if (!synth) { toast('Speech not supported in this browser','error'); return; }
+  synth.cancel();
+  const voicePrefs = {
+    'Polly.Matthew':['Alex','Daniel','Google US English Male','Microsoft David'],
+    'Polly.Justin': ['Alex','Google US English Male','Microsoft David'],
+    'Polly.Brian':  ['Daniel (English (United Kingdom))','Google UK English Male','Microsoft George'],
+    'Polly.Joanna': ['Samantha','Google US English Female','Microsoft Zira'],
+    'Polly.Kendra': ['Karen','Google US English Female','Ava (English (US))'],
+    'Polly.Amy':    ['Kate','Google UK English Female'],
+  };
+  const langMap   = {'Polly.Matthew':'en-US','Polly.Justin':'en-US','Polly.Joanna':'en-US','Polly.Kendra':'en-US','Polly.Brian':'en-GB','Polly.Amy':'en-GB'};
+  const genderMap = {'Polly.Matthew':'male','Polly.Justin':'male','Polly.Brian':'male','Polly.Joanna':'female','Polly.Kendra':'female','Polly.Amy':'female'};
+  function doSpeak() {
+    const voices = synth.getVoices();
+    const lang = langMap[voiceKey]||'en-US';
+    const gender = genderMap[voiceKey]||'male';
+    const prefs = voicePrefs[voiceKey]||[];
+    let match = null;
+    for (const p of prefs) { match = voices.find(v=>v.name.toLowerCase().includes(p.toLowerCase())); if (match) break; }
+    if (!match) match = voices.find(v=>v.lang===lang && v.name.toLowerCase().includes(gender));
+    if (!match) match = voices.find(v=>v.lang.startsWith(lang.split('-')[0]) && v.name.toLowerCase().includes(gender));
+    if (!match) match = voices.find(v=>v.lang===lang) || voices.find(v=>v.lang.startsWith('en')) || voices[0];
+    const utt = new SpeechSynthesisUtterance(text.replace(/{{[^}]+}}/g,'example'));
+    utt.lang = lang; if (match) utt.voice = match;
+    utt.pitch = gender==='male'?0.9:1.1; utt.rate=0.9;
+    synth.speak(utt);
+    toast('Playing: '+(match?match.name:'default voice'));
+  }
+  if (synth.getVoices().length>0) doSpeak();
+  else { synth.onvoiceschanged = ()=>{ synth.onvoiceschanged=null; doSpeak(); }; }
 }
 
 async function saveEventMessages() {
@@ -498,6 +538,47 @@ async function releaseEventNumber() {
 window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined
   ? (window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices())
   : window.speechSynthesis?.getVoices();
+
+// ── Edit Event ───────────────────────────────────────────
+let _editEventId = null;
+function editEvent(id) {
+  const e = events.find(x => x.id === id);
+  if (!e) return;
+  _editEventId = id;
+  document.getElementById('ee-name').value = e.name || '';
+  try { document.getElementById('ee-date').value = (e.date||'').replace(' ','T').slice(0,16); } catch {}
+  document.getElementById('ee-venue').value = e.venue || '';
+  document.getElementById('ee-desc').value = e.description || '';
+  document.getElementById('ee-tz').value = e.timezone || 'America/New_York';
+  document.getElementById('ee-err').style.display = 'none';
+  showModal('modal-edit-event');
+}
+
+async function saveEventEdit() {
+  const btn = document.getElementById('ee-save-btn');
+  const errEl = document.getElementById('ee-err');
+  const name = document.getElementById('ee-name').value.trim();
+  if (!name) { errEl.textContent = 'Event name is required'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const d = await fetch(`/api/events/${_editEventId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Auth.token()}` },
+      body: JSON.stringify({
+        name,
+        date: document.getElementById('ee-date').value.replace('T', ' ') || undefined,
+        venue: document.getElementById('ee-venue').value.trim() || undefined,
+        description: document.getElementById('ee-desc').value.trim() || undefined,
+        timezone: document.getElementById('ee-tz').value
+      })
+    }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    hideModal('modal-edit-event');
+    toast('Event updated');
+    await load();
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Save Changes'; }
+}
 
 load();
 </script>

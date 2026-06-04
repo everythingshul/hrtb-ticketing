@@ -139,27 +139,55 @@ footer a{color:rgba(255,255,255,.6);margin:0 8px}
 </footer>
 
 <script>
-fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
-  document.getElementById('pricing-title').textContent = c['pricing.title']||'Pricing';
-  document.getElementById('pricing-subtitle').textContent = c['pricing.subtitle']||'';
-  const tiers = [
-    { nameKey:'pricing.tier1_name', priceKey:'pricing.tier1_price', periodKey:null, descKey:'pricing.tier1_desc', featKey:'pricing.tier1_features', cta:'Try Demo Free', ctaHref:'/signup.html', featured:false },
-    { nameKey:'pricing.tier2_name', priceKey:'pricing.tier2_price', periodKey:'pricing.tier2_period', descKey:'pricing.tier2_desc', featKey:'pricing.tier2_features', cta:'Get Started', ctaHref:'/signup.html', featured:false, badge:'Most Popular' },
-    { nameKey:'pricing.tier3_name', priceKey:'pricing.tier3_price', periodKey:'pricing.tier3_period', descKey:'pricing.tier3_desc', featKey:'pricing.tier3_features', cta:'Get Started', ctaHref:'/signup.html', featured:true, badge:'Best Value' },
-  ];
-  document.getElementById('tiers-grid').innerHTML = tiers.map(t => {
-    const feats = (c[t.featKey]||'').split('\n').filter(Boolean);
-    return `<div class="tier${t.featured?' featured':''}">
-      ${t.badge ? `<div class="tier-badge">${t.badge}</div>` : ''}
-      <div class="tier-name">${c[t.nameKey]||''}</div>
-      <div class="tier-price">${c[t.priceKey]||''}</div>
-      ${t.periodKey ? `<div class="tier-period">${c[t.periodKey]||''}</div>` : '<div class="tier-period">&nbsp;</div>'}
-      <div class="tier-desc">${c[t.descKey]||''}</div>
-      <ul class="tier-features">${feats.map(f=>`<li>${f}</li>`).join('')}</ul>
-      <a href="${t.ctaHref}" class="btn-cta${t.featured?' gold':''}">${t.cta} →</a>
+// Load pricing from the pricing_plans API (primary source)
+fetch('/api/connect/pricing-plans').then(r=>r.json()).then(({ plans }) => {
+  if (!plans || !plans.length) {
+    // Fall back to site-content if no API plans
+    loadFromSiteContent();
+    return;
+  }
+  document.getElementById('tiers-grid').innerHTML = plans.map((p, i) => {
+    const feats = Array.isArray(p.features) ? p.features : [];
+    const isFeatured = i === Math.floor(plans.length / 2); // middle plan featured
+    return `<div class="tier${isFeatured?' featured':''}">
+      ${isFeatured ? '<div class="tier-badge">Most Popular</div>' : ''}
+      <div class="tier-name">${esc(p.name)}</div>
+      <div class="tier-price">${p.price_cents === 0 ? 'Free' : '$'+(p.price_cents/100).toFixed(0)}</div>
+      <div class="tier-period">${p.description||'&nbsp;'}</div>
+      <div class="tier-desc"></div>
+      <ul class="tier-features">${feats.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
+      <a href="/signup.html" class="btn-cta${isFeatured?' gold':''}">Get Started →</a>
     </div>`;
   }).join('');
-}).catch(() => {});
+}).catch(() => loadFromSiteContent());
+
+function esc(s) { const d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+
+function loadFromSiteContent() {
+  fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
+    document.getElementById('pricing-title').textContent = c['pricing.title']||'Pricing';
+    document.getElementById('pricing-subtitle').textContent = c['pricing.subtitle']||'';
+    const tiers = [
+      { nameKey:'pricing.tier1_name', priceKey:'pricing.tier1_price', periodKey:null, descKey:'pricing.tier1_desc', featKey:'pricing.tier1_features', cta:'Try Demo Free', ctaHref:'/signup.html', featured:false },
+      { nameKey:'pricing.tier2_name', priceKey:'pricing.tier2_price', periodKey:'pricing.tier2_period', descKey:'pricing.tier2_desc', featKey:'pricing.tier2_features', cta:'Get Started', ctaHref:'/signup.html', featured:false, badge:'Most Popular' },
+      { nameKey:'pricing.tier3_name', priceKey:'pricing.tier3_price', periodKey:'pricing.tier3_period', descKey:'pricing.tier3_desc', featKey:'pricing.tier3_features', cta:'Get Started', ctaHref:'/signup.html', featured:true, badge:'Best Value' },
+    ];
+    const grid = document.getElementById('tiers-grid');
+    if (!tiers.some(t => c[t.nameKey])) return; // nothing configured — leave empty
+    grid.innerHTML = tiers.map(t => {
+      const feats = (c[t.featKey]||'').split('\n').filter(Boolean);
+      return `<div class="tier${t.featured?' featured':''}">
+        ${t.badge ? `<div class="tier-badge">${t.badge}</div>` : ''}
+        <div class="tier-name">${c[t.nameKey]||''}</div>
+        <div class="tier-price">${c[t.priceKey]||''}</div>
+        ${t.periodKey ? `<div class="tier-period">${c[t.periodKey]||''}</div>` : '<div class="tier-period">&nbsp;</div>'}
+        <div class="tier-desc">${c[t.descKey]||''}</div>
+        <ul class="tier-features">${feats.map(f=>`<li>${f}</li>`).join('')}</ul>
+        <a href="${t.ctaHref}" class="btn-cta${t.featured?' gold':''}">${t.cta} →</a>
+      </div>`;
+    }).join('');
+  }).catch(() => {});
+}
 document.getElementById('nav-pricing').classList.add('active');
 </script>
 </body>

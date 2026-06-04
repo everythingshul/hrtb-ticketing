@@ -510,18 +510,54 @@ r.post('/numbers/release', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Move a number from one event to another
+r.post('/numbers/move', async (req, res) => {
+  const { fromEventId, toEventId } = req.body;
+  if (!fromEventId || !toEventId) return res.status(400).json({ error: 'fromEventId and toEventId required' });
+  const fromEvent = db.prepare('SELECT * FROM events WHERE id=?').get(fromEventId);
+  if (!fromEvent?.phone_number) return res.status(400).json({ error: 'Source event has no number' });
+  const toEvent = db.prepare('SELECT * FROM events WHERE id=?').get(toEventId);
+  if (!toEvent) return res.status(404).json({ error: 'Target event not found' });
+  const num = fromEvent.phone_number;
+  const sid = fromEvent.twilio_sid;
+  const expires = fromEvent.phone_number_expires;
+  // Reconfigure webhooks for new event
+  try {
+    const client = getTwilioClient();
+    const appUrl = process.env.APP_URL || '';
+    await client.incomingPhoneNumbers(sid).update({
+      smsUrl: `${appUrl}/api/phone/sms/inbound`, smsMethod: 'POST',
+      voiceUrl: `${appUrl}/api/phone/ivr/inbound`, voiceMethod: 'POST',
+    });
+  } catch(e) { console.warn('[move-number webhook]', e.message); }
+  // Clear from old event, assign to new
+  db.prepare('UPDATE events SET phone_number=NULL,phone_number_expires=NULL,sms_ivr_enabled=0,twilio_sid=NULL,phone_number_notified=0 WHERE id=?').run(fromEventId);
+  db.prepare('UPDATE events SET phone_number=?,phone_number_expires=?,sms_ivr_enabled=1,twilio_sid=?,phone_number_notified=0 WHERE id=?').run(num, expires, sid, toEventId);
+  res.json({ ok: true, phoneNumber: num });
+});
+
 // List all Twilio numbers you own
 r.get('/numbers/owned', async (req, res) => {
   try {
     const client = getTwilioClient();
     const nums = await client.incomingPhoneNumbers.list({ limit:100 });
     const appUrl = process.env.APP_URL || '';
-    const events = db.prepare('SELECT id,name,phone_number,sms_ivr_enabled FROM events WHERE phone_number IS NOT NULL').all();
+    const events = db.prepare(`
+      SELECT e.id, e.name, e.phone_number, e.sms_ivr_enabled,
+             COALESCE(a.name,'(deleted)') as account_name
+      FROM events e LEFT JOIN accounts a ON a.id=e.account_id
+      WHERE e.phone_number IS NOT NULL
+    `).all();
     const byNum = Object.fromEntries(events.map(e => [e.phone_number, e]));
     res.json({ numbers: nums.map(n => ({
       sid:n.sid, phoneNumber:n.phoneNumber, friendlyName:n.friendlyName,
       configured: !!(n.smsUrl?.includes(appUrl) && n.voiceUrl?.includes(appUrl)),
-      assignedEvent: byNum[n.phoneNumber] || null,
+      assignedEvent: byNum[n.phoneNumber] ? {
+        id: byNum[n.phoneNumber].id,
+        name: byNum[n.phoneNumber].name,
+        account_name: byNum[n.phoneNumber].account_name,
+        sms_ivr_enabled: byNum[n.phoneNumber].sms_ivr_enabled,
+      } : null,
     })) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

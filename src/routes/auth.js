@@ -119,6 +119,21 @@ r.get('/google-client-id', (req, res) => {
   res.json({ clientId: process.env.GOOGLE_CLIENT_ID || null });
 });
 
+// Update profile (used after Google sign-up to collect missing info)
+r.patch('/update-profile', auth, (req, res) => {
+  const { company, phone, first_name, last_name } = req.body;
+  const updates = [];
+  const vals = [];
+  if (company !== undefined) { updates.push('company=?'); vals.push(company); }
+  if (phone !== undefined) { updates.push('phone=?'); vals.push(phone); }
+  if (first_name !== undefined) { updates.push('first_name=?'); vals.push(first_name); }
+  if (last_name !== undefined) { updates.push('last_name=?'); vals.push(last_name); }
+  if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
+  vals.push(req.user.id);
+  db.prepare(`UPDATE accounts SET ${updates.join(',')} WHERE id=?`).run(...vals);
+  res.json({ ok: true });
+});
+
 // ── Google Sign-In ────────────────────────────────────────
 r.post('/google', async (req, res) => {
   const { credential } = req.body;

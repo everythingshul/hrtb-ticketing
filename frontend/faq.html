@@ -47,10 +47,10 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 .faq-item.open{border-color:var(--navy)}
 .faq-q{padding:18px 20px;font-weight:700;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;color:var(--text)}
 .faq-q:hover{background:#f8fafc}
-.arrow{font-size:14px;color:var(--navy);transition:transform .2s;flex-shrink:0;display:inline-block}
+.plus-icon{font-size:22px;color:var(--navy);transition:transform .2s;flex-shrink:0;line-height:1;font-weight:300}
 .faq-a{font-size:14px;color:var(--text2);line-height:1.8;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s;padding:0 20px}
 .faq-item.open .faq-a{max-height:500px;padding:0 20px 18px}
-.faq-item.open .arrow{transform:rotate(180deg)}
+.faq-item.open .plus-icon{transform:rotate(45deg)}
 
 /* Footer */
 footer{background:var(--navy2);color:rgba(255,255,255,.6);padding:44px 32px 24px}
@@ -148,7 +148,7 @@ function renderFaqs(items) {
     <div class="faq-item" id="faq-${i}">
       <div class="faq-q" onclick="toggle(this)">
         <span>${item.q.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span>
-        <span class="arrow">&#9660;</span>
+        <span class="plus-icon">+</span>
       </div>
       <div class="faq-a">${item.a.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
     </div>`).join('');

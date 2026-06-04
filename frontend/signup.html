@@ -137,14 +137,19 @@ async function signup() {
 </script>
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
+let _gsAttempts = 0;
 function initGoogleSignup(clientId) {
   if (!clientId) return;
-  if (typeof google === 'undefined' || !google.accounts) { setTimeout(() => initGoogleSignup(clientId), 100); return; }
-  google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleSignup, auto_select: false });
-  google.accounts.id.renderButton(
-    document.getElementById('google-btn-signup'),
-    { theme: 'outline', size: 'large', width: 280, text: 'signup_with', shape: 'rectangular' }
-  );
+  _gsAttempts++;
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    if (_gsAttempts < 50) setTimeout(() => initGoogleSignup(clientId), 200);
+    return;
+  }
+  try {
+    google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleSignup, auto_select: false });
+    const btn = document.getElementById('google-btn-signup');
+    if (btn) google.accounts.id.renderButton(btn, { theme:'outline', size:'large', width: btn.offsetWidth||280, text:'signup_with', shape:'rectangular' });
+  } catch(e) { console.warn('[google-signup]', e); }
 }
 
 fetch('/api/auth/google-client-id').then(r=>r.json()).then(d=>{ if(d.clientId) initGoogleSignup(d.clientId); }).catch(()=>{});
@@ -158,9 +163,51 @@ async function handleGoogleSignup(response) {
     });
     const d = await r.json();
     if (d.error) { errEl.textContent = d.error; errEl.style.display='block'; return; }
-    Auth.set(d.token, d.user);
-    window.location = '/dashboard.html';
+    // If new account (no company set), ask for org info before continuing
+    if (!d.user.company && !d.user.name?.includes(' ')) {
+      // Store token temporarily and show org info form
+      window._pendingGoogleToken = d.token;
+      window._pendingGoogleUser = d.user;
+      showGoogleOrgForm(d.user);
+    } else {
+      Auth.set(d.token, d.user);
+      window.location = '/dashboard.html';
+    }
   } catch(e) { errEl.textContent = 'Google sign-up failed. Please try again.'; errEl.style.display='block'; }
+}
+
+function showGoogleOrgForm(user) {
+  // Hide the main form, show org info collection
+  document.querySelector('.card').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      ${user.avatar_url ? `<img src="${user.avatar_url}" style="width:52px;height:52px;border-radius:50%;margin-bottom:10px">` : ''}
+      <div style="font-weight:700">${user.name||user.email}</div>
+      <div class="text2 xs">${user.email}</div>
+    </div>
+    <p class="text2 sm mb16">One more step — tell us about your organization:</p>
+    <div class="fg"><label>Business or Organization Name *</label>
+      <input id="gg-org" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
+    <div class="fg"><label>Phone * <span style="font-size:11px;color:var(--text2)">(include country code)</span></label>
+      <input id="gg-phone" type="tel" placeholder="+1 555 000 0000"></div>
+    <div id="gg-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+    <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px" onclick="finishGoogleSignup()">Complete Setup →</button>`;
+}
+
+async function finishGoogleSignup() {
+  const org = document.getElementById('gg-org')?.value?.trim();
+  const phone = document.getElementById('gg-phone')?.value?.trim();
+  const errEl = document.getElementById('gg-err');
+  if (!org) { errEl.textContent = 'Organization name is required'; errEl.style.display='block'; return; }
+  if (!phone || !phone.startsWith('+')) { errEl.textContent = 'Phone must include country code (e.g. +1)'; errEl.style.display='block'; return; }
+  try {
+    // Update the account with org info
+    await fetch('/api/auth/update-profile', {
+      method:'PATCH', headers:{'Content-Type':'application/json','Authorization':'Bearer '+window._pendingGoogleToken},
+      body: JSON.stringify({ company: org, phone })
+    }).then(r=>r.json());
+    Auth.set(window._pendingGoogleToken, { ...window._pendingGoogleUser, company: org });
+    window.location = '/dashboard.html';
+  } catch(e) { errEl.textContent = 'Error saving info: '+e.message; errEl.style.display='block'; }
 }
 </script>
 <script>

@@ -409,7 +409,17 @@ try { db.exec("ALTER TABLE events ADD COLUMN phone_number_expires TEXT"); } catc
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DEFAULT 0"); } catch {}
 
-// Per-event SMS/IVR message overrides — null values fall back to global platform_settings
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN show_on_pricing INTEGER NOT NULL DEFAULT 1"); } catch {}
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1"); } catch {}
+// Track account-level payments (event creation fees)
+db.exec(`CREATE TABLE IF NOT EXISTS account_transactions (
+  id TEXT PRIMARY KEY, account_id TEXT NOT NULL, event_id TEXT,
+  amount_cents INTEGER NOT NULL, currency TEXT NOT NULL DEFAULT 'usd',
+  stripe_payment_intent_id TEXT, stripe_charge_id TEXT,
+  description TEXT, status TEXT NOT NULL DEFAULT 'paid',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+
 db.exec(`CREATE TABLE IF NOT EXISTS event_sms_settings (
   event_id TEXT PRIMARY KEY,
   settings TEXT NOT NULL DEFAULT '{}',
@@ -442,7 +452,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS sms_sessions (
 );`);
 
 const smsDefaults = {
-  'sms.enabled':'0','ivr.enabled':'0',
+  'sms.enabled':'1','ivr.enabled':'1',   // enabled by default — disable in Platform Settings if needed
   // SAQ-D / PCI compliance info (editable in admin, reference only)
   'pci.merchant_name':'','pci.merchant_dba':'','pci.contact_name':'','pci.contact_title':'',
   'pci.contact_phone':'','pci.contact_email':'','pci.merchant_url':'',
@@ -499,6 +509,9 @@ const smsDefaults = {
 for (const [k,v] of Object.entries(smsDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
+// Ensure SMS and IVR are enabled by default (fix existing deployments that had 0)
+try { db.prepare("UPDATE platform_settings SET value='1' WHERE key='sms.enabled' AND value='0'").run(); } catch {}
+try { db.prepare("UPDATE platform_settings SET value='1' WHERE key='ivr.enabled' AND value='0'").run(); } catch {}
 // Always ensure voice default is male (update existing)
 try { db.prepare("UPDATE platform_settings SET value='Polly.Matthew' WHERE key='ivr.tts_voice' AND value='Polly.Joanna'").run(); } catch {}
 

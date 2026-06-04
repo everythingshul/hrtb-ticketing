@@ -476,7 +476,156 @@ r.post('/accounts/:id/grant-access', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Feature locks ────────────────────────────────────────────
+// ── Transactions / CRM ───────────────────────────────────
+
+// All account-level payments (event creation fees via Stripe)
+r.get('/transactions/accounts', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    // Get all payment intents from account_transactions table if exists
+    const rows = db.prepare(`
+      SELECT at.*, a.name as account_name, a.email as account_email, e.name as event_name
+      FROM account_transactions at
+      LEFT JOIN accounts a ON a.id=at.account_id
+      LEFT JOIN events e ON e.id=at.event_id
+      ORDER BY at.created_at DESC LIMIT 500
+    `).all();
+    res.json({ transactions: rows });
+  } catch(e) {
+    // Table may not exist yet
+    res.json({ transactions: [] });
+  }
+});
+
+// Cancel ticket without refund
+r.post('/transactions/cancel/:attendeeId', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    db.prepare("UPDATE attendees SET status='deactivated', updated_at=datetime('now') WHERE id=?").run(req.params.attendeeId);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Refund by payment intent ID (for phone orders without attendee ID)
+r.post('/transactions/refund-pi', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { payment_intent_id, amount_cents } = req.body;
+  if (!payment_intent_id) return res.status(400).json({ error: 'payment_intent_id required' });
+  try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    const params = {};
+    if (amount_cents) params.amount = amount_cents;
+    const refund = await stripe.refunds.create({ payment_intent: payment_intent_id, ...params });
+    res.json({ ok: true, refund_id: refund.id, amount: refund.amount });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+r.get('/transactions/tickets', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const page = parseInt(req.query.page)||1;
+    const limit = 100;
+    const offset = (page-1)*limit;
+    const q = req.query.q ? `%${req.query.q}%` : null;
+    const eventFilter = req.query.event_id || null;
+    const channelFilter = req.query.channel || null;
+
+    let where = "1=1";
+    const args = [];
+    if (q) { where += " AND (a.first_name LIKE ? OR a.last_name LIKE ? OR a.email LIKE ? OR a.ticket_id LIKE ?)"; args.push(q,q,q,q); }
+    if (eventFilter) { where += " AND a.event_id=?"; args.push(eventFilter); }
+    if (channelFilter === 'phone') { where += " AND a.source='phone'"; }
+    else if (channelFilter === 'online') { where += " AND (a.source='online' OR a.source IS NULL)"; }
+
+    const rows = db.prepare(`
+      SELECT a.id, a.event_id, a.first_name, a.last_name, a.email, a.phone,
+             a.ticket_id, a.status, a.source, a.level_id, a.created_at, a.sent_at, a.checked_in_at,
+             a.checkout_data,
+             e.name as event_name,
+             acc.name as account_name, acc.email as account_email,
+             tl.name as level_name, tl.price as level_price_cents,
+             po.amount_cents as phone_amount_cents, po.channel, po.from_number,
+             po.stripe_payment_intent_id as phone_pi_id
+      FROM attendees a
+      LEFT JOIN events e ON e.id=a.event_id
+      LEFT JOIN accounts acc ON acc.id=e.account_id
+      LEFT JOIN ticket_levels tl ON tl.id=a.level_id
+      LEFT JOIN phone_orders po ON po.event_id=a.event_id AND po.attendee_email=a.email AND po.status='paid'
+      WHERE a.deleted_at IS NULL AND ${where}
+      ORDER BY a.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(...args, limit, offset);
+
+    const total = db.prepare(`
+      SELECT COUNT(*) c FROM attendees a
+      LEFT JOIN events e ON e.id=a.event_id
+      WHERE a.deleted_at IS NULL AND ${where}
+    `).get(...args).c;
+
+    // Parse checkout_data for amount
+    const enriched = rows.map(r => {
+      let amount = r.phone_amount_cents || r.level_price_cents || 0;
+      let pi_id = r.phone_pi_id;
+      if (!pi_id && r.checkout_data) {
+        try {
+          const cd = JSON.parse(r.checkout_data);
+          pi_id = cd.payment_intent_id || cd.paymentIntentId;
+          if (cd.amount) amount = cd.amount;
+        } catch {}
+      }
+      return { ...r, amount_cents: amount, payment_intent_id: pi_id, channel: r.channel || (r.source==='online'?'online':'portal') };
+    });
+
+    res.json({ transactions: enriched, total, page, pages: Math.ceil(total/limit) });
+  } catch(e) { console.error('[transactions/tickets]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+// Refund a ticket
+r.post('/transactions/refund/:attendeeId', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { cancel_ticket, amount_cents } = req.body;
+  try {
+    const att = db.prepare(`
+      SELECT a.*, e.account_id, e.name as event_name, acc.stripe_connect_key,
+             tl.price as level_price
+      FROM attendees a
+      LEFT JOIN events e ON e.id=a.event_id
+      LEFT JOIN accounts acc ON acc.id=e.account_id
+      LEFT JOIN ticket_levels tl ON tl.id=a.level_id
+      WHERE a.id=?
+    `).get(req.params.attendeeId);
+    if (!att) return res.status(404).json({ error: 'Attendee not found' });
+
+    // Find payment intent
+    let piId = null;
+    if (att.checkout_data) {
+      try { const cd = JSON.parse(att.checkout_data); piId = cd.payment_intent_id || cd.paymentIntentId; } catch {}
+    }
+    // Also check phone_orders
+    if (!piId) {
+      const po = db.prepare("SELECT stripe_payment_intent_id FROM phone_orders WHERE event_id=? AND attendee_email=? AND status='paid' LIMIT 1").get(att.event_id, att.email);
+      if (po) piId = po.stripe_payment_intent_id;
+    }
+
+    let refundResult = null;
+    if (piId) {
+      const stripeKey = att.stripe_connect_key || process.env.STRIPE_SECRET_KEY;
+      const stripe = (await import('stripe')).default(stripeKey);
+      const pi = await stripe.paymentIntents.retrieve(piId);
+      const chargeId = pi.latest_charge;
+      if (chargeId) {
+        const refundParams = { charge: chargeId };
+        if (amount_cents) refundParams.amount = parseInt(amount_cents);
+        refundResult = await stripe.refunds.create(refundParams);
+      }
+    }
+
+    if (cancel_ticket) {
+      db.prepare("UPDATE attendees SET status='deactivated', deleted_at=datetime('now') WHERE id=?").run(att.id);
+    }
+
+    res.json({ ok: true, refund: refundResult, cancelled: !!cancel_ticket });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // Get all platform feature flags
 r.get('/features', auth, (req, res) => {

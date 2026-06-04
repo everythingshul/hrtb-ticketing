@@ -351,19 +351,29 @@ async function loadPlans() {
   try {
     const { plans } = await api.connect.pricingPlansAdmin();
     document.getElementById('plans-wrap').innerHTML = plans.length
-      ? `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Status</th><th></th></tr></thead><tbody>
+      ? `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Show on Pricing Page</th><th>Status</th><th></th></tr></thead><tbody>
           ${plans.map(p=>`<tr>
             <td><strong>${esc(p.name)}</strong></td>
-            <td>$${(p.price_cents/100).toFixed(2)}</td>
+            <td class="mono">$${(p.price_cents/100).toFixed(2)}</td>
             <td class="text2 sm">${esc(p.description||'')}</td>
+            <td>
+              <label class="toggle-pill" title="Show this plan on the public pricing page">
+                <input type="checkbox" ${p.show_on_pricing!==0?'checked':''} onchange="togglePlanPublic('${p.id}',this.checked)">
+                <div class="toggle-track"></div>
+              </label>
+            </td>
             <td>${p.is_active?'<span class="badge badge-checked" style="font-size:10px">Active</span>':'<span class="badge badge-deactivated" style="font-size:10px">Off</span>'}</td>
             <td><div class="row" style="gap:4px">
+              <button class="btn btn-sm" onclick="editPlan('${p.id}')">Edit</button>
+              <button class="btn btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
               <button class="btn btn-sm" onclick="togglePlan('${p.id}',${p.is_active?0:1})">${p.is_active?'Disable':'Enable'}</button>
               <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}')">Delete</button>
             </div></td>
           </tr>`).join('')}
         </tbody></table></div>`
       : '<div class="text2 sm mb12">No plans yet. Add one below.</div>';
+    // Store for edit use
+    window._plans = plans;
   } catch(e) { document.getElementById('plans-wrap').innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
 }
 
@@ -375,6 +385,43 @@ async function createPlan() {
   if (!name) { toast('Plan name required','error'); return; }
   try { await api.connect.createPlan({ name, price_cents:Math.round(price*100), description:desc, features:feats }); toast('Plan created'); loadPlans(); ['np-name','np-price','np-desc','np-features'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
   catch(e) { toast(e.message,'error'); }
+}
+
+function editPlan(id) {
+  const p = (window._plans||[]).find(x=>x.id===id);
+  if (!p) return;
+  const name = prompt('Plan name:', p.name); if (name===null) return;
+  const price = prompt('Price (USD):', (p.price_cents/100).toFixed(2)); if (price===null) return;
+  const desc = prompt('Description (shown under price):', p.description||''); if (desc===null) return;
+  const feats = prompt('Features (one per line):', Array.isArray(p.features)?p.features.join('\n'):''); if (feats===null) return;
+  const featArr = feats.split('\n').map(s=>s.trim()).filter(Boolean);
+  api.connect.updatePlan(id, { name, price_cents:Math.round(parseFloat(price)*100), description:desc, features:featArr })
+    .then(()=>{ toast('Plan updated'); loadPlans(); }).catch(e=>toast(e.message,'error'));
+}
+
+async function copyPlan(id) {
+  const p = (window._plans||[]).find(x=>x.id===id);
+  if (!p) return;
+  try {
+    await api.connect.createPlan({
+      name: p.name + ' (copy)',
+      price_cents: p.price_cents,
+      description: p.description,
+      features: Array.isArray(p.features)?p.features:[]
+    });
+    toast('Plan copied'); loadPlans();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function togglePlanPublic(id, show) {
+  try {
+    await fetch(`/api/connect/pricing-plans/${id}`, {
+      method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ show_on_pricing: show ? 1 : 0 })
+    }).then(r=>r.json());
+    toast(show ? 'Now visible on pricing page' : 'Hidden from pricing page');
+    loadPlans();
+  } catch(e) { toast(e.message,'error'); }
 }
 
 async function togglePlan(id, active) {

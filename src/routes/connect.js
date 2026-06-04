@@ -67,7 +67,7 @@ r.get('/connect/status', auth, (req, res) => {
 
 // ── Pricing plans (public — shown at paywall) ─────────────
 r.get('/pricing-plans', (req, res) => {
-  const plans = db.prepare('SELECT * FROM pricing_plans WHERE is_active=1 ORDER BY sort_order,price_cents').all();
+  const plans = db.prepare('SELECT * FROM pricing_plans WHERE is_active=1 AND show_on_pricing=1 ORDER BY sort_order,price_cents').all();
   res.json({ plans: plans.map(p => ({ ...p, features: JSON.parse(p.features||'[]') })) });
 });
 
@@ -106,11 +106,17 @@ r.post('/pricing-plans', auth, (req, res) => {
 
 r.patch('/pricing-plans/:id', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { name, description, price_cents, features, is_active, sort_order } = req.body;
+  const { name, description, price_cents, features, is_active, sort_order, show_on_pricing } = req.body;
   const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(req.params.id);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
-  db.prepare('UPDATE pricing_plans SET name=?,description=?,price_cents=?,features=?,is_active=?,sort_order=? WHERE id=?')
-    .run(name??plan.name, description??plan.description, price_cents!==undefined?parseInt(price_cents):plan.price_cents, features?JSON.stringify(features):plan.features, is_active!==undefined?is_active:plan.is_active, sort_order!==undefined?parseInt(sort_order):plan.sort_order, plan.id);
+  db.prepare('UPDATE pricing_plans SET name=?,description=?,price_cents=?,features=?,is_active=?,sort_order=?,show_on_pricing=? WHERE id=?')
+    .run(name??plan.name, description??plan.description,
+      price_cents!==undefined?parseInt(price_cents):plan.price_cents,
+      features?JSON.stringify(features):plan.features,
+      is_active!==undefined?is_active:plan.is_active,
+      sort_order!==undefined?parseInt(sort_order):plan.sort_order,
+      show_on_pricing!==undefined?(show_on_pricing?1:0):(plan.show_on_pricing??1),
+      plan.id);
   res.json({ ok: true });
 });
 

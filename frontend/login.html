@@ -165,23 +165,29 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
 // Google Sign-In — initializes once GSI library is ready
+let _googleInitAttempts = 0;
 function initGoogleLogin(clientId) {
   if (!clientId) return;
-  // Wait for google.accounts to be available
-  if (typeof google === 'undefined' || !google.accounts) {
-    setTimeout(() => initGoogleLogin(clientId), 100);
+  _googleInitAttempts++;
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    if (_googleInitAttempts < 50) setTimeout(() => initGoogleLogin(clientId), 200);
     return;
   }
-  google.accounts.id.initialize({
-    client_id: clientId,
-    callback: handleGoogleLogin,
-    auto_select: false,
-    cancel_on_tap_outside: true,
-  });
-  google.accounts.id.renderButton(
-    document.getElementById('google-btn-login'),
-    { theme: 'outline', size: 'large', width: 280, text: 'signin_with', shape: 'rectangular' }
-  );
+  try {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleLogin,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+    const btn = document.getElementById('google-btn-login');
+    if (btn) {
+      google.accounts.id.renderButton(btn, {
+        theme: 'outline', size: 'large', width: btn.offsetWidth || 280,
+        text: 'signin_with', shape: 'rectangular'
+      });
+    }
+  } catch(e) { console.warn('[google-login]', e); }
 }
 
 fetch('/api/auth/google-client-id')

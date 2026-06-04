@@ -154,6 +154,9 @@ const api = {
     removeMember: (accountId, userId) => req(`/admin/accounts/${accountId}/members/${userId}`, { method: 'DELETE' }),
     events: () => req('/admin/events'),
     getEvent: id => req(`/admin/events/${id}`),
+    getTransactionsAccounts: () => req('/admin/transactions/accounts'),
+    getTransactionsTickets: (params={}) => req('/admin/transactions/tickets?' + new URLSearchParams(params)),
+    refundTicket: (id, body) => req(`/admin/transactions/refund/${id}`, { method:'POST', body:JSON.stringify(body) }),
     getFeatures: () => req('/admin/features'),
     updateFeatures: updates => req('/admin/features', { method: 'PATCH', body: JSON.stringify({ updates }) }),
     getAccountFeatures: id => req(`/admin/accounts/${id}/features`),
@@ -264,6 +267,7 @@ function renderSidebar(activePage) {
         ${nav('admin.html','Dashboard')}
         ${nav('admin-accounts.html','Accounts')}
         ${nav('admin-events.html','All Events')}
+        ${nav('admin-crm.html','Transactions & CRM')}
         ${nav('admin-phone.html','Phone & SMS/IVR')}
         ${nav('admin-numbers.html','Phone Numbers')}
         ${nav('admin-content.html','Site Content')}

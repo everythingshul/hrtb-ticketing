@@ -500,15 +500,16 @@ async function resetAll() {
 // ── Voice preview ─────────────────────────────────────────
 function previewTts(fieldId, key) {
   const el = document.getElementById(fieldId);
-  const v  = document.getElementById('ph-ivr-voice').value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
-  const text = (el?.value?.trim() || el?.dataset?.global || globalSettings[key] || '').replace(/{{[^}]+}}/g,'example');
-  if (!text) { toast('No text to preview','error'); return; }
+  if (!el) return;
+  const v = document.getElementById('ph-ivr-voice')?.value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
+  const text = (el.value?.trim() || el.dataset?.global || globalSettings[key] || '').replace(/{{[^}]+}}/g, 'example');
+  if (!text) { toast('No text to preview — enter text or check global default', 'error'); return; }
   speak(text, v);
 }
 
 function previewVoice() {
-  const v = document.getElementById('ph-ivr-voice').value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
-  speak('Hello, welcome to EverythingShul Tickets. Press 1 to buy tickets for our upcoming event.', v);
+  const v = document.getElementById('ph-ivr-voice')?.value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
+  speak('Hello, welcome to EverythingShul Tickets. Press 1 to buy tickets for our upcoming event. We look forward to seeing you.', v);
 }
 
 function speak(text, voiceKey) {
@@ -560,7 +561,11 @@ function speak(text, voiceKey) {
     utt.pitch   = gender === 'male' ? 0.9 : 1.1;
     utt.rate    = 0.9;
     utt.onend   = () => { if (status) status.textContent = ''; };
-    utt.onerror = () => { if (status) status.textContent = 'Error'; };
+    utt.onerror = (e) => {
+      // 'interrupted' fires when a previous utterance was cancelled — not a real error
+      if (e.error === 'interrupted' || e.error === 'canceled') return;
+      if (status) status.textContent = '';
+    };
     synth.speak(utt);
     if (status) status.textContent = match ? match.name : 'Speaking…';
     toast('Playing: ' + (match ? match.name : 'default voice'));
