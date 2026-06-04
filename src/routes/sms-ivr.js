@@ -154,10 +154,11 @@ function twimlSay(key, vars = {}, hangup = false, redirect = null, eventId = nul
 
 function twimlGather({ textKey, vars = {}, action, numDigits, timeout = 10, finishOnKey = '#', eventId = null }) {
   const recording = g(textKey + '_recording', '', eventId);
-  const voice     = g('ivr.tts_voice', 'Polly.Joanna', eventId);
+  const voice     = g('ivr.tts_voice', 'Polly.Matthew', eventId);
   const text      = tmpl(textKey, vars, eventId);
   const audio     = recording ? `<Play>${recording}</Play>` : `<Say voice="${voice}">${text}</Say>`;
-  const APP_URL   = process.env.APP_URL || '';
+  // Strip trailing slash from APP_URL to prevent double-slash in action URLs
+  const APP_URL   = ((process.env.APP_URL || '').replace(/\/$/, '')).replace(/\/$/, '');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather action="${APP_URL}${action}" method="POST" ${numDigits?`numDigits="${numDigits}"`:`finishOnKey="${finishOnKey}"`} timeout="${timeout}" input="dtmf">
@@ -168,35 +169,61 @@ function twimlGather({ textKey, vars = {}, action, numDigits, timeout = 10, fini
 </Response>`;
 }
 
+// ── Diagnostic: check SMS/IVR setup for an event ──────────
+r.get('/test/:eventId', (req, res) => {
+  const event = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
+  if (!event) return res.status(404).json({ error: 'Event not found' });
+  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0").all(event.id);
+  const smsEnabled = g('sms.enabled', '1');
+  const ivrEnabled = g('ivr.enabled', '1');
+  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+  res.json({
+    event: { id: event.id, name: event.name, phone_number: event.phone_number, sms_ivr_enabled: event.sms_ivr_enabled },
+    platform: { sms_enabled: smsEnabled, ivr_enabled: ivrEnabled },
+    app_url: appUrl,
+    webhook_sms: `${appUrl}/api/phone/sms/inbound`,
+    webhook_ivr: `${appUrl}/api/phone/ivr/inbound`,
+    levels: levels.map(l => ({ id: l.id, name: l.name, price_cents: l.price, phone_enabled: l.phone_enabled })),
+    ready: !!(event.phone_number && event.sms_ivr_enabled && appUrl && smsEnabled !== '0'),
+  });
+});
+
 // ── SMS Inbound ───────────────────────────────────────────
 r.post('/sms/inbound', async (req, res) => {
   const from    = req.body.From || '';
-  const to      = req.body.To   || '';   // which Twilio number received it
+  const to      = req.body.To   || '';
   const body    = (req.body.Body || '').trim();
   const upper   = body.toUpperCase();
 
-  if (g('sms.enabled') !== '1') return res.type('text/xml').send(twimlMsg('SMS ordering is not available.'));
+  // Check SMS enabled — treat missing/null as enabled (default on)
+  const smsEnabled = g('sms.enabled', '1');
+  if (smsEnabled === '0') return res.type('text/xml').send(twimlMsg('SMS ticket ordering is currently unavailable.'));
 
-  // Route to event by the number they texted
+  // Route to event by the Twilio number they texted
   const linkedEvent = getEventByNumber(to);
 
-  // Global commands
-  if (upper === 'HELP' || upper === 'HELP?') { return res.type('text/xml').send(twimlMsg(tmpl('sms.help'))); }
-  if (['STOP','CANCEL','QUIT','END'].includes(upper)) {
+  // STOP/HELP commands work regardless of session
+  if (['STOP','CANCEL','QUIT','END','UNSUBSCRIBE'].includes(upper)) {
     clearSession(from);
-    return res.type('text/xml').send(twimlMsg(tmpl('sms.cancelled')));
+    return res.type('text/xml').send(twimlMsg('You have been unsubscribed. Reply START to resubscribe.'));
+  }
+  if (upper === 'HELP' || upper === 'HELP?') {
+    return res.type('text/xml').send(twimlMsg(tmpl('sms.help', { event_name: linkedEvent?.name || 'this event' })));
+  }
+  if (upper === 'START') {
+    // Welcome them back / start fresh
+    clearSession(from);
   }
 
   const session = getSession(from);
-  const step    = session?.step || 'welcome';
 
   try {
     const reply = await smsStep(from, body, upper, session, linkedEvent);
     res.type('text/xml').send(twimlMsg(reply));
   } catch(e) {
-    console.error('[SMS]', e.message);
+    console.error('[SMS inbound]', e.stack || e.message);
     clearSession(from);
-    res.type('text/xml').send(twimlMsg(tmpl('sms.error')));
+    res.type('text/xml').send(twimlMsg('Sorry, something went wrong. Please try again in a moment.'));
   }
 });
 
@@ -312,10 +339,11 @@ async function smsStep(from, body, upper, session, linkedEvent) {
 }
 
 // ── IVR Inbound ───────────────────────────────────────────
-const AU = () => process.env.APP_URL || '';
+const AU = () => ((process.env.APP_URL || '').replace(/\/$/, '')).replace(/\/$/, '');
 
 r.post('/ivr/inbound', async (req, res) => {
-  if (g('ivr.enabled') !== '1') return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
+  const ivrEnabled = g('ivr.enabled', '1');
+  if (ivrEnabled === '0') return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
   clearSession('ivr:'+req.body.From); // fresh session on new call
   res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
 });
@@ -481,7 +509,7 @@ r.post('/numbers/purchase', async (req, res) => {
     const { phoneNumber, eventId, expiresAt } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber required' });
     const client = getTwilioClient();
-    const appUrl = process.env.APP_URL || '';
+    const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
     const p = await client.incomingPhoneNumbers.create({
       phoneNumber,
       smsUrl:    `${appUrl}/api/phone/sms/inbound`, smsMethod: 'POST',
@@ -524,7 +552,7 @@ r.post('/numbers/move', async (req, res) => {
   // Reconfigure webhooks for new event
   try {
     const client = getTwilioClient();
-    const appUrl = process.env.APP_URL || '';
+    const appUrl = ((process.env.APP_URL || '').replace(/\/$/, '')).replace(/\/$/, '');
     await client.incomingPhoneNumbers(sid).update({
       smsUrl: `${appUrl}/api/phone/sms/inbound`, smsMethod: 'POST',
       voiceUrl: `${appUrl}/api/phone/ivr/inbound`, voiceMethod: 'POST',
@@ -541,7 +569,7 @@ r.get('/numbers/owned', async (req, res) => {
   try {
     const client = getTwilioClient();
     const nums = await client.incomingPhoneNumbers.list({ limit:100 });
-    const appUrl = process.env.APP_URL || '';
+    const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
     const events = db.prepare(`
       SELECT e.id, e.name, e.phone_number, e.sms_ivr_enabled,
              COALESCE(a.name,'(deleted)') as account_name

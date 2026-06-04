@@ -509,9 +509,9 @@ const smsDefaults = {
 for (const [k,v] of Object.entries(smsDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
-// Ensure SMS and IVR are enabled by default (fix existing deployments that had 0)
-try { db.prepare("UPDATE platform_settings SET value='1' WHERE key='sms.enabled' AND value='0'").run(); } catch {}
-try { db.prepare("UPDATE platform_settings SET value='1' WHERE key='ivr.enabled' AND value='0'").run(); } catch {}
+// Force SMS and IVR enabled (overwrite whatever is there — they default to ON)
+try { db.prepare("INSERT OR REPLACE INTO platform_settings (key,value) VALUES ('sms.enabled','1')").run(); } catch {}
+try { db.prepare("INSERT OR REPLACE INTO platform_settings (key,value) VALUES ('ivr.enabled','1')").run(); } catch {}
 // Always ensure voice default is male (update existing)
 try { db.prepare("UPDATE platform_settings SET value='Polly.Matthew' WHERE key='ivr.tts_voice' AND value='Polly.Joanna'").run(); } catch {}
 
