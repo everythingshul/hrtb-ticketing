@@ -497,7 +497,42 @@ r.get('/transactions/accounts', auth, async (req, res) => {
   }
 });
 
-// Cancel ticket without refund
+// ── Logo file upload ──────────────────────────────────────
+r.post('/logos/upload', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const multer = (await import('multer')).default;
+    const path   = await import('path');
+    const fs     = await import('fs');
+    const logoDir = join(process.env.DATA_DIR || '/data', 'logos');
+    if (!fs.existsSync(logoDir)) fs.mkdirSync(logoDir, { recursive: true });
+    const storage = multer.diskStorage({
+      destination: logoDir,
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase() || '.png';
+        cb(null, Date.now() + '-' + Math.random().toString(36).slice(2) + ext);
+      }
+    });
+    const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 }, fileFilter: (req, file, cb) => {
+      if (!file.mimetype.startsWith('image/')) return cb(new Error('Images only'));
+      cb(null, true);
+    }});
+    upload.single('logo')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      const url = '/api/admin/logos/file/' + req.file.filename;
+      res.json({ ok: true, url, filename: req.file.filename, name: req.body.name || req.file.originalname });
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Serve uploaded logo files
+r.get('/logos/file/:filename', (req, res) => {
+  const { join: pathJoin } = require('path');
+  const logoDir = pathJoin(process.env.DATA_DIR || '/data', 'logos');
+  const file = pathJoin(logoDir, req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
+  res.sendFile(file, err => { if (err) res.status(404).end(); });
+});
 r.post('/transactions/cancel/:attendeeId', auth, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {

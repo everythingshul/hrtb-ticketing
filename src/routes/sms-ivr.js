@@ -344,19 +344,29 @@ const AU = () => ((process.env.APP_URL || '').replace(/\/$/, '')).replace(/\/$/,
 r.post('/ivr/inbound', async (req, res) => {
   const ivrEnabled = g('ivr.enabled', '1');
   if (ivrEnabled === '0') return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
-  clearSession('ivr:'+req.body.From); // fresh session on new call
+  const from   = req.body.From || '';
+  const called = req.body.Called || req.body.To || ''; // Twilio sends 'Called' for the destination number
+  clearSession('ivr:'+from);
+  // Store the called number so subsequent steps can look up the event
+  setSession('ivr:'+from, 'welcome', { calledNumber: called });
   res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
 });
 
 r.post('/ivr/menu', async (req, res) => {
-  const from = req.body.From||'', to = req.body.To||'', d = req.body.Digits||'';
+  const from = req.body.From||'', d = req.body.Digits||'';
+  const session = getSession('ivr:'+from);
+  // Use the called number stored at inbound, or fall back to Called/To from this request
+  const calledNumber = session?.data?.calledNumber || req.body.Called || req.body.To || '';
   if (d === '9' || !d) return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
   if (d !== '1')       return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
 
   // Route directly to the event tied to this phone number
-  const linkedEvent = getEventByNumber(to);
-  if (!linkedEvent) return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
-  setSession('ivr:'+from, 'select_level', { eventId:linkedEvent.id }, linkedEvent.slug, linkedEvent.account_id);
+  const linkedEvent = getEventByNumber(calledNumber);
+  if (!linkedEvent) {
+    console.warn('[IVR menu] No event found for number:', calledNumber, '| From:', from);
+    return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
+  }
+  setSession('ivr:'+from, 'select_level', { eventId:linkedEvent.id, calledNumber }, linkedEvent.slug, linkedEvent.account_id);
   return res.type('text/xml').send(await ivrLevelMenu(from, linkedEvent.id));
 });
 

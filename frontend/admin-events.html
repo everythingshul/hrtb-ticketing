@@ -365,63 +365,93 @@ function previewVoice() {
 
 function speakPreview(text, voiceKey) {
   const synth = window.speechSynthesis;
-  if (!synth) { toast('Speech not supported in this browser', 'error'); return; }
+  if (!synth) { toast('Speech not supported', 'error'); return; }
+
+  // Cancel any current speech and wait until it actually stops
   synth.cancel();
 
   const voiceCfg = {
-    'Polly.Matthew': { lang:'en-US', gender:'male',   pref:['Alex','Fred','Daniel','Google US English','Microsoft David','Eddy'] },
-    'Polly.Justin':  { lang:'en-US', gender:'male',   pref:['Alex','Fred','Google US English','Microsoft David'] },
-    'Polly.Brian':   { lang:'en-GB', gender:'male',   pref:['Daniel','Google UK English Male','Microsoft George','Arthur'] },
-    'Polly.Joanna':  { lang:'en-US', gender:'female', pref:['Samantha','Victoria','Google US English Female','Microsoft Zira','Allison'] },
-    'Polly.Kendra':  { lang:'en-US', gender:'female', pref:['Samantha','Karen','Google US English Female','Microsoft Zira'] },
-    'Polly.Amy':     { lang:'en-GB', gender:'female', pref:['Kate','Google UK English Female','Microsoft Susan','Martha'] },
+    'Polly.Matthew': { lang:'en-US', gender:'male',   pref:['Alex','Fred','Google US English','Microsoft David','Daniel'] },
+    'Polly.Justin':  { lang:'en-US', gender:'male',   pref:['Fred','Alex','Google US English','Microsoft David'] },
+    'Polly.Brian':   { lang:'en-GB', gender:'male',   pref:['Google UK English Male','Microsoft George','Daniel'] },
+    'Polly.Joanna':  { lang:'en-US', gender:'female', pref:['Samantha','Google US English Female','Microsoft Zira','Allison'] },
+    'Polly.Kendra':  { lang:'en-US', gender:'female', pref:['Karen','Google US English Female','Microsoft Zira'] },
+    'Polly.Amy':     { lang:'en-GB', gender:'female', pref:['Google UK English Female','Kate','Microsoft Susan'] },
   };
   const cfg = voiceCfg[voiceKey] || voiceCfg['Polly.Matthew'];
 
   function pickVoice(voices) {
-    // STRICT: only English voices — never pick Portuguese, Spanish, etc.
-    const eng = voices.filter(v => /^en[-_]/.test(v.lang));
+    // ONLY English voices - hard filter
+    const eng = voices.filter(v => v.lang === 'en-US' || v.lang === 'en-GB' || v.lang === 'en-AU' || v.lang === 'en-CA' || v.lang === 'en_US' || v.lang === 'en_GB' || v.lang.startsWith('en-'));
     const pool = eng.length ? eng : voices;
-    // 1. Named preference match (case-insensitive, partial)
+
+    // Try preferred names first
     for (const name of cfg.pref) {
       const m = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
       if (m) return m;
     }
-    // 2. Exact lang match
-    const exact = pool.filter(v => v.lang.toLowerCase() === cfg.lang.toLowerCase());
-    if (exact.length) return exact[0];
-    // 3. Lang prefix (en-US -> en)
-    const prefix = pool.filter(v => v.lang.toLowerCase().startsWith(cfg.lang.split('-')[0]));
-    if (prefix.length) return prefix[0];
-    // 4. Any English
+    // Gender match
+    const g = cfg.gender;
+    const gMatch = pool.find(v => v.name.toLowerCase().includes(g));
+    if (gMatch) return gMatch;
+    // Exact lang
+    const exact = pool.find(v => v.lang === cfg.lang);
+    if (exact) return exact;
     return pool[0] || voices[0];
   }
 
-  function doSpeak() {
+  function trySpeak(attemptsLeft) {
     const voices = synth.getVoices();
+    if (!voices.length && attemptsLeft > 0) {
+      // Voices not loaded yet, wait
+      setTimeout(() => trySpeak(attemptsLeft - 1), 100);
+      return;
+    }
     const v = pickVoice(voices);
-    const utt = new SpeechSynthesisUtterance(text.replace(/\{\{[^}]+\}\}/g, 'example'));
-    utt.lang = cfg.lang;
+    const utt = new SpeechSynthesisUtterance(
+      text.replace(/\{\{[^}]+\}\}/g, 'example')
+    );
+    utt.lang  = cfg.lang;
     if (v) utt.voice = v;
-    utt.pitch = cfg.gender === 'male' ? 0.9 : 1.1;
-    utt.rate  = 0.9;
-    utt.onerror = (e) => { if (e.error !== 'interrupted') toast('Speech error: ' + e.error, 'error'); };
+    utt.pitch = cfg.gender === 'male' ? 0.85 : 1.1;
+    utt.rate  = 0.88;
+    utt.volume = 1;
+    utt.onstart = () => {
+      const el = document.getElementById('preview-status');
+      if (el) el.textContent = v ? v.name : 'speaking';
+    };
+    utt.onend = () => {
+      const el = document.getElementById('preview-status');
+      if (el) el.textContent = '';
+    };
+    utt.onerror = (e) => {
+      if (e.error === 'interrupted') return;
+      const el = document.getElementById('preview-status');
+      if (el) el.textContent = '';
+      console.warn('[TTS]', e.error);
+    };
     synth.speak(utt);
-    const statusEl = document.getElementById('preview-status');
-    if (statusEl) statusEl.textContent = v ? v.name : 'default';
-    else toast('Playing: ' + (v ? v.name : 'default voice'));
+    toast((v ? v.name : 'default') + ' (browser approximation of ' + (voiceKey||'').replace('Polly.','') + ')');
   }
 
-  // Delay slightly after cancel so the browser clears properly,
-  // then wait for voices to load if needed
-  setTimeout(() => {
-    const voices = synth.getVoices();
-    if (voices.length > 0) {
-      doSpeak();
+  // Wait for synth to actually stop before starting new utterance
+  // Chrome needs this or it ignores the new speak() call
+  let waited = 0;
+  function waitAndSpeak() {
+    if (synth.speaking && waited < 300) {
+      waited += 50;
+      setTimeout(waitAndSpeak, 50);
     } else {
-      synth.onvoiceschanged = function() { synth.onvoiceschanged = null; doSpeak(); };
+      // Pre-warm: getVoices() triggers async load in some browsers
+      if (!synth.getVoices().length) {
+        synth.onvoiceschanged = () => { synth.onvoiceschanged = null; trySpeak(0); };
+        trySpeak(20); // also try polling
+      } else {
+        trySpeak(0);
+      }
     }
-  }, 50);
+  }
+  waitAndSpeak();
 }
 
 async function saveEventMessages() {

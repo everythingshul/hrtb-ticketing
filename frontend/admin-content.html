@@ -104,20 +104,20 @@ async function renderSubTab(tab) {
       <div class="row-between mb12" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
         <div>
           <div style="font-size:13px;font-weight:600">Show logos on homepage</div>
-          <div class="xs text2">When off, logos are saved but hidden. Turn on to show the scrolling strip.</div>
+          <div class="xs text2">When off, logos are saved but hidden.</div>
         </div>
         <label class="toggle-pill">
           <input type="checkbox" id="sc-show-logos" ${siteContent['home.show_customer_logos']==='1'?'checked':''} onchange="saveLogoToggle(this.checked)">
           <div class="toggle-track"></div>
         </label>
       </div>
-      <p class="xs text2 mb8">Add each logo as a URL (hotlink from your site or image host) and a name. One per line, format: <code>Name|https://url-to-logo.png</code></p>
-      <div class="fg mb8">
-        <label>Logo URLs (one per line: Name|URL)</label>
-        <textarea id="sc-logos-raw" style="min-height:100px;font-size:12px;font-family:monospace" placeholder="Beth Israel|https://example.com/logo.png\nCongregation XYZ|https://example.com/xyz.png">${buildLogosText(siteContent['home.customer_logos'])}</textarea>
+      <div id="logo-list" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:60px;padding:8px;background:var(--bg3);border-radius:var(--r);border:1px dashed var(--border)"></div>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="btn btn-sm btn-primary" style="cursor:pointer">
+          Upload Logo <input type="file" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+        </label>
+        <span class="xs text2">PNG, JPG, SVG · max 2 MB · drag to reorder</span>
       </div>
-      <button class="btn btn-sm btn-primary" onclick="saveLogos()">Save Logos</button>
-      <a href="/" target="_blank" class="btn btn-sm" style="margin-left:8px">Preview Homepage ↗</a>
 
       ${sectionTitle('Pricing Page')}
       ${field('pricing.title','Page Title')} ${field('pricing.subtitle','Subtitle','')}
@@ -143,6 +143,7 @@ async function renderSubTab(tab) {
         <a href="/faq.html" target="_blank" class="btn btn-sm">Preview FAQ ↗</a>
         <a href="/terms.html" target="_blank" class="btn btn-sm">Preview Terms ↗</a>
       </div>`;
+    setTimeout(initLogoList, 0);
     allKeys.push({ key:'faq.items', id:'sc-faq-items' });
     allKeys.push({ key:'terms.content', id:'sc-terms-content' });
   }
@@ -222,16 +223,56 @@ async function renderSubTab(tab) {
   }
 
   else if (tab === 'pricing') {
-    area.innerHTML = `<div id="plans-wrap"><div class="text2 sm">Loading…</div></div>
-      <div class="section-title mt20 mb10">Add New Plan</div>
-      <div style="background:var(--bg3);border-radius:var(--r);padding:14px;border:1px solid var(--border)">
-        <div class="form-row mb8">
-          <div class="fg" style="margin:0"><label>Name *</label><input id="np-name" placeholder="Single Event"></div>
-          <div class="fg" style="margin:0"><label>Price (USD) *</label><input id="np-price" type="number" min="0" step="0.01" placeholder="49.00"></div>
+    area.innerHTML = `
+      <div class="row-between mb16">
+        <div>
+          <div style="font-size:13px;font-weight:600">Pricing Plans</div>
+          <div class="xs text2">Plans marked "Show on page" appear on the public /pricing.html page.</div>
         </div>
-        <div class="fg mb8"><label>Description</label><input id="np-desc" placeholder="Everything for one event"></div>
-        <div class="fg mb8"><label>Features (one per line)</label><textarea id="np-features" style="min-height:70px" placeholder="Online ticket sales&#10;Email delivery&#10;Door scanner"></textarea></div>
-        <button class="btn btn-sm btn-primary" onclick="createPlan()">+ Add Plan</button>
+        <button class="btn btn-sm btn-gold" onclick="openPlanModal()">+ New Plan</button>
+      </div>
+      <div id="plans-wrap"><div class="text2 sm">Loading…</div></div>
+
+      <!-- Plan modal -->
+      <div id="modal-plan" class="backdrop" style="display:none" onclick="if(event.target===this)closePlanModal()">
+        <div class="modal" style="max-width:520px">
+          <div class="modal-hd">
+            <h2 id="plan-modal-title">New Plan</h2>
+            <button class="modal-x" onclick="closePlanModal()">&#x2715;</button>
+          </div>
+          <input type="hidden" id="plan-edit-id">
+          <div class="form-row mb4">
+            <div class="fg" style="margin:0"><label>Plan Name *</label><input id="plan-name" placeholder="Single Event"></div>
+            <div class="fg" style="margin:0"><label>Price (USD) *</label><input id="plan-price" type="number" min="0" step="0.01" placeholder="49.00"></div>
+          </div>
+          <div class="fg"><label>Tagline <span style="font-size:11px;font-weight:400;color:var(--text2)">shown under price on pricing page</span></label>
+            <input id="plan-desc" placeholder="Everything you need for one event"></div>
+          <div class="fg"><label>Sort Order <span style="font-size:11px;font-weight:400;color:var(--text2)">lower = shown first</span></label>
+            <input id="plan-sort" type="number" min="0" placeholder="0"></div>
+          <div class="fg">
+            <label>Features <span style="font-size:11px;font-weight:400;color:var(--text2)">one per line — shown as bullet points on pricing page</span></label>
+            <textarea id="plan-features" style="min-height:130px;font-size:12px" placeholder="Online ticket sales&#10;Email ticket delivery&#10;QR code door scanner&#10;Promo codes&#10;Up to 500 attendees"></textarea>
+          </div>
+          <div class="row mb12" style="gap:10px;align-items:center">
+            <label class="toggle-pill">
+              <input type="checkbox" id="plan-public" checked>
+              <div class="toggle-track"></div>
+            </label>
+            <span class="sm">Show on public pricing page</span>
+          </div>
+          <div class="row mb12" style="gap:10px;align-items:center">
+            <label class="toggle-pill">
+              <input type="checkbox" id="plan-active" checked>
+              <div class="toggle-track"></div>
+            </label>
+            <span class="sm">Active (inactive plans are hidden everywhere)</span>
+          </div>
+          <div id="plan-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+          <div class="modal-ft">
+            <button class="btn" onclick="closePlanModal()">Cancel</button>
+            <button class="btn btn-gold" id="plan-save-btn" onclick="savePlan()">Save Plan</button>
+          </div>
+        </div>
       </div>`;
     loadPlans();
   }
@@ -368,120 +409,193 @@ async function saveAll() {
 
 // Pricing plans
 async function loadPlans() {
+  const wrap = document.getElementById('plans-wrap');
+  if (!wrap) return;
   try {
     const { plans } = await api.connect.pricingPlansAdmin();
-    document.getElementById('plans-wrap').innerHTML = plans.length
-      ? `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Price</th><th>Description</th><th>Show on Pricing Page</th><th>Status</th><th></th></tr></thead><tbody>
-          ${plans.map(p=>`<tr>
-            <td><strong>${esc(p.name)}</strong></td>
-            <td class="mono">$${(p.price_cents/100).toFixed(2)}</td>
-            <td class="text2 sm">${esc(p.description||'')}</td>
-            <td>
-              <label class="toggle-pill" title="Show this plan on the public pricing page">
-                <input type="checkbox" ${p.show_on_pricing!==0?'checked':''} onchange="togglePlanPublic('${p.id}',this.checked)">
-                <div class="toggle-track"></div>
-              </label>
-            </td>
-            <td>${p.is_active?'<span class="badge badge-checked" style="font-size:10px">Active</span>':'<span class="badge badge-deactivated" style="font-size:10px">Off</span>'}</td>
-            <td><div class="row" style="gap:4px">
-              <button class="btn btn-sm" onclick="editPlan('${p.id}')">Edit</button>
-              <button class="btn btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
-              <button class="btn btn-sm" onclick="togglePlan('${p.id}',${p.is_active?0:1})">${p.is_active?'Disable':'Enable'}</button>
-              <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}')">Delete</button>
-            </div></td>
-          </tr>`).join('')}
-        </tbody></table></div>`
-      : '<div class="text2 sm mb12">No plans yet. Add one below.</div>';
-    // Store for edit use
     window._plans = plans;
-  } catch(e) { document.getElementById('plans-wrap').innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+    if (!plans.length) {
+      wrap.innerHTML = '<div class="empty"><div class="ico"></div><h3>No plans yet</h3><p class="text2">Click \"+ New Plan\" to create your first pricing plan.</p></div>';
+      return;
+    }
+    wrap.innerHTML = plans.map(p => {
+      const feats = Array.isArray(p.features) ? p.features : (p.features ? (() => { try { return JSON.parse(p.features); } catch { return []; } })() : []);
+      const price = p.price_cents === 0 ? 'Free' : '$' + (p.price_cents / 100).toFixed(2);
+      return `<div style="background:var(--bg3);border:1.5px solid ${p.is_active?'var(--border)':'#e5e7eb'};border-radius:var(--r);padding:16px;margin-bottom:10px;opacity:${p.is_active?1:0.6}">
+        <div class="row-between mb8" style="flex-wrap:wrap;gap:8px">
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:700;color:var(--navy)">${esc(p.name)}</span>
+            <span style="font-size:18px;font-weight:800;color:var(--navy)">${price}</span>
+            ${p.description ? `<span class="text2 sm">${esc(p.description)}</span>` : ''}
+            ${p.is_active ? '' : '<span class="badge badge-deactivated" style="font-size:10px">INACTIVE</span>'}
+          </div>
+          <div class="row" style="gap:6px;flex-shrink:0;align-items:center">
+            <label class="toggle-pill" title="Show on public pricing page">
+              <input type="checkbox" ${p.show_on_pricing!==0?'checked':''} onchange="togglePlanPublic('${p.id}',this.checked)">
+              <div class="toggle-track"></div>
+            </label>
+            <span class="xs text2" style="white-space:nowrap">${p.show_on_pricing!==0?'On page':'Hidden'}</span>
+            <button class="btn btn-sm" onclick="openPlanModal('${p.id}')">Edit</button>
+            <button class="btn btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
+            <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}')">Delete</button>
+          </div>
+        </div>
+        ${feats.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${feats.map(f=>`<span class="badge" style="font-size:10px;background:var(--bg)">${esc(f)}</span>`).join('')}</div>` : '<span class="xs text2">No features listed</span>'}
+        <div class="xs text2 mt4">Sort order: ${p.sort_order||0}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { if (wrap) wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
 }
 
-async function createPlan() {
-  const name = document.getElementById('np-name').value.trim();
-  const price = parseFloat(document.getElementById('np-price').value||0);
-  const desc = document.getElementById('np-desc').value.trim();
-  const feats = (document.getElementById('np-features').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
-  if (!name) { toast('Plan name required','error'); return; }
-  try { await api.connect.createPlan({ name, price_cents:Math.round(price*100), description:desc, features:feats }); toast('Plan created'); loadPlans(); ['np-name','np-price','np-desc','np-features'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; }); }
-  catch(e) { toast(e.message,'error'); }
+function openPlanModal(id) {
+  const p = id ? (window._plans||[]).find(x => x.id === id) : null;
+  document.getElementById('plan-modal-title').textContent = p ? 'Edit Plan' : 'New Plan';
+  document.getElementById('plan-edit-id').value = id || '';
+  document.getElementById('plan-name').value    = p ? p.name : '';
+  document.getElementById('plan-price').value   = p ? (p.price_cents/100).toFixed(2) : '';
+  document.getElementById('plan-desc').value    = p ? (p.description||'') : '';
+  document.getElementById('plan-sort').value    = p ? (p.sort_order||0) : '0';
+  const feats = p ? (Array.isArray(p.features)?p.features:(p.features?(() => { try{return JSON.parse(p.features);}catch{return [];} })():[]) ) : [];
+  document.getElementById('plan-features').value = feats.join('\n');
+  document.getElementById('plan-public').checked = p ? (p.show_on_pricing !== 0) : true;
+  document.getElementById('plan-active').checked = p ? !!p.is_active : true;
+  document.getElementById('plan-err').style.display = 'none';
+  const btn = document.getElementById('plan-save-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Save Plan'; }
+  document.getElementById('modal-plan').style.display = 'flex';
 }
 
-function editPlan(id) {
-  const p = (window._plans||[]).find(x=>x.id===id);
-  if (!p) return;
-  const name = prompt('Plan name:', p.name); if (name===null) return;
-  const price = prompt('Price (USD):', (p.price_cents/100).toFixed(2)); if (price===null) return;
-  const desc = prompt('Description (shown under price):', p.description||''); if (desc===null) return;
-  const feats = prompt('Features (one per line):', Array.isArray(p.features)?p.features.join('\n'):''); if (feats===null) return;
-  const featArr = feats.split('\n').map(s=>s.trim()).filter(Boolean);
-  api.connect.updatePlan(id, { name, price_cents:Math.round(parseFloat(price)*100), description:desc, features:featArr })
-    .then(()=>{ toast('Plan updated'); loadPlans(); }).catch(e=>toast(e.message,'error'));
+function closePlanModal() {
+  document.getElementById('modal-plan').style.display = 'none';
+}
+
+async function savePlan() {
+  const btn  = document.getElementById('plan-save-btn');
+  const err  = document.getElementById('plan-err');
+  const id   = document.getElementById('plan-edit-id').value;
+  const name = document.getElementById('plan-name').value.trim();
+  const priceRaw = parseFloat(document.getElementById('plan-price').value || '0');
+  if (!name) { err.textContent = 'Plan name is required'; err.style.display='block'; return; }
+  if (isNaN(priceRaw) || priceRaw < 0) { err.textContent = 'Enter a valid price (0 for free)'; err.style.display='block'; return; }
+  const payload = {
+    name,
+    price_cents:     Math.round(priceRaw * 100),
+    description:     document.getElementById('plan-desc').value.trim() || null,
+    sort_order:      parseInt(document.getElementById('plan-sort').value) || 0,
+    features:        document.getElementById('plan-features').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    show_on_pricing: document.getElementById('plan-public').checked ? 1 : 0,
+    is_active:       document.getElementById('plan-active').checked ? 1 : 0,
+  };
+  btn.disabled = true; btn.textContent = 'Saving…'; err.style.display = 'none';
+  try {
+    if (id) { await api.connect.updatePlan(id, payload); toast('Plan updated'); }
+    else    { await api.connect.createPlan(payload);     toast('Plan created'); }
+    closePlanModal(); loadPlans();
+  } catch(e) { err.textContent = e.message; err.style.display='block'; }
+  finally { btn.disabled=false; btn.textContent='Save Plan'; }
 }
 
 async function copyPlan(id) {
   const p = (window._plans||[]).find(x=>x.id===id);
   if (!p) return;
   try {
-    await api.connect.createPlan({
-      name: p.name + ' (copy)',
-      price_cents: p.price_cents,
-      description: p.description,
-      features: Array.isArray(p.features)?p.features:[]
-    });
-    toast('Plan copied'); loadPlans();
+    const feats = Array.isArray(p.features)?p.features:(p.features?(() => { try{return JSON.parse(p.features);}catch{return[];} })():[]);
+    await api.connect.createPlan({ name:p.name+' (copy)', price_cents:p.price_cents, description:p.description, features:feats, sort_order:p.sort_order, show_on_pricing:0, is_active:0 });
+    toast('Plan copied — edit and enable when ready'); loadPlans();
   } catch(e) { toast(e.message,'error'); }
 }
 
 async function togglePlanPublic(id, show) {
-  try {
-    await fetch(`/api/connect/pricing-plans/${id}`, {
-      method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
-      body: JSON.stringify({ show_on_pricing: show ? 1 : 0 })
-    }).then(r=>r.json());
-    toast(show ? 'Now visible on pricing page' : 'Hidden from pricing page');
-    loadPlans();
-  } catch(e) { toast(e.message,'error'); }
-}
-
-async function togglePlan(id, active) {
-  try { await api.connect.updatePlan(id,{is_active:active}); toast(active?'Enabled':'Disabled'); loadPlans(); }
+  try { await api.connect.updatePlan(id, { show_on_pricing: show?1:0 }); toast(show?'Visible on pricing page':'Hidden from pricing page'); loadPlans(); }
   catch(e) { toast(e.message,'error'); }
 }
 
 async function deletePlan(id) {
-  if (!confirm('Delete this pricing plan?')) return;
-  try { await api.connect.deletePlan(id); toast('Deleted'); loadPlans(); }
+  const p = (window._plans||[]).find(x=>x.id===id);
+  if (!confirm('Delete plan "' + (p?.name||id) + '"? Cannot be undone.')) return;
+  try { await api.connect.deletePlan(id); toast('Plan deleted'); loadPlans(); }
   catch(e) { toast(e.message,'error'); }
 }
 
-function buildLogosText(stored) {
-  if (!stored) return '';
+// ── Customer logos ────────────────────────────────────────
+let _logos = []; // { name, url } array, persisted to site content
+
+function renderLogoList() {
+  const list = document.getElementById('logo-list');
+  if (!list) return;
+  if (!_logos.length) {
+    list.innerHTML = '<span class="xs text2" style="padding:8px">No logos yet — upload one above</span>';
+    return;
+  }
+  list.innerHTML = _logos.map((l, i) => `
+    <div draggable="true" data-idx="${i}" ondragstart="logoDragStart(event,${i})" ondragover="logoDragOver(event)" ondrop="logoDrop(event,${i})"
+      style="position:relative;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px;cursor:grab;text-align:center;width:110px">
+      <img src="${l.url}" alt="${esc(l.name)}" style="height:44px;width:auto;max-width:90px;object-fit:contain;display:block;margin:0 auto 4px">
+      <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.name||'')}</div>
+      <button onclick="removeLogo(${i})" style="position:absolute;top:2px;right:4px;background:none;border:none;font-size:13px;cursor:pointer;color:#aaa;line-height:1" title="Remove">&#x2715;</button>
+    </div>`).join('');
+}
+
+let _dragSrc = null;
+function logoDragStart(e, idx) { _dragSrc = idx; e.dataTransfer.effectAllowed = 'move'; }
+function logoDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function logoDrop(e, idx) {
+  e.preventDefault();
+  if (_dragSrc === null || _dragSrc === idx) return;
+  const moved = _logos.splice(_dragSrc, 1)[0];
+  _logos.splice(idx, 0, moved);
+  _dragSrc = null;
+  renderLogoList();
+  saveLogoOrder();
+}
+
+function removeLogo(idx) {
+  _logos.splice(idx, 1);
+  renderLogoList();
+  saveLogoOrder();
+}
+
+async function saveLogoOrder() {
   try {
-    const arr = JSON.parse(stored);
-    return arr.map(l => `${l.name||''}|${l.url||''}`).join('\n');
-  } catch { return stored; }
+    await api.admin.updateSiteContent({ 'home.customer_logos': JSON.stringify(_logos) });
+    siteContent['home.customer_logos'] = JSON.stringify(_logos);
+  } catch(e) { toast('Error saving logo order: '+e.message, 'error'); }
 }
 
 async function saveLogoToggle(on) {
   try {
     await api.admin.updateSiteContent({ 'home.show_customer_logos': on ? '1' : '0' });
     siteContent['home.show_customer_logos'] = on ? '1' : '0';
-    toast(on ? 'Logos visible on homepage' : 'Logos hidden (saved but not shown)');
+    toast(on ? 'Logos visible on homepage' : 'Logos hidden (saved)');
   } catch(e) { toast(e.message, 'error'); }
 }
 
-async function saveLogos() {
-  const raw = document.getElementById('sc-logos-raw')?.value?.trim() || '';
-  const logos = raw.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-    const [name, ...rest] = line.split('|');
-    return { name: name.trim(), url: rest.join('|').trim() };
-  }).filter(l => l.url);
+async function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+  const formData = new FormData();
+  formData.append('logo', file);
+  formData.append('name', name);
+  toast('Uploading…');
   try {
-    await api.admin.updateSiteContent({ 'home.customer_logos': JSON.stringify(logos) });
-    siteContent['home.customer_logos'] = JSON.stringify(logos);
-    toast(`${logos.length} logo${logos.length!==1?'s':''} saved`);
-  } catch(e) { toast(e.message, 'error'); }
+    const d = await fetch('/api/admin/logos/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.token() },
+      body: formData
+    }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    _logos.push({ name: d.name, url: d.url });
+    renderLogoList();
+    await saveLogoOrder();
+    toast('Logo uploaded');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+}
+
+function initLogoList() {
+  try { _logos = JSON.parse(siteContent['home.customer_logos'] || '[]'); } catch { _logos = []; }
+  renderLogoList();
 }
 
 async function saveFeature(checkbox) {
@@ -502,63 +616,93 @@ async function checkPhoneExpiry() {
 
 function speakText(text, voiceKey) {
   const synth = window.speechSynthesis;
-  if (!synth) { toast('Speech not supported in this browser', 'error'); return; }
+  if (!synth) { toast('Speech not supported', 'error'); return; }
+
+  // Cancel any current speech and wait until it actually stops
   synth.cancel();
 
   const voiceCfg = {
-    'Polly.Matthew': { lang:'en-US', gender:'male',   pref:['Alex','Fred','Daniel','Google US English','Microsoft David','Eddy'] },
-    'Polly.Justin':  { lang:'en-US', gender:'male',   pref:['Alex','Fred','Google US English','Microsoft David'] },
-    'Polly.Brian':   { lang:'en-GB', gender:'male',   pref:['Daniel','Google UK English Male','Microsoft George','Arthur'] },
-    'Polly.Joanna':  { lang:'en-US', gender:'female', pref:['Samantha','Victoria','Google US English Female','Microsoft Zira','Allison'] },
-    'Polly.Kendra':  { lang:'en-US', gender:'female', pref:['Samantha','Karen','Google US English Female','Microsoft Zira'] },
-    'Polly.Amy':     { lang:'en-GB', gender:'female', pref:['Kate','Google UK English Female','Microsoft Susan','Martha'] },
+    'Polly.Matthew': { lang:'en-US', gender:'male',   pref:['Alex','Fred','Google US English','Microsoft David','Daniel'] },
+    'Polly.Justin':  { lang:'en-US', gender:'male',   pref:['Fred','Alex','Google US English','Microsoft David'] },
+    'Polly.Brian':   { lang:'en-GB', gender:'male',   pref:['Google UK English Male','Microsoft George','Daniel'] },
+    'Polly.Joanna':  { lang:'en-US', gender:'female', pref:['Samantha','Google US English Female','Microsoft Zira','Allison'] },
+    'Polly.Kendra':  { lang:'en-US', gender:'female', pref:['Karen','Google US English Female','Microsoft Zira'] },
+    'Polly.Amy':     { lang:'en-GB', gender:'female', pref:['Google UK English Female','Kate','Microsoft Susan'] },
   };
   const cfg = voiceCfg[voiceKey] || voiceCfg['Polly.Matthew'];
 
   function pickVoice(voices) {
-    // STRICT: only English voices — never pick Portuguese, Spanish, etc.
-    const eng = voices.filter(v => /^en[-_]/.test(v.lang));
+    // ONLY English voices - hard filter
+    const eng = voices.filter(v => v.lang === 'en-US' || v.lang === 'en-GB' || v.lang === 'en-AU' || v.lang === 'en-CA' || v.lang === 'en_US' || v.lang === 'en_GB' || v.lang.startsWith('en-'));
     const pool = eng.length ? eng : voices;
-    // 1. Named preference match (case-insensitive, partial)
+
+    // Try preferred names first
     for (const name of cfg.pref) {
       const m = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
       if (m) return m;
     }
-    // 2. Exact lang match
-    const exact = pool.filter(v => v.lang.toLowerCase() === cfg.lang.toLowerCase());
-    if (exact.length) return exact[0];
-    // 3. Lang prefix (en-US -> en)
-    const prefix = pool.filter(v => v.lang.toLowerCase().startsWith(cfg.lang.split('-')[0]));
-    if (prefix.length) return prefix[0];
-    // 4. Any English
+    // Gender match
+    const g = cfg.gender;
+    const gMatch = pool.find(v => v.name.toLowerCase().includes(g));
+    if (gMatch) return gMatch;
+    // Exact lang
+    const exact = pool.find(v => v.lang === cfg.lang);
+    if (exact) return exact;
     return pool[0] || voices[0];
   }
 
-  function doSpeak() {
+  function trySpeak(attemptsLeft) {
     const voices = synth.getVoices();
+    if (!voices.length && attemptsLeft > 0) {
+      // Voices not loaded yet, wait
+      setTimeout(() => trySpeak(attemptsLeft - 1), 100);
+      return;
+    }
     const v = pickVoice(voices);
-    const utt = new SpeechSynthesisUtterance(text.replace(/\{\{[^}]+\}\}/g, 'example'));
-    utt.lang = cfg.lang;
+    const utt = new SpeechSynthesisUtterance(
+      text.replace(/\{\{[^}]+\}\}/g, 'example')
+    );
+    utt.lang  = cfg.lang;
     if (v) utt.voice = v;
-    utt.pitch = cfg.gender === 'male' ? 0.9 : 1.1;
-    utt.rate  = 0.9;
-    utt.onerror = (e) => { if (e.error !== 'interrupted') toast('Speech error: ' + e.error, 'error'); };
+    utt.pitch = cfg.gender === 'male' ? 0.85 : 1.1;
+    utt.rate  = 0.88;
+    utt.volume = 1;
+    utt.onstart = () => {
+      const el = document.getElementById('preview-status');
+      if (el) el.textContent = v ? v.name : 'speaking';
+    };
+    utt.onend = () => {
+      const el = document.getElementById('preview-status');
+      if (el) el.textContent = '';
+    };
+    utt.onerror = (e) => {
+      if (e.error === 'interrupted') return;
+      const el = document.getElementById('preview-status');
+      if (el) el.textContent = '';
+      console.warn('[TTS]', e.error);
+    };
     synth.speak(utt);
-    const statusEl = document.getElementById('preview-status');
-    if (statusEl) statusEl.textContent = v ? v.name : 'default';
-    else toast('Playing: ' + (v ? v.name : 'default voice'));
+    toast((v ? v.name : 'default') + ' (browser approximation of ' + (voiceKey||'').replace('Polly.','') + ')');
   }
 
-  // Delay slightly after cancel so the browser clears properly,
-  // then wait for voices to load if needed
-  setTimeout(() => {
-    const voices = synth.getVoices();
-    if (voices.length > 0) {
-      doSpeak();
+  // Wait for synth to actually stop before starting new utterance
+  // Chrome needs this or it ignores the new speak() call
+  let waited = 0;
+  function waitAndSpeak() {
+    if (synth.speaking && waited < 300) {
+      waited += 50;
+      setTimeout(waitAndSpeak, 50);
     } else {
-      synth.onvoiceschanged = function() { synth.onvoiceschanged = null; doSpeak(); };
+      // Pre-warm: getVoices() triggers async load in some browsers
+      if (!synth.getVoices().length) {
+        synth.onvoiceschanged = () => { synth.onvoiceschanged = null; trySpeak(0); };
+        trySpeak(20); // also try polling
+      } else {
+        trySpeak(0);
+      }
     }
-  }, 50);
+  }
+  waitAndSpeak();
 }
 
 function previewGlobalVoice() {

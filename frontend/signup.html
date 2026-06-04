@@ -198,20 +198,18 @@ function showGoogleOrgForm(user) {
 }
 
 async function finishGoogleSignup() {
-  const org = document.getElementById('gg-org')?.value?.trim();
+  const org   = document.getElementById('gg-org')?.value?.trim();
   const phone = document.getElementById('gg-phone')?.value?.trim();
   const errEl = document.getElementById('gg-err');
   if (!org) { errEl.textContent = 'Organization name is required'; errEl.style.display='block'; return; }
-  if (!phone || !phone.startsWith('+')) { errEl.textContent = 'Phone must include country code (e.g. +1)'; errEl.style.display='block'; return; }
   try {
-    // Update the account with org info
     await fetch('/api/auth/update-profile', {
       method:'PATCH', headers:{'Content-Type':'application/json','Authorization':'Bearer '+window._pendingGoogleToken},
-      body: JSON.stringify({ company: org, phone })
+      body: JSON.stringify({ company: org, phone: phone || null })
     }).then(r=>r.json());
     Auth.set(window._pendingGoogleToken, { ...window._pendingGoogleUser, company: org });
     window.location = '/dashboard.html';
-  } catch(e) { errEl.textContent = 'Error saving info: '+e.message; errEl.style.display='block'; }
+  } catch(e) { errEl.textContent = 'Error saving: '+e.message; errEl.style.display='block'; }
 }
 </script>
 <script>
