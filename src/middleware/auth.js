@@ -7,11 +7,15 @@ export function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
   if (!token) return res.status(401).json({ error: 'Login required' });
   try {
-    const { userId, tokenVersion } = jwt.verify(token, JWT_SECRET);
-    const user = db.prepare('SELECT id,name,email,role,is_active,token_version FROM accounts WHERE id=?').get(userId);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    // Support both token formats: { userId } (regular) and { id } (Google/legacy)
+    const accountId = decoded.userId || decoded.id;
+    if (!accountId) return res.status(401).json({ error: 'Invalid token format' });
+    const user = db.prepare('SELECT id,name,email,role,is_active,token_version FROM accounts WHERE id=?').get(accountId);
     if (!user || !user.is_active) return res.status(401).json({ error: 'Account not found or disabled' });
     // Only enforce token_version if both sides have it
-    if (tokenVersion !== undefined && user.token_version !== undefined && user.token_version !== tokenVersion)
+    const tv = decoded.tokenVersion ?? decoded.v;
+    if (tv !== undefined && user.token_version !== undefined && user.token_version !== null && tv !== user.token_version)
       return res.status(401).json({ error: 'Your role has changed. Please log in again.', forceLogout: true });
     req.user = user;
     next();

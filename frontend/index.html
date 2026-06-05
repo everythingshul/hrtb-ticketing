@@ -53,7 +53,9 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 
 /* ── HERO ─────────────────────────────────────────────── */
 .hero{background:linear-gradient(135deg,var(--navy) 0%,#0f2d5e 50%,var(--navy2) 100%);color:#fff;padding:90px 32px 80px;text-align:center;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+.hero::before{content:'';position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&q=80&auto=format&fit=crop') center/cover no-repeat;opacity:0.15;pointer-events:none}
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,22,40,0.55) 0%,rgba(15,45,94,0.6) 60%,rgba(10,22,40,0.85) 100%);pointer-events:none}
+.hero-inner{position:relative;z-index:2}
 .hero-eyebrow{display:inline-block;background:rgba(200,150,12,.2);border:1px solid rgba(200,150,12,.4);color:var(--gold2);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:20px}
 .hero h1{font-size:clamp(30px,5.5vw,58px);font-weight:900;line-height:1.1;max-width:800px;margin:0 auto 22px;letter-spacing:-.02em}
 .hero h1 em{color:var(--gold2);font-style:normal}
@@ -161,12 +163,14 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 
 <!-- Hero -->
 <div class="hero">
-  <div class="hero-eyebrow">Built for synagogues &amp; communities</div>
-  <h1 id="hero-title">Event Ticketing That <em>Works the Way You Do</em></h1>
-  <p id="hero-subtitle">Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.</p>
-  <div class="hero-btns">
-    <a href="/signup.html" class="btn-gold" id="cta-primary">Get Started Free →</a>
-    <a href="/pricing.html" class="btn-outline" id="cta-secondary">View Pricing</a>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Built for synagogues &amp; communities</div>
+    <h1 id="hero-title">Event Ticketing That <em>Works the Way You Do</em></h1>
+    <p id="hero-subtitle">Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.</p>
+    <div class="hero-btns">
+      <a href="/signup.html" class="btn-gold" id="cta-primary">Get Started Free →</a>
+      <a href="/pricing.html" class="btn-outline" id="cta-secondary">View Pricing</a>
+    </div>
   </div>
 </div>
 

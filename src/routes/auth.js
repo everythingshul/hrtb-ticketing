@@ -28,13 +28,12 @@ r.post('/signup', async (req, res) => {
     const { seedDemoEvent } = await import('./demo.js');
     await seedDemoEvent(id);
 
-    // Send welcome notification emails (non-blocking)
     const newAccount = db.prepare('SELECT * FROM accounts WHERE id=?').get(id);
     notifySignup({ account: newAccount }).catch(() => {});
 
     const tv = 1;
-    const jwtToken = jwt.sign({ userId: id, tokenVersion: tv }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token: jwtToken, user: { id, name: name.trim(), email: email.toLowerCase().trim(), role: 'user', demo_mode: 1 } });
+    const jwtToken = jwt.sign({ userId: id, tokenVersion: tv }, JWT_SECRET, { expiresIn: '90d' });
+    res.json({ token: jwtToken, user: { id, name: name.trim(), email: email.toLowerCase().trim(), role: 'user', demo_mode: 1, company: company||null, avatar_url: null } });
   } catch(e) {
     console.error('[signup]', e.message);
     res.status(500).json({ error: e.message });
@@ -106,10 +105,11 @@ r.post('/login', async (req, res) => {
       JOIN accounts a ON a.id = m.account_id
       WHERE m.user_id = ?`).all(user.id);
 
-    const token = jwt.sign({ userId: user.id, tokenVersion: user.token_version }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ userId: user.id, tokenVersion: user.token_version }, JWT_SECRET, { expiresIn: '90d' });
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role,
+              demo_mode: user.demo_mode, company: user.company||null, avatar_url: user.avatar_url||null },
       memberships
     });
   } catch (e) { res.status(500).json({ error: 'Server error' }); }
@@ -175,7 +175,7 @@ r.post('/google', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: account.id, email: account.email, role: account.role, v: account.token_version || 0 },
+      { userId: account.id, tokenVersion: account.token_version || 0 },
       JWT_SECRET, { expiresIn: '90d' }
     );
     res.json({

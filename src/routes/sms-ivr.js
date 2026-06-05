@@ -500,15 +500,21 @@ function getTwilioClient() {
 r.get('/numbers/search', async (req, res) => {
   try {
     const client = getTwilioClient();
-    const { areaCode, country='US', contains } = req.query;
+    const { areaCode, country='US', contains, type='tollFree' } = req.query;
     const params = { voiceEnabled:true, smsEnabled:true, limit:20 };
-    if (areaCode) params.areaCode = areaCode;
+    if (areaCode && type !== 'tollFree') params.areaCode = areaCode;
     if (contains) params.contains = contains;
-    const nums = await client.availablePhoneNumbers(country).local.list(params);
+    // Use toll-free by default (no 10DLC registration needed per number)
+    const numberList = type === 'local'
+      ? client.availablePhoneNumbers(country).local
+      : client.availablePhoneNumbers(country).tollFree;
+    const nums = await numberList.list(params);
     res.json({ numbers: nums.map(n => ({
       phoneNumber: n.phoneNumber, friendlyName: n.friendlyName,
       locality: n.locality, region: n.region,
-      capabilities: n.capabilities, monthly_cost: '$1.15'
+      capabilities: n.capabilities,
+      monthly_cost: type === 'local' ? '$1.15' : '$2.00',
+      type: type === 'local' ? 'local' : 'toll-free'
     })) });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

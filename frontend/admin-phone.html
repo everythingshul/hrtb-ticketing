@@ -49,24 +49,31 @@
     <div id="ph-tab-number">
       <div class="card mb16">
         <div class="section-title mb12">Search &amp; Buy a Number</div>
+        <div class="info-box tip mb12" style="font-size:12px">
+          <strong>Toll-free numbers recommended</strong> — no per-number registration needed, SMS works immediately after your one-time toll-free verification. ~$2.00/month per number.
+        </div>
         <div class="form-row mb12" style="gap:10px;align-items:flex-end">
-          <div class="fg" style="margin:0"><label>Area Code <span class="tip-icon" data-tip="US 3-digit area code, e.g. 212 for NYC, 718 for Brooklyn">i</span></label>
+          <div class="fg" style="margin:0"><label>Number Type</label>
+            <select id="ph-type">
+              <option value="tollFree">Toll-Free (+1-800/888/877…) — Recommended</option>
+              <option value="local">Local (requires 10DLC registration)</option>
+            </select></div>
+          <div class="fg" style="margin:0" id="ph-area-wrap" style="display:none"><label>Area Code <span class="tip-icon" data-tip="Only for local numbers">i</span></label>
             <input id="ph-area" placeholder="212" maxlength="3" style="font-family:monospace"></div>
           <div class="fg" style="margin:0"><label>Country</label>
             <select id="ph-country">
               <option value="US">United States</option>
               <option value="CA">Canada</option>
               <option value="GB">United Kingdom</option>
-              <option value="IL">Israel</option>
             </select></div>
           <div><button class="btn btn-primary" onclick="searchNums()">Search</button></div>
         </div>
-        <div id="ph-results"><p class="text2 sm">Enter an area code and click Search.</p></div>
+        <div id="ph-results"><p class="text2 sm">Select type and click Search.</p></div>
         <!-- Purchase confirm -->
         <div id="ph-buy-confirm" style="display:none;margin-top:14px;padding:14px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
           <div style="font-size:14px;font-weight:700;margin-bottom:10px">
             Buy: <span id="ph-buying-num" style="font-family:monospace"></span>
-            <span class="text2 sm" style="font-weight:400"> — ~$1.15/month</span>
+            <span class="text2 sm" style="font-weight:400"> — <span id="ph-buying-cost">$2.00</span>/month</span>
           </div>
           <div class="fg mb10" style="max-width:260px"><label style="font-size:12px">Expiry Date <span class="tip-icon" data-tip="System sends 1-day warning then auto-releases. Blank = never expires.">i</span></label>
             <input id="ph-buy-expires" type="date"></div>
@@ -263,30 +270,33 @@ function fmtInput(inp) { inp.value = inp.value.replace(/[^\d+\-\s()]/g,''); }
 
 // ── Search & buy ──────────────────────────────────────────
 async function searchNums() {
-  const area = document.getElementById('ph-area').value.trim();
+  const type    = document.getElementById('ph-type').value;
+  const area    = document.getElementById('ph-area').value.trim();
   const country = document.getElementById('ph-country').value;
-  const res = document.getElementById('ph-results');
+  const res     = document.getElementById('ph-results');
   res.innerHTML = '<p class="text2 sm">Searching…</p>';
   try {
-    const p = new URLSearchParams({country});
-    if (area) p.set('areaCode', area);
+    const p = new URLSearchParams({ country, type });
+    if (area && type === 'local') p.set('areaCode', area);
     const d = await fetch('/api/phone/numbers/search?'+p, {headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
     if (d.error) throw new Error(d.error);
-    if (!d.numbers?.length) { res.innerHTML = '<p class="text2 sm">No numbers found. Try a different area code.</p>'; return; }
-    res.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Number</th><th>Location</th><th>Cost</th><th></th></tr></thead><tbody>'
+    if (!d.numbers?.length) { res.innerHTML = '<p class="text2 sm">No numbers found. Try a different search.</p>'; return; }
+    res.innerHTML = '<div class="table-wrap"><table><thead><tr><th>Number</th><th>Type</th><th>Location</th><th>Monthly</th><th></th></tr></thead><tbody>'
       + d.numbers.map(n=>`<tr>
           <td style="font-family:monospace;font-weight:700;letter-spacing:.05em">${esc(fmtNum(n.phoneNumber))}</td>
+          <td><span class="badge ${n.type==='toll-free'?'badge-checked':''}" style="font-size:10px">${n.type||'local'}</span></td>
           <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
-          <td class="text2 sm">$1.15/mo</td>
-          <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}')">Select</button></td>
+          <td class="text2 sm">${n.monthly_cost||'$1.15'}/mo</td>
+          <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}','${n.monthly_cost||'$1.15'}')">Select</button></td>
         </tr>`).join('')
       + '</tbody></table></div>';
   } catch(e) { res.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
 }
 
-function selectBuy(num) {
+function selectBuy(num, cost) {
   const el = document.getElementById('ph-buying-num');
   el.textContent = fmtNum(num); el.dataset.raw = num;
+  document.getElementById('ph-buying-cost').textContent = cost || '$2.00';
   const confirm = document.getElementById('ph-buy-confirm');
   confirm.style.display = 'block';
   confirm.scrollIntoView({behavior:'smooth',block:'nearest'});
@@ -435,10 +445,16 @@ function renderIvrFields() {
             placeholder="${esc(globalVal)}">${esc(shownText)}</textarea>
         </div>
         <div class="fg" style="margin:0">
-          <label style="font-size:11px">Recording URL <span style="font-weight:400;color:var(--text3)">(overrides TTS)</span></label>
-          <input id="${recId}" style="font-size:11px"
-            placeholder="${esc(globalRec||'https://... .mp3')}"
-            value="${esc(shownRec)}">
+          <label style="font-size:11px">Recording <span style="font-weight:400;color:var(--text3)">(overrides TTS — URL or upload)</span></label>
+          <div class="row" style="gap:4px">
+            <input id="${recId}" style="font-size:11px;flex:1"
+              placeholder="${esc(globalRec||'https://... .mp3 or upload →')}"
+              value="${esc(shownRec)}">
+            <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:10px;white-space:nowrap" title="Upload audio file">
+              Upload <input type="file" accept="audio/*" style="display:none" onchange="uploadIvrAudio(this,'${recId}')">
+            </label>
+            ${shownRec ? `<a href="${esc(shownRec.replace('/file/','/download/'))}" class="btn btn-sm btn-ghost" style="font-size:10px" download>↓</a>` : ''}
+          </div>
         </div>
       </div>
     </div>`;
@@ -495,6 +511,26 @@ async function resetAll() {
     toast('Reset to global defaults');
     renderSmsFields(); renderIvrFields();
   } catch(e) { toast(e.message,'error'); }
+}
+
+async function uploadIvrAudio(input, targetFieldId) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const formData = new FormData();
+  formData.append('audio', file);
+  toast('Uploading…');
+  try {
+    const d = await fetch('/api/admin/ivr-audio/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.token() },
+      body: formData
+    }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    const field = document.getElementById(targetFieldId);
+    if (field) field.value = d.url;
+    toast('Audio uploaded — save to apply');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 
 // ── Voice preview ─────────────────────────────────────────

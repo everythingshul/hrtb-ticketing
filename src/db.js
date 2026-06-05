@@ -411,6 +411,11 @@ try { db.exec("ALTER TABLE events ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DE
 
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN show_on_pricing INTEGER NOT NULL DEFAULT 1"); } catch {}
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1"); } catch {}
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_events INTEGER"); } catch {}        // null = unlimited
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_attendees INTEGER"); } catch {}     // null = unlimited per event
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_levels INTEGER"); } catch {}        // null = unlimited ticket levels
+try { db.exec("ALTER TABLE accounts ADD COLUMN plan_id TEXT"); } catch {}                   // which plan they purchased
+try { db.exec("ALTER TABLE accounts ADD COLUMN plan_event_count INTEGER NOT NULL DEFAULT 0"); } catch {} // events used under current plan
 // Track account-level payments (event creation fees)
 db.exec(`CREATE TABLE IF NOT EXISTS account_transactions (
   id TEXT PRIMARY KEY, account_id TEXT NOT NULL, event_id TEXT,

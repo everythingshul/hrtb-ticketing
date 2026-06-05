@@ -533,6 +533,50 @@ r.get('/logos/file/:filename', (req, res) => {
   const file = pathJoin(logoDir, req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
   res.sendFile(file, err => { if (err) res.status(404).end(); });
 });
+// ── IVR Audio Recording Upload ────────────────────────────
+r.post('/ivr-audio/upload', auth, async (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const multer = (await import('multer')).default;
+    const pathMod = await import('path');
+    const fs = await import('fs');
+    const audioDir = join(process.env.DATA_DIR || '/data', 'ivr-audio');
+    if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
+    const storage = multer.diskStorage({
+      destination: audioDir,
+      filename: (req, file, cb) => {
+        const ext = pathMod.extname(file.originalname).toLowerCase() || '.mp3';
+        cb(null, Date.now() + '-' + Math.random().toString(36).slice(2) + ext);
+      }
+    });
+    const upload = multer({
+      storage, limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (req, file, cb) => {
+        const ok = /audio\//.test(file.mimetype) || /\.(mp3|wav|ogg|m4a|aac)$/i.test(file.originalname);
+        cb(ok ? null : new Error('Audio files only (MP3, WAV, OGG, M4A)'), ok);
+      }
+    });
+    upload.single('audio')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      const url = `/api/admin/ivr-audio/file/${req.file.filename}`;
+      res.json({ ok: true, url, filename: req.file.filename });
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+r.get('/ivr-audio/file/:filename', (req, res) => {
+  const { join: pj } = require('path');
+  const file = pj(process.env.DATA_DIR || '/data', 'ivr-audio', req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
+  res.sendFile(file, err => { if (err) res.status(404).end(); });
+});
+
+r.get('/ivr-audio/download/:filename', auth, (req, res) => {
+  const { join: pj } = require('path');
+  const file = pj(process.env.DATA_DIR || '/data', 'ivr-audio', req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
+  res.download(file, req.query.name || req.params.filename, err => { if (err) res.status(404).end(); });
+});
+
 r.post('/transactions/cancel/:attendeeId', auth, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {

@@ -216,7 +216,16 @@ async function renderSubTab(tab) {
               </div>
               <textarea id="${textId}" style="min-height:45px;font-size:11px">${esc(siteContent[key]||'')}</textarea>
             </div>
-            <div class="fg" style="margin:0"><label style="font-size:11px">Recording URL (overrides TTS)</label><input id="${recId}" placeholder="https://... .mp3" value="${esc(siteContent[recKey]||'')}" style="font-size:11px"></div>
+            <div class="fg" style="margin:0">
+              <label style="font-size:11px">Recording <span style="font-weight:400;color:var(--text3)">(overrides TTS)</span></label>
+              <div class="row" style="gap:4px">
+                <input id="${recId}" placeholder="https://... .mp3 or upload →" value="${esc(siteContent[recKey]||'')}" style="font-size:11px;flex:1">
+                <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:10px;white-space:nowrap">
+                  Upload <input type="file" accept="audio/*" style="display:none" onchange="uploadGlobalAudio(this,'${recId}')">
+                </label>
+                ${siteContent[recKey] ? `<a href="${esc(siteContent[recKey].replace('/file/','/download/'))}" class="btn btn-sm btn-ghost" style="font-size:10px" download>↓</a>` : ''}
+              </div>
+            </div>
           </div>
         </div>`;
       }).join('')}`;
@@ -249,6 +258,12 @@ async function renderSubTab(tab) {
             <input id="plan-desc" placeholder="Everything you need for one event"></div>
           <div class="fg"><label>Sort Order <span style="font-size:11px;font-weight:400;color:var(--text2)">lower = shown first</span></label>
             <input id="plan-sort" type="number" min="0" placeholder="0"></div>
+          <div class="section-title mt12 mb8" style="font-size:12px;color:var(--navy)">Limits <span style="font-weight:400;color:var(--text2)">(blank = unlimited)</span></div>
+          <div class="form-row mb4">
+            <div class="fg" style="margin:0"><label style="font-size:12px">Max Events</label><input id="plan-max-events" type="number" min="1" placeholder="Unlimited"></div>
+            <div class="fg" style="margin:0"><label style="font-size:12px">Max Attendees/Event</label><input id="plan-max-attendees" type="number" min="1" placeholder="Unlimited"></div>
+            <div class="fg" style="margin:0"><label style="font-size:12px">Max Ticket Levels</label><input id="plan-max-levels" type="number" min="1" placeholder="Unlimited"></div>
+          </div>
           <div class="fg">
             <label>Features <span style="font-size:11px;font-weight:400;color:var(--text2)">one per line — shown as bullet points on pricing page</span></label>
             <textarea id="plan-features" style="min-height:130px;font-size:12px" placeholder="Online ticket sales&#10;Email ticket delivery&#10;QR code door scanner&#10;Promo codes&#10;Up to 500 attendees"></textarea>
@@ -441,7 +456,12 @@ async function loadPlans() {
           </div>
         </div>
         ${feats.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${feats.map(f=>`<span class="badge" style="font-size:10px;background:var(--bg)">${esc(f)}</span>`).join('')}</div>` : '<span class="xs text2">No features listed</span>'}
-        <div class="xs text2 mt4">Sort order: ${p.sort_order||0}</div>
+        <div class="xs text2 mt4" style="display:flex;gap:12px">
+          <span>Sort: ${p.sort_order||0}</span>
+          ${p.max_events ? `<span style="color:var(--navy);font-weight:600">Max ${p.max_events} event${p.max_events!==1?'s':''}</span>` : '<span>Unlimited events</span>'}
+          ${p.max_attendees ? `<span>Max ${p.max_attendees} attendees/event</span>` : ''}
+          ${p.max_levels ? `<span>Max ${p.max_levels} ticket levels</span>` : ''}
+        </div>
       </div>`;
     }).join('');
   } catch(e) { if (wrap) wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
@@ -459,6 +479,9 @@ function openPlanModal(id) {
   document.getElementById('plan-features').value = feats.join('\n');
   document.getElementById('plan-public').checked = p ? (p.show_on_pricing !== 0) : true;
   document.getElementById('plan-active').checked = p ? !!p.is_active : true;
+  document.getElementById('plan-max-events').value    = p?.max_events    || '';
+  document.getElementById('plan-max-attendees').value = p?.max_attendees || '';
+  document.getElementById('plan-max-levels').value    = p?.max_levels    || '';
   document.getElementById('plan-err').style.display = 'none';
   const btn = document.getElementById('plan-save-btn');
   if (btn) { btn.disabled = false; btn.textContent = 'Save Plan'; }
@@ -485,6 +508,9 @@ async function savePlan() {
     features:        document.getElementById('plan-features').value.split('\n').map(s=>s.trim()).filter(Boolean),
     show_on_pricing: document.getElementById('plan-public').checked ? 1 : 0,
     is_active:       document.getElementById('plan-active').checked ? 1 : 0,
+    max_events:      parseInt(document.getElementById('plan-max-events').value)    || null,
+    max_attendees:   parseInt(document.getElementById('plan-max-attendees').value) || null,
+    max_levels:      parseInt(document.getElementById('plan-max-levels').value)    || null,
   };
   btn.disabled = true; btn.textContent = 'Saving…'; err.style.display = 'none';
   try {
@@ -596,6 +622,24 @@ async function uploadLogo(input) {
 function initLogoList() {
   try { _logos = JSON.parse(siteContent['home.customer_logos'] || '[]'); } catch { _logos = []; }
   renderLogoList();
+}
+
+async function uploadGlobalAudio(input, targetFieldId) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const formData = new FormData();
+  formData.append('audio', file);
+  toast('Uploading…');
+  try {
+    const d = await fetch('/api/admin/ivr-audio/upload', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + Auth.token() }, body: formData
+    }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    const field = document.getElementById(targetFieldId);
+    if (field) field.value = d.url;
+    toast('Audio uploaded — click Save to apply');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 
 async function saveFeature(checkbox) {

@@ -59,9 +59,26 @@ r.post('/', (req, res) => {
 
   // Demo accounts cannot create live events — show pricing paywall
   if (req.user.role !== 'admin') {
-    const account = db.prepare('SELECT demo_mode, account_tier FROM accounts WHERE id=?').get(req.user.id);
+    const account = db.prepare('SELECT demo_mode, account_tier, plan_id FROM accounts WHERE id=?').get(req.user.id);
     if (account?.demo_mode) {
       return res.status(403).json({ error: 'DEMO_MODE', message: 'Upgrade to create live events.' });
+    }
+    // Check plan event limits
+    if (account?.plan_id) {
+      const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(account.plan_id);
+      if (plan?.max_events) {
+        const eventCount = db.prepare("SELECT COUNT(*) c FROM events WHERE account_id=? AND deleted_at IS NULL").get(req.user.id).c;
+        if (eventCount >= plan.max_events) {
+          return res.status(403).json({
+            error: 'PLAN_LIMIT',
+            message: `Your current plan (${plan.name}) allows ${plan.max_events} event${plan.max_events!==1?'s':''}. Upgrade to create more.`,
+            plan_id: plan.id,
+            plan_name: plan.name,
+            limit: plan.max_events,
+            current: eventCount
+          });
+        }
+      }
     }
   }
 

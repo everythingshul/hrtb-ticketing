@@ -97,26 +97,37 @@ r.get('/pricing-plans/admin', auth, (req, res) => {
 
 r.post('/pricing-plans', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { name, description, price_cents, features, sort_order } = req.body;
+  const { name, description, price_cents, features, sort_order, show_on_pricing, max_events, max_attendees, max_levels } = req.body;
   if (!name || price_cents === undefined) return res.status(400).json({ error: 'name and price_cents required' });
   const id = uuid();
-  db.prepare('INSERT INTO pricing_plans (id,name,description,price_cents,features,sort_order) VALUES (?,?,?,?,?,?)').run(id, name, description||null, parseInt(price_cents), JSON.stringify(features||[]), parseInt(sort_order||0));
+  db.prepare('INSERT INTO pricing_plans (id,name,description,price_cents,features,sort_order,show_on_pricing,max_events,max_attendees,max_levels) VALUES (?,?,?,?,?,?,?,?,?,?)').run(
+    id, name, description||null, Math.round(parseFloat(price_cents)),
+    JSON.stringify(features||[]), parseInt(sort_order||0),
+    show_on_pricing!==undefined?(show_on_pricing?1:0):1,
+    max_events||null, max_attendees||null, max_levels||null
+  );
   res.json({ ok: true, id });
 });
 
 r.patch('/pricing-plans/:id', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
-  const { name, description, price_cents, features, is_active, sort_order, show_on_pricing } = req.body;
+  const { name, description, price_cents, features, is_active, sort_order, show_on_pricing, max_events, max_attendees, max_levels } = req.body;
   const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(req.params.id);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
-  db.prepare('UPDATE pricing_plans SET name=?,description=?,price_cents=?,features=?,is_active=?,sort_order=?,show_on_pricing=? WHERE id=?')
-    .run(name??plan.name, description??plan.description,
-      price_cents!==undefined?parseInt(price_cents):plan.price_cents,
+  db.prepare(`UPDATE pricing_plans SET name=?,description=?,price_cents=?,features=?,is_active=?,sort_order=?,show_on_pricing=?,max_events=?,max_attendees=?,max_levels=? WHERE id=?`)
+    .run(
+      name??plan.name,
+      description!==undefined?description:plan.description,
+      price_cents!==undefined?Math.round(parseFloat(price_cents)):plan.price_cents,
       features?JSON.stringify(features):plan.features,
       is_active!==undefined?is_active:plan.is_active,
       sort_order!==undefined?parseInt(sort_order):plan.sort_order,
       show_on_pricing!==undefined?(show_on_pricing?1:0):(plan.show_on_pricing??1),
-      plan.id);
+      max_events!==undefined?(max_events||null):plan.max_events,
+      max_attendees!==undefined?(max_attendees||null):plan.max_attendees,
+      max_levels!==undefined?(max_levels||null):plan.max_levels,
+      plan.id
+    );
   res.json({ ok: true });
 });
 
@@ -171,15 +182,74 @@ r.post('/event-payment/confirm', auth, async (req, res) => {
     const dateTime = time ? `${date} · ${time}` : date;
     const tz = timezone || 'America/New_York';
     db.prepare('INSERT INTO events (id,account_id,name,date,venue,description,timezone,expires_at,platform_order_id) VALUES (?,?,?,?,?,?,?,?,?)').run(id, req.user.id, name, dateTime, venue, description||null, tz, expires_at||null, paymentIntentId||null);
-    // Remove demo_mode if this is their first live event
-    db.prepare("UPDATE accounts SET demo_mode=0 WHERE id=? AND demo_mode=1").run(req.user.id);
-    // After payment, auto-enable email sending and online sales (can be disabled by admin)
-    db.prepare("UPDATE accounts SET can_sell_online=1, can_send_email=1 WHERE id=?").run(req.user.id);
+    // Remove demo_mode, store plan info, enable features
+    db.prepare("UPDATE accounts SET demo_mode=0, can_sell_online=1, can_send_email=1, plan_id=? WHERE id=?").run(planId, req.user.id);
     const newEvent = db.prepare('SELECT * FROM events WHERE id=?').get(id);
-    // Send notifications
+    // Store transaction record
+    try {
+      db.exec("CREATE TABLE IF NOT EXISTS account_transactions (id TEXT PRIMARY KEY, account_id TEXT, plan_id TEXT, event_id TEXT, stripe_payment_intent_id TEXT, amount_cents INTEGER, status TEXT, created_at TEXT DEFAULT (datetime('now')))");
+      db.prepare("INSERT INTO account_transactions (id,account_id,plan_id,event_id,stripe_payment_intent_id,amount_cents,status) VALUES (?,?,?,?,?,?,?)").run(uuid(), req.user.id, planId, id, paymentIntentId||null, plan.price_cents, 'paid');
+    } catch {}
     const acct = db.prepare('SELECT * FROM accounts WHERE id=?').get(req.user.id);
     if (acct) notifyEventCreated({ account: acct, event: newEvent }).catch(() => {});
     res.json({ ok: true, event: newEvent });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── Upgrade plan for specific event (prorate) ─────────────
+r.post('/event-payment/upgrade-intent', auth, async (req, res) => {
+  try {
+    const { planId, fromPlanId } = req.body;
+    if (!planId) return res.status(400).json({ error: 'planId required' });
+    const newPlan  = db.prepare('SELECT * FROM pricing_plans WHERE id=? AND is_active=1').get(planId);
+    const fromPlan = fromPlanId ? db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(fromPlanId) : null;
+    if (!newPlan) return res.status(404).json({ error: 'Plan not found' });
+    // Calculate prorate amount
+    const alreadyPaid   = fromPlan?.price_cents || 0;
+    const upgradeAmount = Math.max(0, newPlan.price_cents - alreadyPaid);
+    if (upgradeAmount === 0) {
+      // Free upgrade (downgrade not allowed this way)
+      return res.json({ free: true, planId, amount_cents: 0, already_paid: alreadyPaid, upgrade_cost: 0 });
+    }
+    const stripe   = getPlatformStripe();
+    const acct     = db.prepare('SELECT name,email FROM accounts WHERE id=?').get(req.user.id);
+    const orderId  = uuid();
+    const intent   = await stripe.paymentIntents.create({
+      amount: upgradeAmount,
+      currency: getSetting('currency', 'usd'),
+      receipt_email: acct.email,
+      description: `EverythingShul — Upgrade to ${newPlan.name} — ${acct.name}`,
+      metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, from_plan_id: fromPlanId||'', type: 'plan_upgrade' }
+    });
+    res.json({
+      clientSecret: intent.client_secret,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      orderId, plan: { ...newPlan, features: JSON.parse(newPlan.features||'[]') },
+      already_paid: alreadyPaid,
+      upgrade_cost: upgradeAmount,
+      total_cost: newPlan.price_cents
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+r.post('/event-payment/upgrade-confirm', auth, async (req, res) => {
+  try {
+    const { paymentIntentId, planId, eventId } = req.body;
+    const newPlan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(planId);
+    if (!newPlan) return res.status(404).json({ error: 'Plan not found' });
+    // Verify payment
+    if (newPlan.price_cents > 0 && paymentIntentId) {
+      const stripe = getPlatformStripe();
+      const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      if (intent.status !== 'succeeded') return res.status(400).json({ error: `Payment not confirmed (status: ${intent.status})` });
+    }
+    // Update account plan
+    db.prepare("UPDATE accounts SET plan_id=? WHERE id=?").run(planId, req.user.id);
+    // Record transaction
+    try {
+      db.prepare("INSERT INTO account_transactions (id,account_id,plan_id,event_id,stripe_payment_intent_id,amount_cents,status) VALUES (?,?,?,?,?,?,?)").run(uuid(), req.user.id, planId, eventId||null, paymentIntentId||null, newPlan.price_cents, 'upgrade');
+    } catch {}
+    res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
