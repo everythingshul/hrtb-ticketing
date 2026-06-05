@@ -173,7 +173,7 @@ function twimlGather({ textKey, vars = {}, action, numDigits, timeout = 10, fini
 r.get('/test/:eventId', (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
-  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0").all(event.id);
+  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND is_staff=0 AND price>0 ORDER BY created_at").all(event.id);
   const smsEnabled = g('sms.enabled', '1');
   const ivrEnabled = g('ivr.enabled', '1');
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
@@ -235,7 +235,7 @@ async function smsStep(from, body, upper, session, linkedEvent) {
   if (!session || step === 'welcome') {
     const event = linkedEvent;
     if (!event) return tmpl('sms.invalid_code');
-    const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1)").all(event.id);
+    const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1) ORDER BY created_at").all(event.id);
     if (!levels.length) return tmpl('sms.no_levels');
     const levelList = levels.map((l,i)=>`${i+1}. ${l.name} — $${(l.price/100).toFixed(2)}`).join('\n');
     setSession(from, 'select_level', { eventId:event.id, levels:levels.map(l=>({id:l.id,name:l.name,price:l.price})) }, event.slug, event.account_id);
@@ -384,8 +384,12 @@ r.post('/ivr/event', async (req, res) => {
 
 async function ivrLevelMenu(from, eventId) {
   const event  = db.prepare('SELECT * FROM events WHERE id=?').get(eventId);
-  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND online_sale=1 AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1)").all(eventId);
-  if (!levels.length) return twimlSay('ivr.no_available',{},true);
+  // For phone/IVR, show all active paid levels (not staff, not free) regardless of online_sale flag
+  const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1) ORDER BY created_at").all(eventId);
+  if (!levels.length) {
+    console.warn('[IVR] No phone-enabled levels for event:', eventId);
+    return twimlSay('ivr.no_available',{},true);
+  }
   const levelList = levels.map((l,i)=>`Press ${i+1} for ${l.name} at ${(l.price/100).toFixed(0)} dollars.`).join(' ');
   const session = getSession('ivr:'+from);
   setSession('ivr:'+from, 'select_level', { eventId, levels:levels.map(l=>({id:l.id,name:l.name,price:l.price})) }, null, session?.account_id);

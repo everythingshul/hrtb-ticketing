@@ -152,7 +152,7 @@ fetch('/api/connect/pricing-plans').then(r=>r.json()).then(({ plans }) => {
     return `<div class="tier${isFeatured?' featured':''}">
       ${isFeatured ? '<div class="tier-badge">Most Popular</div>' : ''}
       <div class="tier-name">${esc(p.name)}</div>
-      <div class="tier-price">${p.price_cents === 0 ? 'Free' : '$'+(p.price_cents/100).toFixed(0)}</div>
+      <div class="tier-price">${p.price_cents === 0 ? 'Free' : '$'+(p.price_cents/100).toFixed(2).replace(/\.00$/,'')}</div>
       <div class="tier-period">${p.description||'&nbsp;'}</div>
       <div class="tier-desc"></div>
       <ul class="tier-features">${feats.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>

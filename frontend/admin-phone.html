@@ -550,9 +550,8 @@ function previewVoice() {
 
 function speak(text, voiceKey) {
   const synth = window.speechSynthesis;
-  if (!synth) { toast('Speech not supported', 'error'); return; }
+  if (!synth) { toast('Speech not supported in this browser', 'error'); return; }
 
-  // Cancel any current speech and wait until it actually stops
   synth.cancel();
 
   const voiceCfg = {
@@ -565,79 +564,49 @@ function speak(text, voiceKey) {
   };
   const cfg = voiceCfg[voiceKey] || voiceCfg['Polly.Matthew'];
 
-  function pickVoice(voices) {
-    // ONLY English voices - hard filter
-    const eng = voices.filter(v => v.lang === 'en-US' || v.lang === 'en-GB' || v.lang === 'en-AU' || v.lang === 'en-CA' || v.lang === 'en_US' || v.lang === 'en_GB' || v.lang.startsWith('en-'));
-    const pool = eng.length ? eng : voices;
+  function doIt() {
+    const all = synth.getVoices();
+    // Hard filter: English only
+    const eng = all.filter(v => /^en/i.test(v.lang));
+    const pool = eng.length ? eng : all;
 
-    // Try preferred names first
+    let pick = null;
     for (const name of cfg.pref) {
-      const m = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
-      if (m) return m;
+      pick = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
+      if (pick) break;
     }
-    // Gender match
-    const g = cfg.gender;
-    const gMatch = pool.find(v => v.name.toLowerCase().includes(g));
-    if (gMatch) return gMatch;
-    // Exact lang
-    const exact = pool.find(v => v.lang === cfg.lang);
-    if (exact) return exact;
-    return pool[0] || voices[0];
+    if (!pick) pick = pool.find(v => v.lang === cfg.lang);
+    if (!pick) pick = pool[0];
+
+    const clean = text.replace(/\{\{[^}]+\}\}/g, 'example');
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang   = cfg.lang;
+    utt.pitch  = cfg.gender === 'male' ? 0.9 : 1.1;
+    utt.rate   = 0.88;
+    utt.volume = 1;
+    if (pick) utt.voice = pick;
+    utt.onerror = e => { if (e.error !== 'interrupted') console.warn('[TTS]', e.error); };
+    synth.speak(utt);
+
+    const el = document.getElementById('preview-status');
+    if (el) el.textContent = pick ? pick.name : 'default';
+    toast('Playing: ' + (pick ? pick.name : 'default'));
   }
 
-  function trySpeak(attemptsLeft) {
-    const voices = synth.getVoices();
-    if (!voices.length && attemptsLeft > 0) {
-      // Voices not loaded yet, wait
-      setTimeout(() => trySpeak(attemptsLeft - 1), 100);
-      return;
+  // Always wait 150ms after cancel before speaking — Chrome requirement
+  setTimeout(() => {
+    if (synth.getVoices().length > 0) {
+      doIt();
+    } else {
+      synth.onvoiceschanged = () => { synth.onvoiceschanged = null; doIt(); };
     }
-    const v = pickVoice(voices);
-    const utt = new SpeechSynthesisUtterance(
-      text.replace(/\{\{[^}]+\}\}/g, 'example')
-    );
-    utt.lang  = cfg.lang;
-    if (v) utt.voice = v;
-    utt.pitch = cfg.gender === 'male' ? 0.85 : 1.1;
-    utt.rate  = 0.88;
-    utt.volume = 1;
-    utt.onstart = () => {
-      const el = document.getElementById('preview-status');
-      if (el) el.textContent = v ? v.name : 'speaking';
-    };
-    utt.onend = () => {
-      const el = document.getElementById('preview-status');
-      if (el) el.textContent = '';
-    };
-    utt.onerror = (e) => {
-      if (e.error === 'interrupted') return;
-      const el = document.getElementById('preview-status');
-      if (el) el.textContent = '';
-      console.warn('[TTS]', e.error);
-    };
-    synth.speak(utt);
-    toast((v ? v.name : 'default') + ' (browser approximation of ' + (voiceKey||'').replace('Polly.','') + ')');
-  }
+  }, 150);
+}
 
   // Wait for synth to actually stop before starting new utterance
   // Chrome needs this or it ignores the new speak() call
   let waited = 0;
-  function waitAndSpeak() {
-    if (synth.speaking && waited < 300) {
-      waited += 50;
-      setTimeout(waitAndSpeak, 50);
-    } else {
-      // Pre-warm: getVoices() triggers async load in some browsers
-      if (!synth.getVoices().length) {
-        synth.onvoiceschanged = () => { synth.onvoiceschanged = null; trySpeak(0); };
-        trySpeak(20); // also try polling
-      } else {
-        trySpeak(0);
-      }
-    }
-  }
-  waitAndSpeak();
-}
+
 
 // Pre-warm voices
 if (window.speechSynthesis) {
