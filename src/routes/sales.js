@@ -438,7 +438,7 @@ async function fulfillOrder(session, existingOrder) {
             <h2 style="color:#1a3a6b">Your Tickets — ${dbEvent.name}</h2>
             <p>Hi! Here are all ${allTicketsForBuyer.length} ticket(s) from your order. Each ticket has also been sent to the individual attendee's email.</p>
             <p style="color:#555">Event: <strong>${dbEvent.name}</strong><br>${dbEvent.date||''} ${dbEvent.venue?'· '+dbEvent.venue:''}</p>
-            <p style="color:#aaa;font-size:12px">Powered by EverythingShul.com</p>
+            <p style="color:#aaa;font-size:12px">Powered by Mamudem</p>
           </div>`,
           attachments: allPdfs,
           replyTo

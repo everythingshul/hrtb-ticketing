@@ -36,7 +36,7 @@ if (!existsSync(siteContentPath)) {
       'home.feature3_title': 'Scan at the Door',
       'home.feature3_body': 'QR code scanner on any phone. Multiple entrances, staff tickets, real-time counts.',
       'home.feature4_title': 'Staff & Access Control',
-      'home.feature4_body': 'Separate staff ticket system with ID badge PDFs. Restrict scanners to specific levels.',
+      'home.feature4_body': 'Separate staff Mamudem with ID badge PDFs. Restrict scanners to specific levels.',
       'pricing.title': 'Simple, Transparent Pricing',
       'pricing.subtitle': 'Start free with a demo event. Upgrade when you\'re ready to go live.',
       'pricing.tier1_name': 'Demo', 'pricing.tier1_price': 'Free', 'pricing.tier1_desc': 'Try everything with a demo event. No credit card.',
@@ -57,7 +57,7 @@ if (!existsSync(siteContentPath)) {
       ]),
       'terms.title': 'Terms and Conditions',
       'terms.last_updated': new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }),
-      'terms.content': '<h2>1. Acceptance</h2><p>By using EverythingShul Ticket System you agree to these terms.</p><h2>2. Service</h2><p>We provide event ticketing software. Edit this content in Admin → Site Content.</p>'
+      'terms.content': '<h2>1. Acceptance</h2><p>By using Mamudem you agree to these terms.</p><h2>2. Service</h2><p>We provide event ticketing software. Edit this content in Admin → Site Content.</p>'
     };
     writeFileSync(siteContentPath, JSON.stringify(defaults, null, 2));
     console.log('[startup] site_content.json created');

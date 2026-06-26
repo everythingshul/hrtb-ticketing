@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EverythingShul — Event Ticketing</title>
+<title>Mamudem — Event Ticketing</title>
 <meta name="description" content="Sell tickets online, manage attendees, scan at the door. Built for community events.">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -62,8 +62,8 @@ footer a:hover{color:#fff}
 
 <nav>
   <div class="nav-logo">
-    <img src="/logo.png" alt="EverythingShul">
-    <span>Ticket System</span>
+    <img src="/logo.png" alt="Mamudem">
+    <span>Mamudem</span>
   </div>
   <div class="nav-links">
     <a href="/pricing.html">Pricing</a>
@@ -103,7 +103,7 @@ footer a:hover{color:#fff}
     <a href="/index.html">Sign In</a>
     <a href="/signup.html">Sign Up</a>
   </div>
-  &copy; 2025 EverythingShul.com — Ticket System
+  &copy; 2025 Mamudem — Mamudem
 </footer>
 
 <script>
@@ -125,7 +125,7 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content }) => {
       <h3>${content[f.titleKey]||''}</h3>
       <p>${content[f.bodyKey]||''}</p>
     </div>`).join('');
-  document.title = (content['home.hero_title']||'EverythingShul Ticket System').replace(/<[^>]+>/g,'').slice(0,60);
+  document.title = (content['home.hero_title']||'Mamudem').replace(/<[^>]+>/g,'').slice(0,60);
 }).catch(()=>{
   document.getElementById('hero-title').textContent = 'Effortless Event Ticketing';
   document.getElementById('hero-subtitle').textContent = 'Sell tickets online, manage attendees, scan at the door.';

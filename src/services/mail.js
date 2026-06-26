@@ -27,7 +27,7 @@ export function initMail() {
 }
 
 export async function sendMail({ to, subject, html, attachments = [], replyTo }) {
-  const from = `"EverythingShul.com Tickets" <${process.env.SMTP_USER}>`;
+  const from = `"Mamudem Tickets" <${process.env.SMTP_USER}>`;
   if (!transport) { console.log(`[mail] MOCK -> ${to} | ${subject}`); return; }
   const msg = { from, to, subject, html, attachments };
   if (replyTo) msg.replyTo = replyTo;
@@ -40,24 +40,24 @@ const APP_URL = process.env.APP_URL || '';
 
 const qr = id => `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(id)}&margin=8`;
 
-const logoImg = `<img src="${APP_URL}/logo.png" alt="EverythingShul.com" style="width:160px;height:auto;display:block;margin:0 auto">`;
+const logoImg = `<img src="${APP_URL}/logo.png" alt="Mamudem" style="width:180px;height:auto;display:block;margin:0 auto;filter:brightness(0) invert(1)">`;
 
 const emailHeader = `
 <div style="text-align:center;padding:22px 20px 14px;background:${NAVY}">
   ${logoImg}
-  <div style="font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:${CYAN};margin-top:8px">Ticket System</div>
+  <div style="font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:${CYAN};margin-top:8px">Mamudem</div>
 </div>`;
 
 const emailFooter = `
 <div style="text-align:center;padding:14px 20px;font-size:11px;color:#aaa;border-top:1px solid #eee">
-  © EverythingShul.com Ticket System &nbsp;·&nbsp; <a href="${APP_URL}/terms.html" style="color:${CYAN};text-decoration:none">Terms &amp; Conditions</a> &nbsp;·&nbsp; <a href="${APP_URL}" style="color:${CYAN};text-decoration:none">everythingshul.com</a>
+  © Mamudem &nbsp;·&nbsp; <a href="${APP_URL}/terms.html" style="color:${CYAN};text-decoration:none">Terms &amp; Conditions</a> &nbsp;·&nbsp; <a href="${APP_URL}" style="color:${CYAN};text-decoration:none">mamudem.com</a>
 </div>`;
 
 // Ticket card: QR code UNDER name and phone number
 const ticketCard = (a, ev) => `
 <div style="background:#fff;border:1px solid #e8e8e8;border-radius:12px;overflow:hidden;margin-bottom:22px;box-shadow:0 2px 12px rgba(0,0,0,.07);page-break-inside:avoid">
   <div style="background:${NAVY};color:#fff;padding:14px 18px">
-    <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${CYAN};margin-bottom:4px">EverythingShul.com Ticket System</div>
+    <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:${CYAN};margin-bottom:4px">Mamudem</div>
     <div style="font-size:17px;font-weight:700">${ev.name}</div>
     <div style="font-size:11px;opacity:.6;margin-top:2px">${ev.date||''} ${ev.venue ? '&nbsp;&middot;&nbsp;' + ev.venue : ''}</div>
   </div>
@@ -101,7 +101,7 @@ export function ticketEmail({ attendee, event, pdfUrl }) {
 }
 
 export function digestEmail({ attendees, event }) {
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   const ticketIds = attendees.map(a => a.ticket_id);
 
   // Split into batches of 100 — one download button per batch
@@ -162,23 +162,23 @@ export function inviteEmail({ fromName, accountName, url, role }) {
 }
 
 // ── Admin + user notification emails ──────────────────────
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'everythingshul@gmail.com';
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'mamudem@gmail.com';
 const ADMIN_NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER; // where to send admin copies
 
 function notifyEmailBase(title, bodyHtml) {
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
   <div style="background:#1a3a6b;padding:16px 24px;text-align:center">
-    <div style="color:#fff;font-size:17px;font-weight:700">EverythingShul Ticket System</div>
+    <div style="color:#fff;font-size:17px;font-weight:700">Mamudem</div>
   </div>
   <div style="padding:24px">
     <h2 style="color:#1a3a6b;font-size:18px;font-weight:800;margin-bottom:14px">${title}</h2>
     ${bodyHtml}
     <div style="margin-top:24px;padding:14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;font-size:12px;color:#6b7280">
       Questions? <a href="mailto:${SUPPORT_EMAIL}?subject=Support%20Request" style="color:#1a3a6b;font-weight:600">Contact us</a> &nbsp;·&nbsp;
-      <a href="${appUrl}" style="color:#1a3a6b">tickets.everythingshul.com</a> &nbsp;·&nbsp;
+      <a href="${appUrl}" style="color:#1a3a6b">mamudem.com</a> &nbsp;·&nbsp;
       <a href="${appUrl}/terms.html" style="color:#1a3a6b">Terms &amp; Conditions</a>
     </div>
   </div>
@@ -193,9 +193,9 @@ function row(label, value) {
 }
 
 export async function notifySignup({ account }) {
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   const body = `
-    <p style="font-size:14px;color:#4a5568;margin-bottom:16px">Welcome to EverythingShul Ticket System! Your account has been created in <strong>Demo Mode</strong>. Explore all features with your preloaded demo event.</p>
+    <p style="font-size:14px;color:#4a5568;margin-bottom:16px">Welcome to Mamudem! Your account has been created in <strong>Demo Mode</strong>. Explore all features with your preloaded demo event.</p>
     <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0;margin-bottom:16px">
       ${row('Account Name', account.name)}
       ${row('Email', account.email)}
@@ -207,9 +207,9 @@ export async function notifySignup({ account }) {
     </div>
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:12px">To run live events with real ticket sales, contact us to upgrade your account.</p>`;
 
-  const html = notifyEmailBase('Welcome to EverythingShul! 🎟', body);
+  const html = notifyEmailBase('Welcome to Mamudem! 🎟', body);
   const promises = [
-    sendMail({ to: account.email, subject: 'Welcome to EverythingShul Ticket System', html }).catch(e => console.error('[notify/signup user]', e.message))
+    sendMail({ to: account.email, subject: 'Welcome to Mamudem', html }).catch(e => console.error('[notify/signup user]', e.message))
   ];
   if (ADMIN_NOTIFY) promises.push(
     sendMail({ to: ADMIN_NOTIFY, subject: `[New Signup] ${account.name} — ${account.email}`, html: notifyEmailBase('New Account Created', `<div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0">${row('Name',account.name)}${row('Email',account.email)}${row('Phone',account.phone||'—')}${row('Company',account.company||'—')}${row('Time',new Date().toLocaleString())}</div>`) }).catch(e => console.error('[notify/signup admin]', e.message))
@@ -218,7 +218,7 @@ export async function notifySignup({ account }) {
 }
 
 export async function notifyEventCreated({ account, event }) {
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   const detailUrl = `${appUrl}/event-detail.html?id=${event.id}`;
   const body = `
     <p style="font-size:14px;color:#4a5568;margin-bottom:16px">Your new event has been created successfully.</p>

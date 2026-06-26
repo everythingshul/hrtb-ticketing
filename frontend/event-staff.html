@@ -173,7 +173,7 @@
     <div class="info-box tip mb16">Upload a CSV or Excel file. <strong>First Name</strong> and <strong>Last Name</strong> are required. Use a staff-level name in the Ticket Level column.</div>
     <div class="row mb16" style="gap:10px">
       <button class="btn btn-sm" onclick="dlTemplate()">Download Template</button>
-      <span class="xs text2">EverythingShul-Staff-Template.csv</span>
+      <span class="xs text2">Mamudem-Staff-Template.csv</span>
     </div>
     <div class="upload-zone" onclick="document.getElementById('file-input').click()" style="padding:22px">
       <div style="font-size:20px;margin-bottom:6px">📄</div>
@@ -624,7 +624,7 @@ function dlTemplate() {
   const lvlCol  = levelNames.length ? ',Ticket Level' : '';
   const lvlEx1  = levelNames.length ? `,${levelNames[0]||'Security'}` : '';
   const csv = `First Name,Last Name,Phone,Email${lvlCol}${lvlNote}\nJane,Doe,+1 555 000 0001,jane@example.com${lvlEx1}`;
-  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='EverythingShul-Staff-Template.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='Mamudem-Staff-Template.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 // ── Export ────────────────────────────────────────────────

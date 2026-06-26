@@ -9,4 +9,4 @@ Disallow: /event-stats
 Disallow: /event-levels
 Disallow: /dashboard
 Disallow: /scanner
-Sitemap: https://tickets.everythingshul.com/sitemap.xml
+Sitemap: https://mamudem.com/sitemap.xml

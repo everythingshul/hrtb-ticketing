@@ -28,7 +28,7 @@ export async function sendDailyReports() {
 
       const html = `
         <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <img src="${process.env.APP_URL||''}/logo.png" style="height:48px;margin-bottom:20px" alt="EverythingShul">
+          <img src="${process.env.APP_URL||''}/logo.png" style="height:48px;margin-bottom:20px" alt="Mamudem">
           <h2 style="color:#1a3a6b;margin-bottom:4px">Daily Event Report</h2>
           <p style="color:#666;margin-bottom:20px">${ev.name} — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p>
           <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
@@ -39,7 +39,7 @@ export async function sendDailyReports() {
             <tr style="background:#f5f7fa"><td style="padding:10px 14px">Confirmed</td><td style="padding:10px 14px;font-weight:700;color:#27a85f">${confirmed}</td></tr>
             <tr><td style="padding:10px 14px">Online Sales</td><td style="padding:10px 14px;font-weight:700;color:#7c5cbe">${online}</td></tr>
           </table>
-          <p style="color:#aaa;font-size:12px">Daily reports are sent until the day after the event. — EverythingShul.com Ticket System</p>
+          <p style="color:#aaa;font-size:12px">Daily reports are sent until the day after the event. — Mamudem</p>
         </div>`;
 
       await sendMail({

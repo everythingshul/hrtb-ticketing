@@ -1,4 +1,4 @@
-// EverythingShul Tickets — Service Worker
+// Mamudem — Service Worker
 // Strategy: Network-first for HTML/API, cache-first for static assets
 // This means: the app always tries to load fresh content from server first.
 // If offline, falls back to cache. App updates automatically when server changes.

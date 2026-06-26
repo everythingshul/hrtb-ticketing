@@ -244,7 +244,7 @@ r.post('/invite', auth, async (req, res) => {
 
     await sendMail({
       to: email,
-      subject: `You're invited to join ${account.name} — EverythingShul.com Tickets`,
+      subject: `You're invited to join ${account.name} — Mamudem Tickets`,
       html: inviteEmail({ fromName: req.user.name, accountName: account.name, url, role })
     });
 

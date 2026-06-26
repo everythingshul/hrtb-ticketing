@@ -25,7 +25,7 @@ function getSetting(key, fallback = '') {
 r.get('/connect/start', auth, (req, res) => {
   const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
   if (!clientId) return res.status(500).json({ error: 'Stripe Connect not configured. Set STRIPE_CONNECT_CLIENT_ID.' });
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   const redirectUri = `${appUrl}/api/connect/callback`;
   const state = Buffer.from(JSON.stringify({ userId: req.user.id, ts: Date.now() })).toString('base64');
   const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
@@ -35,7 +35,7 @@ r.get('/connect/start', auth, (req, res) => {
 // Step 2: OAuth callback — exchange code for tokens
 r.get('/connect/callback', async (req, res) => {
   const { code, state, error } = req.query;
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   if (error) return res.redirect(`${appUrl}/profile.html?connect_error=${encodeURIComponent(error)}`);
   if (!code || !state) return res.redirect(`${appUrl}/profile.html?connect_error=missing_params`);
   try {
@@ -154,7 +154,7 @@ r.post('/event-payment/intent', auth, async (req, res) => {
       amount: plan.price_cents,
       currency: getSetting('currency', 'usd'),
       receipt_email: acct.email,
-      description: `EverythingShul — ${plan.name} — ${acct.name}`,
+      description: `Mamudem — ${plan.name} — ${acct.name}`,
       metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, type: 'event_creation' }
     });
     res.json({ clientSecret: intent.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY, orderId, plan: { ...plan, features: JSON.parse(plan.features||'[]') } });
@@ -218,7 +218,7 @@ r.post('/event-payment/upgrade-intent', auth, async (req, res) => {
       amount: upgradeAmount,
       currency: getSetting('currency', 'usd'),
       receipt_email: acct.email,
-      description: `EverythingShul — Upgrade to ${newPlan.name} — ${acct.name}`,
+      description: `Mamudem — Upgrade to ${newPlan.name} — ${acct.name}`,
       metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, from_plan_id: fromPlanId||'', type: 'plan_upgrade' }
     });
     res.json({

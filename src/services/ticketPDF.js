@@ -101,7 +101,7 @@ export async function generateTicketPDF({ attendee, event, eventDesignPath }) {
       } catch(e) { console.warn('[pdf] logo:', e.message); }
     }
     if (!designDone) {
-      page.drawText('EverythingShul.com', { x: 8, y: H/2, size: 9, font: fontB, color: rgb(0.1,0.22,0.42) });
+      page.drawText('Mamudem', { x: 8, y: H/2, size: 9, font: fontB, color: rgb(0.1,0.22,0.42) });
     }
   }
 
@@ -165,7 +165,7 @@ export async function generateTicketPDF({ attendee, event, eventDesignPath }) {
     drawWrapped(event.description, 5.5);
   }
 
-  page.drawText('Powered By: EverythingShul.com', {
+  page.drawText('Powered By: Mamudem', {
     x: ix, y: 4, size: 4.5, font, color: rgb(0.65,0.65,0.65)
   });
 

@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EverythingShul.com Tickets — Event</title>
+<title>Mamudem Tickets — Event</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -172,7 +172,7 @@
 
     <div class="row mb16" style="gap:10px">
       <button class="btn btn-sm" onclick="dlTemplate()">Download Template</button>
-      <span class="xs text2">EverythingShul-Ticket-Template.csv</span>
+      <span class="xs text2">Mamudem-Ticket-Template.csv</span>
     </div>
 
     <div class="upload-zone" onclick="document.getElementById('file-input').click()" style="padding:22px">
@@ -216,7 +216,7 @@
 
     <div class="row mb16" style="gap:10px">
       <button class="btn btn-sm" onclick="dlConfirmTemplate()">Download Template</button>
-      <span class="xs text2">EverythingShul-Confirm-Template.csv</span>
+      <span class="xs text2">Mamudem-Confirm-Template.csv</span>
     </div>
 
     <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
@@ -481,7 +481,7 @@ async function load() {
   attendees = att;
   document.getElementById('ev-title').textContent = eventData.name;
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-  document.title = `EverythingShul — ${eventData.name}`;
+  document.title = `Mamudem — ${eventData.name}`;
   localStorage.setItem('hrtb_current_event_name', eventData.name);
   renderSidebar(); // re-render with event name
   const descEl = document.getElementById('ev-desc');
@@ -1091,7 +1091,7 @@ function preview(id) {
   const lvl = levels.find(l => l.id === a.level_id);
   document.getElementById('ticket-preview').innerHTML = `
     <div class="ticket-card">
-      <div class="tc-head"><div class="tc-brand">EverythingShul.com Ticket System</div><div class="tc-name">${esc(eventData.name)}</div><div class="tc-sub">${esc(eventData.date||'')} ${eventData.venue?'· '+esc(eventData.venue):''}</div></div>
+      <div class="tc-head"><div class="tc-brand">Mamudem</div><div class="tc-name">${esc(eventData.name)}</div><div class="tc-sub">${esc(eventData.date||'')} ${eventData.venue?'· '+esc(eventData.venue):''}</div></div>
       <div class="tc-body">
         <div class="tc-person">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>
         ${a.phone?`<div class="tc-phone">${esc(a.phone)}</div>`:''}
@@ -1118,7 +1118,7 @@ function printSheet() {
   if (!targets.length) { toast('No tickets to print','error'); return; }
   const ev = eventData;
   const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Tickets — ${esc(ev.name)}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.t{border:1.5px solid #ddd;border-radius:11px;overflow:hidden;page-break-inside:avoid;break-inside:avoid}.th{background:#111;color:#fff;padding:12px 15px}.brand{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-bottom:3px}.en{font-size:14px;font-weight:700}.es{font-size:10px;opacity:.5;margin-top:2px}.tb{padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.tn{font-size:14px;font-weight:700}.tp{font-size:10px;color:#888}.seats{display:flex;gap:14px;margin-top:10px}.sl{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#aaa}.sv{font-size:18px;font-weight:700}.qr img{width:88px;height:88px;border-radius:5px}.tf{border-top:1.5px dashed #e8e8e8;margin:0 15px;padding:7px 0;font-size:9px;color:#bbb;font-family:monospace;letter-spacing:.04em}@media print{@page{margin:8mm}}</style></head><body><div class="grid">${targets.map(a=>`<div class="t"><div class="th"><div class="brand">EverythingShul.com Ticket System</div><div class="en">${esc(ev.name)}</div><div class="es">${esc(ev.date||'')} ${ev.venue?'· '+esc(ev.venue):''}</div></div><div class="tb"><div><div class="tn">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>${a.phone?`<div class="tp">${esc(a.phone)}</div>`:''}<div class="seats">${a.table_number?`<div><div class="sl">Table</div><div class="sv">${esc(a.table_number)}</div></div>`:''} ${a.seat_number?`<div><div class="sl">Seat</div><div class="sv">${esc(a.seat_number)}</div></div>`:''}</div></div><div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=176x176&data=${encodeURIComponent(a.ticket_id)}&margin=6"></div></div><div class="tf">${esc(a.ticket_id)}</div></div>`).join('')}</div></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><title>Tickets — ${esc(ev.name)}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.t{border:1.5px solid #ddd;border-radius:11px;overflow:hidden;page-break-inside:avoid;break-inside:avoid}.th{background:#111;color:#fff;padding:12px 15px}.brand{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-bottom:3px}.en{font-size:14px;font-weight:700}.es{font-size:10px;opacity:.5;margin-top:2px}.tb{padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.tn{font-size:14px;font-weight:700}.tp{font-size:10px;color:#888}.seats{display:flex;gap:14px;margin-top:10px}.sl{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#aaa}.sv{font-size:18px;font-weight:700}.qr img{width:88px;height:88px;border-radius:5px}.tf{border-top:1.5px dashed #e8e8e8;margin:0 15px;padding:7px 0;font-size:9px;color:#bbb;font-family:monospace;letter-spacing:.04em}@media print{@page{margin:8mm}}</style></head><body><div class="grid">${targets.map(a=>`<div class="t"><div class="th"><div class="brand">Mamudem</div><div class="en">${esc(ev.name)}</div><div class="es">${esc(ev.date||'')} ${ev.venue?'· '+esc(ev.venue):''}</div></div><div class="tb"><div><div class="tn">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>${a.phone?`<div class="tp">${esc(a.phone)}</div>`:''}<div class="seats">${a.table_number?`<div><div class="sl">Table</div><div class="sv">${esc(a.table_number)}</div></div>`:''} ${a.seat_number?`<div><div class="sl">Seat</div><div class="sv">${esc(a.seat_number)}</div></div>`:''}</div></div><div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=176x176&data=${encodeURIComponent(a.ticket_id)}&margin=6"></div></div><div class="tf">${esc(a.ticket_id)}</div></div>`).join('')}</div></body></html>`);
   win.document.close();
   win.onload = () => win.print();
 }
@@ -1216,7 +1216,7 @@ function dlConfirmTemplate() {
   const csv = `Ticket ID\nTKT-EXAMPLE1\nTKT-EXAMPLE2\n# Instructions:\n# - One ticket ID per row\n# - Ticket IDs look like TKT-ABC12345\n# - Lines starting with # are ignored\n# - Save as CSV and upload using the Upload Activated List button`;
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'EverythingShul-Confirm-Template.csv';
+  a.download = 'Mamudem-Confirm-Template.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1641,7 +1641,7 @@ function dlTemplate() {
   const csv = `First Name,Last Name,Phone,Email,Table,Seat${lvlCol}${lvlNote}\nJane,Doe,+1 555 000 0001,jane@example.com,A,1${lvlEx1}\nJohn,Smith,+1 555 000 0002,john@example.com,A,2${lvlEx2}`;
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'EverythingShul-Ticket-Template.csv';
+  a.download = 'Mamudem-Ticket-Template.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

@@ -323,8 +323,8 @@ r.post('/invite-account', async (req, res) => {
 
     await sendMail({
       to: email,
-      subject: `You're invited to EverythingShul.com Ticket System`,
-      html: inviteEmail({ fromName: req.user.name, accountName: 'EverythingShul.com Ticket System', url, role })
+      subject: `You're invited to Mamudem`,
+      html: inviteEmail({ fromName: req.user.name, accountName: 'Mamudem', url, role })
     });
 
     res.json({ ok: true });
@@ -440,7 +440,7 @@ r.post('/contact', async (req, res) => {
   if (!message?.trim()) return res.status(400).json({ error: 'Message is required' });
   try {
     const { sendMail } = await import('../services/mail.js');
-    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.SUPPORT_EMAIL || 'everythingshul@gmail.com';
+    const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || process.env.SUPPORT_EMAIL || 'mamudem@gmail.com';
     const body = `
       <p><strong>From:</strong> ${from_name||'Unknown'} &lt;${from_email||'no email'}&gt;</p>
       ${event_name ? `<p><strong>Event:</strong> ${event_name}${event_id ? ` (ID: ${event_id})` : ''}</p>` : ''}
@@ -451,7 +451,7 @@ r.post('/contact', async (req, res) => {
     await sendMail({
       to: adminEmail,
       replyTo: from_email || undefined,
-      subject: `[EverythingShul Support] ${subject||'Support Request'}`,
+      subject: `[Mamudem Support] ${subject||'Support Request'}`,
       html: body
     });
     res.json({ ok: true });
@@ -888,7 +888,7 @@ r.get('/site-content', (req, res) => {
     content['faq.items'] = JSON.stringify([
       { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
       { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
-      { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! EverythingShul supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
+      { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
       { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
       { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
       { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always scan through.' },
@@ -902,11 +902,11 @@ r.get('/site-content', (req, res) => {
   }
   if (!content['terms.content'] || content['terms.content'].length < 200) {
     content['terms.content'] = `<h2>1. Acceptance of Terms</h2>
-<p>By creating an account and using the EverythingShul Ticket System, you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
+<p>By creating an account and using the Mamudem, you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
 <h2>2. Description of Service</h2>
-<p>EverythingShul Ticket System is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider — we do not organize events or sell tickets on behalf of users.</p>
+<p>Mamudem is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider — we do not organize events or sell tickets on behalf of users.</p>
 <h2>3. Account Registration</h2>
-<p>You must provide accurate information when registering. You are responsible for all activity under your account. Notify us of any unauthorized access at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a>.</p>
+<p>You must provide accurate information when registering. You are responsible for all activity under your account. Notify us of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
 <h2>4. Demo Accounts</h2>
 <p>New accounts start in Demo Mode with a free demo event. Demo accounts cannot process real payments. Purchase a plan to run live events. Your demo event remains free indefinitely.</p>
 <h2>5. Payments and Billing</h2>
@@ -921,7 +921,7 @@ r.get('/site-content', (req, res) => {
 <h2>9. Service Availability</h2>
 <p>We aim for maximum uptime but do not guarantee uninterrupted availability. We recommend exporting your attendee list before major events as a precaution.</p>
 <h2>10. Limitation of Liability</h2>
-<p>The Service is provided "as is" without warranty. To the maximum extent permitted by law, EverythingShul is not liable for indirect, incidental, or consequential damages from your use of the platform.</p>
+<p>The Service is provided "as is" without warranty. To the maximum extent permitted by law, Mamudem is not liable for indirect, incidental, or consequential damages from your use of the platform.</p>
 <h2>11. Changes to These Terms</h2>
 <p>We may update these Terms at any time. Continued use constitutes acceptance. Check this page periodically.</p>
 <h2>12. Contact Us</h2>

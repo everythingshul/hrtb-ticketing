@@ -354,7 +354,7 @@ async function renderSubTab(tab) {
       ['pci.contact_phone','Contact Phone',''],
       ['pci.contact_email','Contact Email',''],
       ['pci.business_address','Business Address','Street, City, State, ZIP'],
-      ['pci.business_url','Website URL','e.g. https://tickets.everythingshul.com'],
+      ['pci.business_url','Website URL','e.g. https://mamudem.com'],
       ['pci.acquirer_name','Payment Processor','e.g. Stripe'],
       ['pci.merchant_id','Stripe Merchant ID','Stripe Dashboard → Settings → Account'],
       ['pci.transaction_volume','Annual Card Transactions','e.g. under 1,000'],
@@ -720,7 +720,7 @@ function speakText(text, voiceKey) {
 
 function previewGlobalVoice() {
   const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
-  speakText('Hello, welcome to EverythingShul Tickets. Press 1 to buy tickets.', voice);
+  speakText('Hello, welcome to Mamudem. Press 1 to buy tickets.', voice);
 }
 
 function previewTTSGlobal(textareaId) {

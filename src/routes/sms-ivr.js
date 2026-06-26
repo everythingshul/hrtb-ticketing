@@ -43,15 +43,58 @@ function tmpl(key, vars = {}, eventId = null) {
   return msg;
 }
 
+// ── Public diagnostic — hit this URL in browser to verify setup ──────────
+r.get('/diag', (req, res) => {
+  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+  const events = db.prepare(`
+    SELECT e.id, e.name, e.phone_number, e.sms_ivr_enabled, e.closed_at, e.deleted_at,
+           (SELECT COUNT(*) FROM ticket_levels WHERE event_id=e.id AND is_staff=0 AND price>0) as level_count
+    FROM events e WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC LIMIT 20
+  `).all();
+  const smsEnabled = g('sms.enabled','1');
+  const ivrEnabled = g('ivr.enabled','1');
+  res.json({
+    app_url: appUrl,
+    sms_enabled: smsEnabled,
+    ivr_enabled: ivrEnabled,
+    webhook_sms: `${appUrl}/api/phone/sms/inbound`,
+    webhook_ivr: `${appUrl}/api/phone/ivr/inbound`,
+    twilio_configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+    stripe_configured: !!process.env.STRIPE_SECRET_KEY,
+    events: events.map(e => ({
+      id: e.id, name: e.name,
+      phone_number: e.phone_number,
+      sms_ivr_enabled: e.sms_ivr_enabled,
+      is_closed: !!e.closed_at,
+      level_count: e.level_count,
+      ready: !!(e.phone_number && e.sms_ivr_enabled && !e.closed_at)
+    }))
+  });
+});
+
 // ── Route SMS/call to correct event by phone number ──────
 // Each event has its own Twilio number — callers/texters land on that specific event
+function normalizePhone(n) {
+  if (!n) return '';
+  // Strip everything except digits and leading +
+  const digits = n.replace(/[^\d]/g, '');
+  // Always store/compare as E.164: +1XXXXXXXXXX
+  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+  if (digits.length === 10) return '+1' + digits;
+  return '+' + digits;
+}
+
 function getEventByNumber(toNumber) {
-  return db.prepare(`
+  const normalized = normalizePhone(toNumber);
+  // Try exact match first, then normalized
+  const row = db.prepare(`
     SELECT e.*, a.email as owner_email, a.name as owner_name, a.id as account_id_val
     FROM events e
     JOIN accounts a ON a.id = e.account_id
-    WHERE e.phone_number=? AND e.sms_ivr_enabled=1 AND e.deleted_at IS NULL AND e.closed_at IS NULL
-  `).get(toNumber);
+    WHERE (e.phone_number=? OR e.phone_number=?) AND e.sms_ivr_enabled=1
+      AND e.deleted_at IS NULL AND e.closed_at IS NULL
+  `).get(toNumber, normalized);
+  return row || null;
 }
 
 // ── Session management ────────────────────────────────────
@@ -195,12 +238,16 @@ r.post('/sms/inbound', async (req, res) => {
   const body    = (req.body.Body || '').trim();
   const upper   = body.toUpperCase();
 
-  // Check SMS enabled — treat missing/null as enabled (default on)
+  console.log('[SMS inbound] From:', from, '| To:', to, '| Body:', body.slice(0,50));
+  console.log('[SMS inbound] Full body keys:', Object.keys(req.body).join(','));
+
   const smsEnabled = g('sms.enabled', '1');
   if (smsEnabled === '0') return res.type('text/xml').send(twimlMsg('SMS ticket ordering is currently unavailable.'));
 
-  // Route to event by the Twilio number they texted
-  const linkedEvent = getEventByNumber(to);
+  // Try both raw and normalized number to find the event
+  const toNorm = normalizePhone(to);
+  const linkedEvent = getEventByNumber(to) || getEventByNumber(toNorm);
+  console.log('[SMS inbound] linkedEvent:', linkedEvent ? linkedEvent.name : 'NULL', '| tried:', to, toNorm);
 
   // STOP/HELP commands work regardless of session
   if (['STOP','CANCEL','QUIT','END','UNSUBSCRIBE'].includes(upper)) {
@@ -344,26 +391,30 @@ const AU = () => ((process.env.APP_URL || '').replace(/\/$/, '')).replace(/\/$/,
 r.post('/ivr/inbound', async (req, res) => {
   const ivrEnabled = g('ivr.enabled', '1');
   if (ivrEnabled === '0') return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
-  const from   = req.body.From || '';
-  const called = req.body.Called || req.body.To || ''; // Twilio sends 'Called' for the destination number
+  const from   = req.body.From   || '';
+  const called = req.body.Called || req.body.To || req.body.ToE164 || '';
+  console.log('[IVR inbound] From:', from, '| Called:', req.body.Called, '| To:', req.body.To, '| ToE164:', req.body.ToE164, '| normalized:', normalizePhone(called));
   clearSession('ivr:'+from);
-  // Store the called number so subsequent steps can look up the event
-  setSession('ivr:'+from, 'welcome', { calledNumber: called });
+  setSession('ivr:'+from, 'welcome', { calledNumber: normalizePhone(called) || called });
   res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
 });
 
 r.post('/ivr/menu', async (req, res) => {
   const from = req.body.From||'', d = req.body.Digits||'';
   const session = getSession('ivr:'+from);
-  // Use the called number stored at inbound, or fall back to Called/To from this request
-  const calledNumber = session?.data?.calledNumber || req.body.Called || req.body.To || '';
-  if (d === '9' || !d) return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
-  if (d !== '1')       return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
+  const calledRaw = req.body.Called || req.body.To || req.body.ToE164 || '';
+  const calledNumber = session?.data?.calledNumber || normalizePhone(calledRaw) || calledRaw;
+  console.log('[IVR menu] From:', from, '| Digits:', d, '| calledNumber:', calledNumber, '| session calledNumber:', session?.data?.calledNumber);
 
-  // Route directly to the event tied to this phone number
+  if (!d || d === '9') return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
+  if (d !== '1') return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
+
   const linkedEvent = getEventByNumber(calledNumber);
+  console.log('[IVR menu] getEventByNumber result:', linkedEvent ? linkedEvent.name : 'NULL', '| queried:', calledNumber);
   if (!linkedEvent) {
-    console.warn('[IVR menu] No event found for number:', calledNumber, '| From:', from);
+    // Log all events with phone numbers so we can see what's stored
+    const allNums = db.prepare('SELECT name, phone_number, sms_ivr_enabled FROM events WHERE phone_number IS NOT NULL').all();
+    console.log('[IVR menu] All stored numbers:', JSON.stringify(allNums));
     return res.type('text/xml').send(twimlSay('ivr.no_available',{},true));
   }
   setSession('ivr:'+from, 'select_level', { eventId:linkedEvent.id, calledNumber }, linkedEvent.slug, linkedEvent.account_id);

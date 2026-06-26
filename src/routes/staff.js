@@ -152,7 +152,7 @@ r.post('/:id/send', async (req, res) => {
   try {
     const designPath = getEventDesignPath(event.id);
     const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: designPath });
-    await sendMail({ to: toEmail, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event, pdfUrl: `${process.env.APP_URL || 'https://tickets.everythingshul.com'}/api/staff/ticket-pdf/${s.ticket_id}` }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
+    await sendMail({ to: toEmail, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event, pdfUrl: `${process.env.APP_URL || 'https://mamudem.com'}/api/staff/ticket-pdf/${s.ticket_id}` }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
     db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now'),email=?,updated_at=datetime('now') WHERE id=?`).run(toEmail, s.id);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -173,7 +173,7 @@ r.post('/event/:eventId/send-all', requireEvent, blockIfClosed, async (req, res)
     if (!s.email) { failed++; continue; }
     try {
       const pdfBytes = await generateStaffTicketPDF({ attendee: s, event, eventDesignPath: designPath });
-      await sendMail({ to: s.email, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event, pdfUrl: `${process.env.APP_URL || 'https://tickets.everythingshul.com'}/api/staff/ticket-pdf/${s.ticket_id}` }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
+      await sendMail({ to: s.email, subject: `Your ticket for ${event.name}`, html: ticketEmail({ attendee: s, event, pdfUrl: `${process.env.APP_URL || 'https://mamudem.com'}/api/staff/ticket-pdf/${s.ticket_id}` }), attachments: [{ filename: `ticket-${s.ticket_id}.pdf`, content: pdfBytes, contentType: 'application/pdf' }], replyTo: owner?.reply_to||owner?.email });
       db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now'),updated_at=datetime('now') WHERE id=?`).run(s.id);
       sent++;
     } catch(e) { console.error('[staff/send-all]', e.message); failed++; }
@@ -200,7 +200,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
     } catch(e) { console.error('[staff/digest pdf]', e.message); }
   }
 
-  const appUrl = process.env.APP_URL || 'https://tickets.everythingshul.com';
+  const appUrl = process.env.APP_URL || 'https://mamudem.com';
   const batchSize = 100;
   const ticketIds = rawList.map(s => s.ticket_id);
   const batches = [];
@@ -219,7 +219,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
   <div style="background:${NAVY};padding:18px 24px;text-align:center">
-    <div style="color:#fff;font-size:18px;font-weight:700">EverythingShul Ticket System</div>
+    <div style="color:#fff;font-size:18px;font-weight:700">Mamudem</div>
   </div>
   <div style="padding:20px">
     <div style="background:#f0f4f8;border-radius:8px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:${NAVY};border:1px solid #dde6f0">
@@ -244,7 +244,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
     </table>
   </div>
   <div style="background:#f0f4f8;padding:14px 24px;text-align:center;font-size:11px;color:#888">
-    EverythingShul.com · Staff Tickets
+    Mamudem · Staff Tickets
   </div>
 </div></body></html>`;
 

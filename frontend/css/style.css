@@ -1,10 +1,10 @@
-/* ── EverythingShul.com Ticket System — Global Styles ── */
+/* ── Mamudem — Global Styles ── */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root{
-  /* White background theme with EverythingShul navy+cyan palette */
+  /* White background theme with Mamudem navy+cyan palette */
   --bg:#f5f7fa;
   --bg2:#ffffff;
   --bg3:#f0f3f7;

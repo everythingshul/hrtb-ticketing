@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EverythingShul.com — Set Up Your Account</title>
+<title>Mamudem — Set Up Your Account</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
 <div class="auth-page">
   <div class="auth-box">
     <div class="auth-logo" style="margin-bottom:28px">
-      <img src="/logo.png" alt="EverythingShul.com" style="width:200px;height:auto;display:block;margin:0 auto 10px">
-      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.5)">Ticket System</p>
+      <img src="/logo.png" alt="Mamudem" style="width:200px;height:auto;display:block;margin:0 auto 10px">
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:rgba(255,255,255,.5)">Mamudem</p>
     </div>
     <div class="auth-card">
       <div id="invite-banner" style="display:none" class="info-box ok mb16"></div>
@@ -79,7 +79,7 @@
     // Invited user — look up invite to show their name
     api.auth.inviteInfo(inviteToken).then(d => {
       document.getElementById('invite-banner').style.display = 'block';
-      document.getElementById('invite-banner').innerHTML = ` You've been invited to <strong>EverythingShul.com Ticket System</strong> as <strong>${esc(d.role)}</strong>`;
+      document.getElementById('invite-banner').innerHTML = ` You've been invited to <strong>Mamudem</strong> as <strong>${esc(d.role)}</strong>`;
       // Show name set by admin
       if (d.name) {
         document.getElementById('invited-name-display').style.display = 'block';

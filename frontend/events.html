@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EverythingShul.com Tickets — Events</title>
+<title>Mamudem Tickets — Events</title>
 <link rel="stylesheet" href="/css/style.css">
 <script src="https://js.stripe.com/v3/"></script>
 <style>
@@ -220,7 +220,7 @@ async function submitEvent() {
     } else if (e.message === 'DEMO_MODE') {
       document.getElementById('ev-form').classList.remove('open');
       document.getElementById('btn-new').textContent = '+ New Event';
-      if (confirm('You\'re in demo mode. To create live events with real ticket sales and email delivery, you need to upgrade your account.\n\nContact us at hello@everythingshul.com to upgrade.\n\nClick OK to learn more about pricing.')) {
+      if (confirm('You\'re in demo mode. To create live events with real ticket sales and email delivery, you need to upgrade your account.\n\nContact us at hello@mamudem.com to upgrade.\n\nClick OK to learn more about pricing.')) {
         window.open('/pricing.html', '_blank');
       }
     } else {

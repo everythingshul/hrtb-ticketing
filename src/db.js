@@ -127,7 +127,7 @@ const defaultContent = {
   'home.feature3_title': 'Scan at the Door',
   'home.feature3_body': 'QR code scanner works on any phone or tablet. Multiple entrances, staff tickets, and real-time check-in counts.',
   'home.feature4_title': 'Staff & Access Control',
-  'home.feature4_body': 'Separate staff ticket system with ID badge PDFs. Restrict scanners to specific ticket levels.',
+  'home.feature4_body': 'Separate staff Mamudem with ID badge PDFs. Restrict scanners to specific ticket levels.',
   'pricing.title': 'Simple, Transparent Pricing',
   'pricing.subtitle': 'Start free with a demo event. Upgrade when you\'re ready to go live.',
   'pricing.tier1_name': 'Demo',
@@ -162,7 +162,7 @@ const defaultContent = {
   'faq.items': JSON.stringify([
     { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real, live event.' },
     { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it. For phone and SMS orders, payments are processed through our platform Stripe account and your attendee is issued a ticket just like an online order.' },
-    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! EverythingShul supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Both are available on request — contact us to get a phone number assigned to your event.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Both are available on request — contact us to get a phone number assigned to your event.' },
     { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file with your attendee list and the system will import everyone, match any existing records, and optionally email tickets to everyone automatically.' },
     { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes at the door. You create a scanner PIN for each entrance — your staff just open the scanner page on any device and scan. No app download required. Multiple entrances can run simultaneously.' },
     { q: 'Can I have VIP entrances that only admit certain ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always get through regardless.' },
@@ -177,13 +177,13 @@ const defaultContent = {
   'terms.title': 'Terms and Conditions',
   'terms.last_updated': new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
   'terms.content': `<h2>1. Acceptance of Terms</h2>
-<p>By creating an account and using the EverythingShul Ticket System ("the Service"), you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
+<p>By creating an account and using the Mamudem ("the Service"), you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
 
 <h2>2. Description of Service</h2>
-<p>EverythingShul Ticket System is a software platform that allows organizations to sell event tickets, manage attendees, process check-ins at the door, and collect payments. We are a software provider — we do not organize events or sell tickets on behalf of our users.</p>
+<p>Mamudem is a software platform that allows organizations to sell event tickets, manage attendees, process check-ins at the door, and collect payments. We are a software provider — we do not organize events or sell tickets on behalf of our users.</p>
 
 <h2>3. Account Registration</h2>
-<p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. Notify us immediately of any unauthorized access at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a>.</p>
+<p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. Notify us immediately of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
 
 <h2>4. Demo Accounts</h2>
 <p>All new accounts begin in Demo Mode with a fully featured demo event for evaluation purposes. Demo accounts cannot process real payments or send ticket emails to real attendees. To run a live event, you must purchase a plan. Your demo event remains accessible at no cost indefinitely.</p>
@@ -192,7 +192,7 @@ const defaultContent = {
 <p>Creating live events requires a one-time fee per event (or as otherwise indicated at the time of purchase). Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service in addition to these terms.</p>
 
 <h2>6. Ticket Sales and Payment Processing</h2>
-<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to your Stripe account — EverythingShul does not hold or transmit your ticket sale funds. You are solely responsible for refunds, disputes, chargebacks, and compliance with consumer protection laws in your jurisdiction.</p>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to your Stripe account — Mamudem does not hold or transmit your ticket sale funds. You are solely responsible for refunds, disputes, chargebacks, and compliance with consumer protection laws in your jurisdiction.</p>
 <p>Phone and SMS ticket orders are processed through our platform Stripe account under our MOTO (Mail Order/Telephone Order) approval. You are responsible for ensuring compliance with card network rules when enabling phone ordering.</p>
 
 <h2>7. Your Data and Attendee Information</h2>
@@ -205,13 +205,13 @@ const defaultContent = {
 <p>We aim for maximum uptime but do not guarantee uninterrupted availability. We are not liable for losses resulting from service interruptions. We recommend exporting your attendee list before any major event as a precaution.</p>
 
 <h2>10. Limitation of Liability</h2>
-<p>The Service is provided "as is" without warranty of any kind. To the maximum extent permitted by law, EverythingShul shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including lost revenue, lost data, or event disruptions.</p>
+<p>The Service is provided "as is" without warranty of any kind. To the maximum extent permitted by law, Mamudem shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including lost revenue, lost data, or event disruptions.</p>
 
 <h2>11. Changes to These Terms</h2>
 <p>We may update these Terms at any time. Continued use of the Service after changes constitutes acceptance. We recommend checking this page periodically.</p>
 
 <h2>12. Contact Us</h2>
-<p>For questions about these Terms, contact us at <a href="mailto:everythingshul@gmail.com">everythingshul@gmail.com</a></p>`
+<p>For questions about these Terms, contact us at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a></p>`
 };
 for (const [key, value] of Object.entries(defaultContent)) {
   try { db.prepare('INSERT OR IGNORE INTO site_content (key, value) VALUES (?,?)').run(key, value); } catch {}
@@ -466,8 +466,8 @@ const smsDefaults = {
   'pci.annual_transactions':'','pci.saq_version':'SAQ-D v4.0',
   'pci.last_assessment_date':'','pci.next_assessment_due':'',
   'pci.asv_vendor':'','pci.last_scan_date':'','pci.next_scan_due':'','pci.notes':'',
-  'sms.welcome':'Welcome to EverythingShul Tickets! Text an event code to buy tickets, or HELP for help.',
-  'sms.help':'EverythingShul Tickets: Text an event code to buy. Text CANCEL to start over.',
+  'sms.welcome':'Welcome to Mamudem! Text an event code to buy tickets, or HELP for help.',
+  'sms.help':'Mamudem: Text an event code to buy. Text CANCEL to start over.',
   'sms.invalid_code':'Sorry, that event code was not found. Please check and try again.',
   'sms.no_levels':'Sorry, no tickets are available for this event.',
   'sms.select_level':'{{event_name}}\n{{event_date}}\n\nSelect a ticket level:\n{{levels}}\n\nReply with a number or CANCEL.',
@@ -485,7 +485,7 @@ const smsDefaults = {
   'sms.session_expired':'Your session timed out. Text an event code to start a new order.',
   'sms.error':'Something went wrong. Please try again or text HELP.',
   'ivr.tts_voice':'Polly.Matthew',
-  'ivr.welcome':'Welcome to EverythingShul Tickets. Press 1 to buy tickets. Press 9 to repeat.',
+  'ivr.welcome':'Welcome to Mamudem. Press 1 to buy tickets. Press 9 to repeat.',
   'ivr.welcome_recording':'',
   'ivr.select_event':'Select your event. {{event_list}} Press 0 to go back.',
   'ivr.select_event_recording':'',

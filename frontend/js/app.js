@@ -251,7 +251,7 @@ function renderSidebar(activePage) {
 
   sidebar.innerHTML = `
     <div class="sb-logo" style="padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between">
-      <img src="/logo.png" alt="EverythingShul.com" style="height:36px;width:auto;display:block" id="sb-logo-img">
+      <img src="/logo.png" alt="Mamudem" style="height:36px;width:auto;display:block;filter:brightness(0) invert(1)" id="sb-logo-img">
       <button onclick="toggleSidebar()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0" id="sb-toggle">&#x2715;</button>
     </div>
     <nav class="sb-nav" id="sb-nav-content">
@@ -421,7 +421,7 @@ function injectCopyright() {
   const year = new Date().getFullYear();
   const footer = document.createElement('div');
   footer.style.cssText = 'text-align:center;padding:18px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);margin-top:32px';
-  footer.innerHTML = `© ${year} <a href="https://everythingshul.com" style="color:var(--cyan,#00aadd);text-decoration:none">EverythingShul.com</a> Ticket System. All rights reserved.`;
+  footer.innerHTML = `© ${year} <a href="https://mamudem.com" style="color:var(--cyan,#00aadd);text-decoration:none">Mamudem</a> Mamudem. All rights reserved.`;
   const main = document.querySelector('.main');
   if (main) main.appendChild(footer);
 }
