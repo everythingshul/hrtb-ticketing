@@ -886,6 +886,50 @@ function writeSiteContent(c) { try { wfs(getSiteContentPath(), JSON.stringify(c,
 
 r.get('/site-content', (req, res) => {
   const content = readSiteContent();
+
+  // ── Homepage defaults (shown when admin hasn't customized yet) ──
+  const homeDefaults = {
+    'home.hero_title':        'Event Ticketing That *Works the Way You Do*',
+    'home.hero_subtitle':     'Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.',
+    'home.cta_primary':       'Get Started Free',
+    'home.cta_secondary':     'View Pricing',
+    'home.channels_eyebrow':  'Multiple ways to sell',
+    'home.channels_title':    'Meet your guests where they are',
+    'home.channels_sub':      'Not everyone buys tickets online. Mamudem lets guests purchase the way they prefer.',
+    'home.ch1_title':         'Online Sales Page',
+    'home.ch1_desc':          'A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.',
+    'home.ch2_title':         'IVR Phone Ordering',
+    'home.ch2_desc':          'Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.',
+    'home.ch3_title':         'SMS Ordering',
+    'home.ch3_desc':          'Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.',
+    'home.ch4_title':         'Staff Portal Sale',
+    'home.ch4_desc':          'Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.',
+    'home.features_eyebrow':  'Everything included',
+    'home.features_title':    'All the tools you need',
+    'home.f1_title': 'Attendee Management', 'home.f1_desc': 'Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.',
+    'home.f2_title': 'Door Scanner',         'home.f2_desc': 'Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.',
+    'home.f3_title': 'Staff Tickets',        'home.f3_desc': 'Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.',
+    'home.f4_title': 'Promo Codes',          'home.f4_desc': 'Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.',
+    'home.f5_title': 'Your Own Stripe',      'home.f5_desc': 'Connect your Stripe account. All funds go directly to you — we never touch your money.',
+    'home.f6_title': 'Reports & Stats',      'home.f6_desc': 'Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.',
+    'home.f7_title': 'Demo Mode',            'home.f7_desc': 'Every account starts with a full demo event loaded with sample data — explore everything before going live.',
+    'home.f8_title': 'Capacity Control',     'home.f8_desc': 'Set max tickets per event or per level, with automatic alerts when getting close.',
+    'home.how_eyebrow':  'Simple setup',
+    'home.how_title':    'Up and running in minutes',
+    'home.step1_title':  'Create your account', 'home.step1_desc': 'Sign up free. Your demo event is ready instantly with sample data to explore.',
+    'home.step2_title':  'Connect Stripe',       'home.step2_desc': 'Link your own Stripe account. All ticket revenue goes directly to you.',
+    'home.step3_title':  'Create your event',    'home.step3_desc': 'Add details, set ticket levels, enable online sales, phone ordering, or both.',
+    'home.step4_title':  'Sell & scan',          'home.step4_desc': 'Share your ticket link, scan QR codes at the door, track everything in real time.',
+    'home.cta_band_title': 'Ready to run a better event?',
+    'home.cta_band_sub':   'Start free with a full demo — no credit card required.',
+    'home.cta_band_btn':   'Create Your Free Account',
+    'home.logos_eyebrow':  'Our customers',
+    'home.logos_title':    'Organizations that trust us',
+    'home.logos_sub':      'Contact us to have your organization featured here.',
+  };
+  for (const [k, v] of Object.entries(homeDefaults)) {
+    if (!content[k]) content[k] = v;
+  }
   // Always inject default FAQ and terms if not set (handles fresh deploys)
   if (!content['faq.items'] || content['faq.items'] === '[]') {
     content['faq.items'] = JSON.stringify([
