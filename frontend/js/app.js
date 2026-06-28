@@ -56,11 +56,13 @@ const api = {
   },
   events: {
     list: () => req('/events'),
+    create: b => req('/events', { method: 'POST', body: JSON.stringify(b) }),
     listPublic: () => fetch('/api/events/public').then(r=>r.json()),
     getPublic: id => fetch(`/api/events/public/${id}`).then(r=>r.json()),
     close: id => req(`/events/${id}/close`, { method: 'POST' }),
     reopen: id => req(`/events/${id}/reopen`, { method: 'POST' }),
     update: (id, b) => req(`/events/${id}`, { method: 'PUT', body: JSON.stringify(b) }),
+    patch: (id, b) => req(`/events/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
     delete: id => req(`/events/${id}`, { method: 'DELETE' }),
   },
   attendees: {
@@ -250,8 +252,8 @@ function renderSidebar(activePage) {
     </div>` : '';
 
   sidebar.innerHTML = `
-    <div class="sb-logo" style="padding:14px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between">
-      <img src="/logo.png" alt="Mamudem" style="height:48px;width:auto;display:block;filter:brightness(0) invert(1)" id="sb-logo-img">
+    <div class="sb-logo" style="padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between">
+      <img src="/logo.png" alt="Mamudem" style="height:60px;width:auto;display:block;filter:brightness(0) invert(1)" id="sb-logo-img">
       <button onclick="toggleSidebar()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0" id="sb-toggle">&#x2715;</button>
     </div>
     <nav class="sb-nav" id="sb-nav-content">

@@ -41,7 +41,7 @@ img{max-width:100%}
 /* ── NAV ─────────────────────────────────────────────── */
 nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
 .nav-brand{display:flex;align-items:center;gap:12px}
-.nav-brand img{height:48px;filter:brightness(0) invert(1)}
+.nav-brand img{height:54px;filter:brightness(0) invert(1)}
 .nav-links{display:flex;align-items:center;gap:4px}
 .nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s}
 .nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
@@ -123,7 +123,7 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 /* ── FOOTER ─────────────────────────────────────────── */
 footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px;text-align:left}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
-.footer-brand img{height:40px;filter:brightness(0) invert(1);margin-bottom:14px}
+.footer-brand img{height:64px;width:auto;filter:brightness(0) invert(1);margin-bottom:16px;display:block}
 .footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
 .footer-col h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:14px}
 .footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;transition:color .15s}
@@ -184,37 +184,37 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 
 <!-- Sales Channels -->
 <div class="channels">
-  <div class="section-eyebrow">Multiple ways to sell</div>
-  <div class="section-title">Meet your guests where they are</div>
-  <div class="section-sub">Not everyone buys tickets online. Mamudem lets guests purchase the way they prefer.</div>
+  <div class="section-eyebrow" id="channels-eyebrow">Multiple ways to sell</div>
+  <div class="section-title" id="channels-title">Meet your guests where they are</div>
+  <div class="section-sub" id="channels-sub">Not everyone buys tickets online. Mamudem lets guests purchase the way they prefer.</div>
   <div class="channel-grid">
     <div class="channel-card">
       <div class="channel-icon" style="background:#e8f4fb">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a6b9a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       </div>
-      <h3>Online Sales Page</h3>
-      <p>A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.</p>
+      <h3 id="ch1-title">Online Sales Page</h3>
+      <p id="ch1-desc">A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.</p>
     </div>
     <div class="channel-card">
       <div class="channel-icon" style="background:#fef3c7">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.9.372 1.845.566 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       </div>
-      <h3>IVR Phone Ordering <span class="badge-new">NEW</span></h3>
-      <p>Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.</p>
+      <h3 id="ch2-title">IVR Phone Ordering <span class="badge-new">NEW</span></h3>
+      <p id="ch2-desc">Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.</p>
     </div>
     <div class="channel-card">
       <div class="channel-icon" style="background:#dcfce7">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
-      <h3>SMS Ordering <span class="badge-new">NEW</span></h3>
-      <p>Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.</p>
+      <h3 id="ch3-title">SMS Ordering <span class="badge-new">NEW</span></h3>
+      <p id="ch3-desc">Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.</p>
     </div>
     <div class="channel-card">
       <div class="channel-icon" style="background:#f3e8ff">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b21a8" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
-      <h3>Staff Portal Sale</h3>
-      <p>Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.</p>
+      <h3 id="ch4-title">Staff Portal Sale</h3>
+      <p id="ch4-desc">Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.</p>
     </div>
   </div>
 </div>
@@ -222,66 +222,64 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 <!-- Features -->
 <div class="features">
   <div style="text-align:center;margin-bottom:48px">
-    <div class="section-eyebrow">Everything included</div>
-    <div class="section-title">All the tools you need</div>
+    <div class="section-eyebrow" id="features-eyebrow">Everything included</div>
+    <div class="section-title" id="features-title">All the tools you need</div>
   </div>
   <div class="features-grid" id="features-grid">
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-    </div><h3>Attendee Management</h3><p>Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.</p></div>
+    </div><h3 id="f1-title">Attendee Management</h3><p id="f1-desc">Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-    </div><h3>Door Scanner</h3><p>Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.</p></div>
+    </div><h3 id="f2-title">Door Scanner</h3><p id="f2-desc">Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    </div><h3>Staff Tickets</h3><p>Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.</p></div>
+    </div><h3 id="f3-title">Staff Tickets</h3><p id="f3-desc">Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-    </div><h3>Promo Codes</h3><p>Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.</p></div>
+    </div><h3 id="f4-title">Promo Codes</h3><p id="f4-desc">Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    </div><h3>Your Own Stripe</h3><p>Connect your Stripe account. All funds go directly to you — we never touch your money.</p></div>
+    </div><h3 id="f5-title">Your Own Stripe</h3><p id="f5-desc">Connect your Stripe account. All funds go directly to you — we never touch your money.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
-    </div><h3>Reports &amp; Stats</h3><p>Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.</p></div>
+    </div><h3 id="f6-title">Reports &amp; Stats</h3><p id="f6-desc">Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    </div><h3>Demo Mode</h3><p>Every account starts with a full demo event loaded with sample data — explore everything before going live.</p></div>
+    </div><h3 id="f7-title">Demo Mode</h3><p id="f7-desc">Every account starts with a full demo event loaded with sample data — explore everything before going live.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 2.93 19.07m16.14 0A10 10 0 0 0 4.93 4.93"/></svg>
-    </div><h3>Capacity Control</h3><p>Set max tickets per event or per level, with automatic alerts when you're getting close.</p></div>
+    </div><h3 id="f8-title">Capacity Control</h3><p id="f8-desc">Set max tickets per event or per level, with automatic alerts when you're getting close.</p></div>
   </div>
 </div>
 
 <!-- Customer logos -->
 <div class="customers" id="customers-section" style="display:none">
-  <div class="section-eyebrow">Our customers</div>
-  <div class="section-title">Organizations that trust us</div>
+  <div class="section-eyebrow" id="logos-eyebrow">Our customers</div>
+  <div class="section-title" id="logos-title">Organizations that trust us</div>
   <div class="logo-strip-wrap">
-    <div class="logo-strip" id="logo-strip">
-      <!-- Duplicated for seamless loop — populated by JS -->
-    </div>
+    <div class="logo-strip" id="logo-strip"></div>
   </div>
-  <p style="font-size:12px;color:var(--text2);margin-top:20px">Contact us to have your organization featured here.</p>
+  <p id="logos-sub" style="font-size:12px;color:var(--text2);margin-top:20px">Contact us to have your organization featured here.</p>
 </div>
 
 <!-- How it works -->
 <div class="how">
-  <div class="section-eyebrow">Simple setup</div>
-  <div class="section-title">Up and running in minutes</div>
+  <div class="section-eyebrow" id="how-eyebrow">Simple setup</div>
+  <div class="section-title" id="how-title">Up and running in minutes</div>
   <div class="steps">
-    <div class="step"><div class="step-num">1</div><h3>Create your account</h3><p>Sign up free. Your demo event is ready instantly with sample data to explore.</p></div>
-    <div class="step"><div class="step-num">2</div><h3>Connect Stripe</h3><p>Link your own Stripe account. All ticket revenue goes directly to you.</p></div>
-    <div class="step"><div class="step-num">3</div><h3>Create your event</h3><p>Add details, set ticket levels, enable online sales, phone ordering, or both.</p></div>
-    <div class="step"><div class="step-num">4</div><h3>Sell &amp; scan</h3><p>Share your ticket link, scan QR codes at the door, track everything in real time.</p></div>
+    <div class="step"><div class="step-num">1</div><h3 id="step1-title">Create your account</h3><p id="step1-desc">Sign up free. Your demo event is ready instantly with sample data to explore.</p></div>
+    <div class="step"><div class="step-num">2</div><h3 id="step2-title">Connect Stripe</h3><p id="step2-desc">Link your own Stripe account. All ticket revenue goes directly to you.</p></div>
+    <div class="step"><div class="step-num">3</div><h3 id="step3-title">Create your event</h3><p id="step3-desc">Add details, set ticket levels, enable online sales, phone ordering, or both.</p></div>
+    <div class="step"><div class="step-num">4</div><h3 id="step4-title">Sell &amp; scan</h3><p id="step4-desc">Share your ticket link, scan QR codes at the door, track everything in real time.</p></div>
   </div>
 </div>
 
 <!-- CTA -->
 <div class="cta-band">
-  <h2>Ready to run a better event?</h2>
-  <p>Start free with a full demo — no credit card required.</p>
-  <a href="/signup.html" class="btn-gold">Create Your Free Account →</a>
+  <h2 id="cta-band-title">Ready to run a better event?</h2>
+  <p id="cta-band-sub">Start free with a full demo — no credit card required.</p>
+  <a href="/signup.html" class="btn-gold" id="cta-band-btn">Create Your Free Account →</a>
 </div>
 
 <!-- Footer -->
@@ -291,7 +289,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
       <img src="/logo.png" alt="Mamudem">
       <p>Professional event ticketing for synagogues, community organizations, and private events. Sell online, by phone, or by SMS.</p>
       <p style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.35)">
-        <a href="mailto:mamudem@gmail.com" style="color:rgba(255,255,255,.5);display:none">mamudem@gmail.com</a>
+        <a href="mailto:mamudemtickets@gmail.com" style="color:rgba(255,255,255,.5)">mamudemtickets@gmail.com</a>
       </p>
     </div>
     <div class="footer-col">
@@ -316,7 +314,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
     </div>
   </div>
   <div class="footer-bottom">
-    <span>&copy; 2025 Mamudem — Mamudem</span>
+    <span>&copy; 2025 <a href="/" style="color:rgba(255,255,255,.6);text-decoration:none">mamudem.com</a></span>
     <div>
       <a href="/terms.html">Terms</a>
       <a href="/pricing.html">Pricing</a>
@@ -326,14 +324,56 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 </footer>
 
 <script>
-// Load editable content from admin
+// Load all editable content from admin site-content
 fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
-  if (c['home.hero_title']) document.getElementById('hero-title').innerHTML = c['home.hero_title'].replace(/\*(.*?)\*/g,'<em>$1</em>');
-  if (c['home.hero_subtitle']) document.getElementById('hero-subtitle').textContent = c['home.hero_subtitle'];
-  if (c['home.cta_primary']) document.getElementById('cta-primary').textContent = c['home.cta_primary'] + ' →';
-  if (c['home.cta_secondary']) document.getElementById('cta-secondary').textContent = c['home.cta_secondary'];
+  const set = (id, val, html) => { const el = document.getElementById(id); if (el && val) { if (html) el.innerHTML = val; else el.textContent = val; } };
 
-  // Customer logos — only show section if toggled on AND logos exist
+  // Hero
+  set('hero-title',   c['home.hero_title'],    true);
+  set('hero-subtitle',c['home.hero_subtitle'],  false);
+  set('cta-primary',  c['home.cta_primary'] ? c['home.cta_primary']+' →' : null, false);
+  set('cta-secondary',c['home.cta_secondary'],  false);
+
+  // Channels section
+  set('channels-eyebrow', c['home.channels_eyebrow'],  false);
+  set('channels-title',   c['home.channels_title'],    false);
+  set('channels-sub',     c['home.channels_sub'],      false);
+  set('ch1-title', c['home.ch1_title'], false); set('ch1-desc', c['home.ch1_desc'], false);
+  set('ch2-title', c['home.ch2_title'], false); set('ch2-desc', c['home.ch2_desc'], false);
+  set('ch3-title', c['home.ch3_title'], false); set('ch3-desc', c['home.ch3_desc'], false);
+  set('ch4-title', c['home.ch4_title'], false); set('ch4-desc', c['home.ch4_desc'], false);
+
+  // Features section
+  set('features-eyebrow', c['home.features_eyebrow'], false);
+  set('features-title',   c['home.features_title'],   false);
+  set('f1-title', c['home.f1_title'], false); set('f1-desc', c['home.f1_desc'], false);
+  set('f2-title', c['home.f2_title'], false); set('f2-desc', c['home.f2_desc'], false);
+  set('f3-title', c['home.f3_title'], false); set('f3-desc', c['home.f3_desc'], false);
+  set('f4-title', c['home.f4_title'], false); set('f4-desc', c['home.f4_desc'], false);
+  set('f5-title', c['home.f5_title'], false); set('f5-desc', c['home.f5_desc'], false);
+  set('f6-title', c['home.f6_title'], false); set('f6-desc', c['home.f6_desc'], false);
+  set('f7-title', c['home.f7_title'], false); set('f7-desc', c['home.f7_desc'], false);
+  set('f8-title', c['home.f8_title'], false); set('f8-desc', c['home.f8_desc'], false);
+
+  // How it works / Steps
+  set('how-eyebrow',  c['home.how_eyebrow'],  false);
+  set('how-title',    c['home.how_title'],    false);
+  set('step1-title',  c['home.step1_title'],  false); set('step1-desc', c['home.step1_desc'], false);
+  set('step2-title',  c['home.step2_title'],  false); set('step2-desc', c['home.step2_desc'], false);
+  set('step3-title',  c['home.step3_title'],  false); set('step3-desc', c['home.step3_desc'], false);
+  set('step4-title',  c['home.step4_title'],  false); set('step4-desc', c['home.step4_desc'], false);
+
+  // Logos section
+  set('logos-eyebrow', c['home.logos_eyebrow'], false);
+  set('logos-title',   c['home.logos_title'],   false);
+  set('logos-sub',     c['home.logos_sub'],      false);
+
+  // CTA band
+  set('cta-band-title', c['home.cta_band_title'], false);
+  set('cta-band-sub',   c['home.cta_band_sub'],   false);
+  set('cta-band-btn',   c['home.cta_band_btn'] ? c['home.cta_band_btn']+' →' : null, false);
+
+  // Customer logos strip
   const showLogos = c['home.show_customer_logos'] === '1';
   let logos = [];
   try { logos = JSON.parse(c['home.customer_logos'] || '[]'); } catch {}
@@ -341,13 +381,10 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
     const section = document.getElementById('customers-section');
     section.style.display = 'block';
     const strip = document.getElementById('logo-strip');
-    // Build double set for seamless infinite scroll
     const buildLogos = () => logos.map(l =>
-      l.url
-        ? `<img src="${l.url}" alt="${l.name||''}" class="logo-item" title="${l.name||''}">`
-        : `<div class="logo-placeholder" title="${l.name||''}"></div>`
+      l.url ? `<img src="${l.url}" alt="${l.name||''}" class="logo-item" title="${l.name||''}">` : ''
     ).join('');
-    strip.innerHTML = buildLogos() + buildLogos(); // duplicate for loop
+    strip.innerHTML = buildLogos() + buildLogos();
   }
 }).catch(() => {});
 </script>

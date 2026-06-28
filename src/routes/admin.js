@@ -279,11 +279,11 @@ r.get('/maintenance', (req, res) => {
 r.get('/stats', (req, res) => {
   try {
     res.json({ stats: {
-      accounts: db.prepare("SELECT COUNT(*) c FROM accounts WHERE role != 'scanner'").get().c,
-      events: db.prepare('SELECT COUNT(*) c FROM events').get().c,
-      attendees: db.prepare('SELECT COUNT(*) c FROM attendees').get().c,
-      sent: db.prepare("SELECT COUNT(*) c FROM attendees WHERE status='sent'").get().c,
-      checkedIn: db.prepare("SELECT COUNT(*) c FROM attendees WHERE status='checked'").get().c,
+      accounts:  db.prepare("SELECT COUNT(*) c FROM accounts WHERE role != 'scanner' AND demo_mode=0").get().c,
+      events:    db.prepare("SELECT COUNT(*) c FROM events e JOIN accounts a ON a.id=e.account_id WHERE a.demo_mode=0 AND e.deleted_at IS NULL").get().c,
+      attendees: db.prepare("SELECT COUNT(*) c FROM attendees att JOIN events e ON e.id=att.event_id JOIN accounts a ON a.id=e.account_id WHERE a.demo_mode=0").get().c,
+      sent:      db.prepare("SELECT COUNT(*) c FROM attendees att JOIN events e ON e.id=att.event_id JOIN accounts a ON a.id=e.account_id WHERE a.demo_mode=0 AND att.status='sent'").get().c,
+      checkedIn: db.prepare("SELECT COUNT(*) c FROM attendees att JOIN events e ON e.id=att.event_id JOIN accounts a ON a.id=e.account_id WHERE a.demo_mode=0 AND att.status='checked'").get().c,
     }});
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -394,14 +394,16 @@ r.delete('/accounts/:accountId/members/:userId', (req, res) => {
 
 r.get('/events', (req, res) => {
   try {
+    const showDemo = req.query.demo === '1'; // ?demo=1 to include demo events
     const events = db.prepare(`
       SELECT e.*,
         COALESCE(a.name, '(deleted account)') as account_name,
+        a.demo_mode,
         (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL AND (source IS NULL OR source!='staff')) as attendee_count,
         (SELECT COUNT(*) FROM attendees WHERE event_id=e.id AND deleted_at IS NULL AND source='staff') as staff_count
       FROM events e
       LEFT JOIN accounts a ON a.id=e.account_id
-      WHERE e.deleted_at IS NULL
+      WHERE e.deleted_at IS NULL ${showDemo ? '' : 'AND (a.demo_mode=0 OR a.demo_mode IS NULL)'}
       ORDER BY e.created_at DESC
     `).all();
     res.json({ events });
@@ -501,15 +503,15 @@ r.get('/transactions/accounts', auth, async (req, res) => {
 r.post('/logos/upload', auth, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {
-    const multer = (await import('multer')).default;
-    const path   = await import('path');
-    const fs     = await import('fs');
-    const logoDir = join(process.env.DATA_DIR || '/data', 'logos');
+    const multer  = (await import('multer')).default;
+    const pathMod = await import('path');
+    const fs      = await import('fs');
+    const logoDir = pathMod.join(process.env.DATA_DIR || '/data', 'logos');
     if (!fs.existsSync(logoDir)) fs.mkdirSync(logoDir, { recursive: true });
     const storage = multer.diskStorage({
       destination: logoDir,
       filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase() || '.png';
+        const ext = pathMod.extname(file.originalname).toLowerCase() || '.png';
         cb(null, Date.now() + '-' + Math.random().toString(36).slice(2) + ext);
       }
     });
@@ -527,20 +529,21 @@ r.post('/logos/upload', auth, async (req, res) => {
 });
 
 // Serve uploaded logo files
-r.get('/logos/file/:filename', (req, res) => {
-  const { join: pathJoin } = require('path');
-  const logoDir = pathJoin(process.env.DATA_DIR || '/data', 'logos');
-  const file = pathJoin(logoDir, req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
+r.get('/logos/file/:filename', async (req, res) => {
+  const pathMod = await import('path');
+  const logoDir = pathMod.join(process.env.DATA_DIR || '/data', 'logos');
+  const file = pathMod.join(logoDir, req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
   res.sendFile(file, err => { if (err) res.status(404).end(); });
 });
+
 // ── IVR Audio Recording Upload ────────────────────────────
 r.post('/ivr-audio/upload', auth, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   try {
-    const multer = (await import('multer')).default;
+    const multer  = (await import('multer')).default;
     const pathMod = await import('path');
-    const fs = await import('fs');
-    const audioDir = join(process.env.DATA_DIR || '/data', 'ivr-audio');
+    const fs      = await import('fs');
+    const audioDir = pathMod.join(process.env.DATA_DIR || '/data', 'ivr-audio');
     if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir, { recursive: true });
     const storage = multer.diskStorage({
       destination: audioDir,
@@ -565,15 +568,15 @@ r.post('/ivr-audio/upload', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-r.get('/ivr-audio/file/:filename', (req, res) => {
-  const { join: pj } = require('path');
-  const file = pj(process.env.DATA_DIR || '/data', 'ivr-audio', req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
+r.get('/ivr-audio/file/:filename', async (req, res) => {
+  const pathMod = await import('path');
+  const file = pathMod.join(process.env.DATA_DIR || '/data', 'ivr-audio', req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
   res.sendFile(file, err => { if (err) res.status(404).end(); });
 });
 
-r.get('/ivr-audio/download/:filename', auth, (req, res) => {
-  const { join: pj } = require('path');
-  const file = pj(process.env.DATA_DIR || '/data', 'ivr-audio', req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
+r.get('/ivr-audio/download/:filename', auth, async (req, res) => {
+  const pathMod = await import('path');
+  const file = pathMod.join(process.env.DATA_DIR || '/data', 'ivr-audio', req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
   res.download(file, req.query.name || req.params.filename, err => { if (err) res.status(404).end(); });
 });
 

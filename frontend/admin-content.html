@@ -90,15 +90,35 @@ async function renderSubTab(tab) {
 
   if (tab === 'pages') {
     area.innerHTML = `
-      ${sectionTitle('Home Page')}
+      ${sectionTitle('Hero')}
       ${field('home.hero_title','Hero Title')}
       ${field('home.hero_subtitle','Hero Subtitle','')}
-      ${field('home.cta_primary','Primary Button Text')}
-      ${field('home.cta_secondary','Secondary Button Text')}
-      ${field('home.feature1_title','Feature 1 Title')} ${field('home.feature1_body','Feature 1 Body','')}
-      ${field('home.feature2_title','Feature 2 Title')} ${field('home.feature2_body','Feature 2 Body','')}
-      ${field('home.feature3_title','Feature 3 Title')} ${field('home.feature3_body','Feature 3 Body','')}
-      ${field('home.feature4_title','Feature 4 Title')} ${field('home.feature4_body','Feature 4 Body','')}
+      ${field('home.cta_primary','Primary Button')}
+      ${field('home.cta_secondary','Secondary Button')}
+
+      ${sectionTitle('Channels Section (4 ways to sell)')}
+      ${field('home.channels_eyebrow','Eyebrow label')}
+      ${field('home.channels_title','Section Title')}
+      ${field('home.channels_sub','Section Subtitle','')}
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch1_title','Card 1 Title')}</div><div class="fg" style="margin:0">${field('home.ch1_desc','Card 1 Desc','')}</div></div>
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch2_title','Card 2 Title')}</div><div class="fg" style="margin:0">${field('home.ch2_desc','Card 2 Desc','')}</div></div>
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch3_title','Card 3 Title')}</div><div class="fg" style="margin:0">${field('home.ch3_desc','Card 3 Desc','')}</div></div>
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch4_title','Card 4 Title')}</div><div class="fg" style="margin:0">${field('home.ch4_desc','Card 4 Desc','')}</div></div>
+
+      ${sectionTitle('Features Section (8 features)')}
+      ${field('home.features_eyebrow','Eyebrow')}
+      ${field('home.features_title','Section Title')}
+      ${[1,2,3,4,5,6,7,8].map(i=>`<div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.f'+i+'_title','Feature '+i+' Title')}</div><div class="fg" style="margin:0">${field('home.f'+i+'_desc','Feature '+i+' Desc','')}</div></div>`).join('')}
+
+      ${sectionTitle('Steps Section (How it works)')}
+      ${field('home.how_eyebrow','Eyebrow')}
+      ${field('home.how_title','Section Title')}
+      ${[1,2,3,4].map(i=>`<div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.step'+i+'_title','Step '+i+' Title')}</div><div class="fg" style="margin:0">${field('home.step'+i+'_desc','Step '+i+' Desc','')}</div></div>`).join('')}
+
+      ${sectionTitle('Bottom CTA Band')}
+      ${field('home.cta_band_title','CTA Title')}
+      ${field('home.cta_band_sub','CTA Subtitle','')}
+      ${field('home.cta_band_btn','CTA Button Text')}
 
       ${sectionTitle('Customer Logos Strip')}
       <div class="row-between mb12" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
