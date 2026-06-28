@@ -162,7 +162,7 @@ export function inviteEmail({ fromName, accountName, url, role }) {
 }
 
 // ── Admin + user notification emails ──────────────────────
-const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'mamudem@gmail.com';
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'mamudemtickets@gmail.com';
 const ADMIN_NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER; // where to send admin copies
 
 function notifyEmailBase(title, bodyHtml) {
@@ -170,8 +170,8 @@ function notifyEmailBase(title, bodyHtml) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-  <div style="background:#1a3a6b;padding:16px 24px;text-align:center">
-    <div style="color:#fff;font-size:17px;font-weight:700">Mamudem</div>
+  <div style="background:#1a3a6b;padding:20px 24px;text-align:center">
+    <img src="${appUrl}/logo.png" alt="Mamudem" style="height:52px;width:auto;display:block;margin:0 auto;filter:brightness(0) invert(1)">
   </div>
   <div style="padding:24px">
     <h2 style="color:#1a3a6b;font-size:18px;font-weight:800;margin-bottom:14px">${title}</h2>
@@ -186,8 +186,8 @@ function notifyEmailBase(title, bodyHtml) {
 }
 
 function row(label, value) {
-  return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:13px">
-    <span style="color:#6b7280;font-weight:600">${label}</span>
+  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e2e8f0;font-size:13px;gap:16px">
+    <span style="color:#6b7280;font-weight:600;white-space:nowrap">${label}:</span>
     <span style="color:#1a1a2e;font-weight:500;text-align:right">${value||'—'}</span>
   </div>`;
 }
@@ -207,7 +207,7 @@ export async function notifySignup({ account }) {
     </div>
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:12px">To run live events with real ticket sales, contact us to upgrade your account.</p>`;
 
-  const html = notifyEmailBase('Welcome to Mamudem! 🎟', body);
+  const html = notifyEmailBase('Welcome to Mamudem!', body);
   const promises = [
     sendMail({ to: account.email, subject: 'Welcome to Mamudem', html }).catch(e => console.error('[notify/signup user]', e.message))
   ];

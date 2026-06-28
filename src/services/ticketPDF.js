@@ -92,16 +92,15 @@ export async function generateTicketPDF({ attendee, event, eventDesignPath }) {
     if (existsSync(lp)) {
       try {
         const img = await pdfDoc.embedPng(readFileSync(lp));
-        const d   = img.scaleToFit(DESIGN_END - 20, 44);
-        const lx  = 10 + (DESIGN_END - 20 - d.width) / 2;
-        const ly  = H / 2 - d.height / 2 + 4;
-        page.drawText('Powered By:', { x: lx, y: ly + d.height + 5, size: 6, font, color: rgb(0.5,0.5,0.5) });
+        const d   = img.scaleToFit(DESIGN_END - 12, 56); // enlarged from 44 to 56
+        const lx  = 10 + (DESIGN_END - 12 - d.width) / 2;
+        const ly  = H / 2 - d.height / 2;
         page.drawImage(img, { x: lx, y: ly, width: d.width, height: d.height });
         designDone = true;
       } catch(e) { console.warn('[pdf] logo:', e.message); }
     }
     if (!designDone) {
-      page.drawText('Mamudem', { x: 8, y: H/2, size: 9, font: fontB, color: rgb(0.1,0.22,0.42) });
+      page.drawText('Mamudem', { x: 8, y: H/2, size: 11, font: fontB, color: rgb(0.1,0.22,0.42) });
     }
   }
 
@@ -165,7 +164,7 @@ export async function generateTicketPDF({ attendee, event, eventDesignPath }) {
     drawWrapped(event.description, 5.5);
   }
 
-  page.drawText('Powered By: Mamudem', {
+  page.drawText('mamudem.com', {
     x: ix, y: 4, size: 4.5, font, color: rgb(0.65,0.65,0.65)
   });
 

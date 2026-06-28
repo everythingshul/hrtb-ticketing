@@ -6,9 +6,10 @@ export async function sendDailyReports() {
 
   // Get all active events that haven't expired (or expire in the future)
   const events = db.prepare(`
-    SELECT e.*, a.email as owner_email, a.name as owner_name, a.reply_to, a.can_send_email, a.role
+    SELECT e.*, a.email as owner_email, a.name as owner_name, a.reply_to, a.can_send_email, a.role, a.demo_mode
     FROM events e JOIN accounts a ON a.id = e.account_id
     WHERE e.deleted_at IS NULL
+    AND a.demo_mode = 0
     AND (e.expires_at IS NULL OR datetime(e.expires_at) > datetime('now', '-2 days'))
   `).all();
 
@@ -26,20 +27,25 @@ export async function sendDailyReports() {
 
       const replyTo = ev.reply_to || ev.owner_email;
 
+      const appUrl = process.env.APP_URL || 'https://mamudem.com';
       const html = `
-        <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <img src="${process.env.APP_URL||''}/logo.png" style="height:48px;margin-bottom:20px" alt="Mamudem">
-          <h2 style="color:#1a3a6b;margin-bottom:4px">Daily Event Report</h2>
-          <p style="color:#666;margin-bottom:20px">${ev.name} — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p>
-          <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-            <tr style="background:#f5f7fa"><td style="padding:10px 14px;font-weight:700">Total Attendees</td><td style="padding:10px 14px;font-weight:800;color:#1a3a6b;font-size:20px">${total}</td></tr>
-            <tr><td style="padding:10px 14px">Tickets Sent</td><td style="padding:10px 14px;font-weight:700;color:#00aadd">${sent}</td></tr>
-            <tr style="background:#f5f7fa"><td style="padding:10px 14px">Checked In</td><td style="padding:10px 14px;font-weight:700;color:#27a85f">${checked}</td></tr>
-            <tr><td style="padding:10px 14px">Pending</td><td style="padding:10px 14px;font-weight:700;color:#d97706">${pending}</td></tr>
-            <tr style="background:#f5f7fa"><td style="padding:10px 14px">Confirmed</td><td style="padding:10px 14px;font-weight:700;color:#27a85f">${confirmed}</td></tr>
-            <tr><td style="padding:10px 14px">Online Sales</td><td style="padding:10px 14px;font-weight:700;color:#7c5cbe">${online}</td></tr>
-          </table>
-          <p style="color:#aaa;font-size:12px">Daily reports are sent until the day after the event. — Mamudem</p>
+        <div style="font-family:-apple-system,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+          <div style="background:#1a3a6b;padding:20px 24px;text-align:center">
+            <img src="${appUrl}/logo.png" style="height:52px;width:auto;display:block;margin:0 auto;filter:brightness(0) invert(1)" alt="Mamudem">
+          </div>
+          <div style="padding:24px">
+            <h2 style="color:#1a3a6b;margin-bottom:4px">Daily Event Report</h2>
+            <p style="color:#666;margin-bottom:20px">${ev.name} — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+              <tr style="background:#f5f7fa"><td style="padding:10px 14px;font-weight:700">Total Attendees</td><td style="padding:10px 14px;font-weight:800;color:#1a3a6b;font-size:20px">${total}</td></tr>
+              <tr><td style="padding:10px 14px">Tickets Sent</td><td style="padding:10px 14px;font-weight:700;color:#00aadd">${sent}</td></tr>
+              <tr style="background:#f5f7fa"><td style="padding:10px 14px">Checked In</td><td style="padding:10px 14px;font-weight:700;color:#27a85f">${checked}</td></tr>
+              <tr><td style="padding:10px 14px">Pending</td><td style="padding:10px 14px;font-weight:700;color:#d97706">${pending}</td></tr>
+              <tr style="background:#f5f7fa"><td style="padding:10px 14px">Confirmed</td><td style="padding:10px 14px;font-weight:700;color:#27a85f">${confirmed}</td></tr>
+              <tr><td style="padding:10px 14px">Online Sales</td><td style="padding:10px 14px;font-weight:700;color:#7c5cbe">${online}</td></tr>
+            </table>
+            <p style="color:#aaa;font-size:12px;text-align:center">Daily reports are sent until the day after the event. — <a href="${appUrl}" style="color:#1a3a6b">mamudem.com</a></p>
+          </div>
         </div>`;
 
       await sendMail({
