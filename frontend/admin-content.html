@@ -121,10 +121,13 @@ async function renderSubTab(tab) {
       ${field('home.cta_band_btn','CTA Button Text')}
 
       ${sectionTitle('Customer Logos Strip')}
+      ${field('home.logos_eyebrow','Section Eyebrow (small text above title)')}
+      ${field('home.logos_title','Section Title')}
+      ${field('home.logos_sub','Section Subtitle','')}
       <div class="row-between mb12" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
         <div>
           <div style="font-size:13px;font-weight:600">Show logos on homepage</div>
-          <div class="xs text2">When off, logos are saved but hidden.</div>
+          <div class="xs text2">When off, logos are saved but hidden. Toggle on to show the scrolling strip.</div>
         </div>
         <label class="toggle-pill">
           <input type="checkbox" id="sc-show-logos" ${siteContent['home.show_customer_logos']==='1'?'checked':''} onchange="saveLogoToggle(this.checked)">

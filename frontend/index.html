@@ -370,18 +370,25 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
   set('cta-band-sub',   c['home.cta_band_sub'],   false);
   set('cta-band-btn',   c['home.cta_band_btn'] ? c['home.cta_band_btn']+' →' : null, false);
 
-  // Customer logos strip
+  // Customer logos strip - show section when toggle is on, populate if logos exist
   const showLogos = c['home.show_customer_logos'] === '1';
   let logos = [];
   try { logos = JSON.parse(c['home.customer_logos'] || '[]'); } catch {}
-  if (showLogos && logos.length > 0) {
+  // Filter to only logos that have a URL
+  const validLogos = logos.filter(l => l && l.url && l.url.trim());
+  if (showLogos) {
     const section = document.getElementById('customers-section');
-    section.style.display = 'block';
-    const strip = document.getElementById('logo-strip');
-    const buildLogos = () => logos.map(l =>
-      l.url ? `<img src="${l.url}" alt="${l.name||''}" class="logo-item" title="${l.name||''}">` : ''
-    ).join('');
-    strip.innerHTML = buildLogos() + buildLogos();
+    if (section) section.style.display = 'block';
+    if (validLogos.length > 0) {
+      const strip = document.getElementById('logo-strip');
+      if (strip) {
+        const html = validLogos.map(l =>
+          `<img src="${l.url}" alt="${l.name||''}" class="logo-item" title="${l.name||''}" onerror="this.style.display='none'">`
+        ).join('');
+        // Duplicate for seamless infinite scroll
+        strip.innerHTML = html + html;
+      }
+    }
   }
 }).catch(() => {});
 </script>

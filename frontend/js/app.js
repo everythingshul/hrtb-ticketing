@@ -252,9 +252,10 @@ function renderSidebar(activePage) {
     </div>` : '';
 
   sidebar.innerHTML = `
-    <div class="sb-logo" style="padding:10px 14px 8px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between">
-      <img src="/logo.png" alt="Mamudem" style="height:60px;width:auto;display:block;filter:brightness(0) invert(1)" id="sb-logo-img">
-      <button onclick="toggleSidebar()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:16px;padding:2px 4px;flex-shrink:0" id="sb-toggle">&#x2715;</button>
+    <div class="sb-logo" style="padding:12px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)">
+      <a href="/dashboard.html" style="display:block">
+        <img src="/logo.png" alt="Mamudem" style="width:100%;max-width:180px;height:auto;display:block;filter:brightness(0) invert(1)" id="sb-logo-img">
+      </a>
     </div>
     <nav class="sb-nav" id="sb-nav-content">
       ${switcherHTML}

@@ -210,18 +210,13 @@ async function submitEvent() {
     if (e.message === 'DEMO_MODE') {
       document.getElementById('ev-form').classList.remove('open');
       document.getElementById('btn-new').textContent = '+ New Event';
-      // Show pricing modal with the collected event data
       showPricingModal();
       return;
-    } else if (e.message === 'EVENT_LIMIT') {
+    } else if (e.message === 'PLAN_LIMIT' || e.message === 'EVENT_LIMIT') {
       document.getElementById('ev-form').classList.remove('open');
       document.getElementById('btn-new').textContent = '+ New Event';
-      alert('You have reached the maximum number of events allowed for your account.\n\nPlease contact the Administrator to increase your event limit.');
-    } else if (e.message === 'DEMO_MODE') {
-      document.getElementById('ev-form').classList.remove('open');
-      document.getElementById('btn-new').textContent = '+ New Event';
-      if (confirm('You\'re in demo mode. To create live events with real ticket sales and email delivery, you need to upgrade your account.\n\nContact us at hello@mamudem.com to upgrade.\n\nClick OK to learn more about pricing.')) {
-        window.open('/pricing.html', '_blank');
+      if (confirm('You have used all the events on your current plan.\n\nPurchase a new plan to create another event.\n\nClick OK to view pricing.')) {
+        window.location = '/pricing.html';
       }
     } else {
       errEl.textContent = e.message;

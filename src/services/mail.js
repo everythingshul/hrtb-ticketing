@@ -40,13 +40,16 @@ const APP_URL = process.env.APP_URL || '';
 
 const qr = id => `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(id)}&margin=8`;
 
-const logoImg = `<img src="${APP_URL}/logo.png" alt="Mamudem" style="width:180px;height:auto;display:block;margin:0 auto;filter:brightness(0) invert(1)">`;
-
-const emailHeader = `
-<div style="text-align:center;padding:22px 20px 14px;background:${NAVY}">
-  ${logoImg}
-  <div style="font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:${CYAN};margin-top:8px">Mamudem</div>
+// Always use absolute URL evaluated at send time - email clients cannot load relative URLs
+const emailHeader = () => {
+  const url = (process.env.APP_URL || 'https://mamudem.com').replace(/\/$/, '');
+  // White background behind logo so it's always visible regardless of colors
+  return `<div style="text-align:center;padding:16px 20px;background:${NAVY}">
+  <div style="background:#ffffff;display:inline-block;border-radius:10px;padding:10px 20px">
+    <img src="${url}/logo.png" alt="Mamudem" style="width:180px;height:auto;display:block">
+  </div>
 </div>`;
+};
 
 const emailFooter = `
 <div style="text-align:center;padding:14px 20px;font-size:11px;color:#aaa;border-top:1px solid #eee">
@@ -85,7 +88,7 @@ export function ticketEmail({ attendee, event, pdfUrl }) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-  ${emailHeader}
+  ${emailHeader()}
   <div style="padding:20px">
     ${ticketCard(attendee, event)}
     <div style="background:#f8f9fb;border:1px solid #e0e8f0;border-radius:8px;padding:12px 14px;font-size:12px;color:#444;line-height:1.7;margin-bottom:14px">
@@ -124,7 +127,7 @@ export function digestEmail({ attendees, event }) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-  ${emailHeader}
+  ${emailHeader()}
   <div style="padding:20px">
     <div style="background:#f0f4f8;border-radius:8px;padding:11px 14px;margin-bottom:18px;font-size:13px;color:${NAVY};border:1px solid #dde6f0">
       <strong>${attendees.length} ticket(s)</strong> for <strong>${event.name}</strong>
@@ -145,7 +148,7 @@ export function inviteEmail({ fromName, accountName, url, role }) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:40px 16px">
 <div style="max-width:440px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-  ${emailHeader}
+  ${emailHeader()}
   <div style="padding:28px 32px">
     <h2 style="margin:0 0 10px;color:${NAVY};font-size:20px">You have been invited</h2>
     <p style="color:#555;font-size:14px;line-height:1.7;margin-bottom:8px">
@@ -186,10 +189,12 @@ function notifyEmailBase(title, bodyHtml) {
 }
 
 function row(label, value) {
-  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #e2e8f0;font-size:13px;gap:16px">
-    <span style="color:#6b7280;font-weight:600;white-space:nowrap">${label}:</span>
-    <span style="color:#1a1a2e;font-weight:500;text-align:right">${value||'—'}</span>
-  </div>`;
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #e2e8f0">
+    <tr>
+      <td style="padding:9px 12px 9px 0;font-size:13px;color:#6b7280;font-weight:600;white-space:nowrap;width:40%">${label}</td>
+      <td style="padding:9px 0;font-size:13px;color:#1a1a2e;font-weight:500;text-align:right">${value||'—'}</td>
+    </tr>
+  </table>`;
 }
 
 export async function notifySignup({ account }) {
