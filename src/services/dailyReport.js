@@ -30,8 +30,10 @@ export async function sendDailyReports() {
       const appUrl = process.env.APP_URL || 'https://mamudem.com';
       const html = `
         <div style="font-family:-apple-system,Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-          <div style="background:#1a3a6b;padding:20px 24px;text-align:center">
-            <img src="${appUrl}/logo.png" style="height:52px;width:auto;display:block;margin:0 auto;filter:brightness(0) invert(1)" alt="Mamudem">
+          <div style="background:#1a3a6b;padding:16px 24px;text-align:center">
+            <div style="background:#ffffff;display:inline-block;border-radius:10px;padding:10px 20px">
+              <img src="${appUrl}/logo.png" style="height:44px;width:auto;display:block" alt="Mamudem">
+            </div>
           </div>
           <div style="padding:24px">
             <h2 style="color:#1a3a6b;margin-bottom:4px">Daily Event Report</h2>

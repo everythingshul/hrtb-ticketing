@@ -137,7 +137,7 @@ app.listen(PORT, () => {
   async function runExpiryCheck() {
     try {
       const db = (await import('./db.js')).default;
-      const { sendMail } = await import('./services/mail.js');
+      const { sendMail, notifyEmailBase } = await import('./services/mail.js');
       const now  = new Date().toISOString();
       const in24 = new Date(Date.now() + 24*60*60*1000).toISOString();
 
@@ -164,7 +164,11 @@ app.listen(PORT, () => {
         sendMail({
           to: ev.owner_email,
           subject: `Phone number for "${ev.name}" has expired and been released`,
-          html: `<p>Hi ${ev.owner_name},</p><p>The SMS/IVR phone number <strong>${num}</strong> for your event <strong>${ev.name}</strong> has expired. The number has been automatically released — Twilio billing for it has stopped. Contact us to get a new number.</p>`
+          html: notifyEmailBase('Phone Number Released', `
+            <p style="font-size:14px;color:#4a5568;margin-bottom:16px">Hi ${ev.owner_name},</p>
+            <p style="font-size:14px;color:#4a5568;margin-bottom:16px">The SMS/IVR phone number <strong>${num}</strong> for your event <strong>${ev.name}</strong> has expired and has been automatically released. Twilio billing for this number has stopped.</p>
+            <p style="font-size:14px;color:#4a5568">Contact us if you'd like to get a new number for this event.</p>
+          `)
         }).catch(() => {});
         console.log(`[expiry] Cancelled number ${num} for event ${ev.id} (${ev.name})`);
       }
@@ -178,7 +182,11 @@ app.listen(PORT, () => {
         sendMail({
           to: ev.owner_email,
           subject: `Phone number for "${ev.name}" expires tomorrow — action required`,
-          html: `<p>Hi ${ev.owner_name},</p><p>The SMS/IVR phone number <strong>${ev.phone_number}</strong> for your event <strong>${ev.name}</strong> expires <strong>tomorrow (${expDate})</strong>.</p><p>After expiry it will be automatically deactivated. Contact us today to renew.</p>`
+          html: notifyEmailBase('Phone Number Expiring Soon', `
+            <p style="font-size:14px;color:#4a5568;margin-bottom:16px">Hi ${ev.owner_name},</p>
+            <p style="font-size:14px;color:#4a5568;margin-bottom:16px">The SMS/IVR phone number <strong>${ev.phone_number}</strong> for your event <strong>${ev.name}</strong> expires <strong>tomorrow (${expDate})</strong>.</p>
+            <p style="font-size:14px;color:#4a5568">After expiry it will be automatically deactivated and released. Contact us today to renew if you'd like to keep using it.</p>
+          `)
         }).catch(() => {});
         db.prepare("UPDATE events SET phone_number_notified=1 WHERE id=?").run(ev.id);
         console.log(`[expiry] Sent 1-day warning for event ${ev.id} (${ev.name})`);

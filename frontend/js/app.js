@@ -251,6 +251,24 @@ function renderSidebar(activePage) {
       ${nav(`event-sell.html?id=${currentEventId}`, '↳ Sell Ticket')}
     </div>` : '';
 
+  // Mobile hamburger menu button + overlay (only visible on mobile via CSS)
+  if (!document.getElementById('mobile-menu-btn')) {
+    const btn = document.createElement('button');
+    btn.id = 'mobile-menu-btn';
+    btn.className = 'mobile-menu-btn';
+    btn.setAttribute('aria-label', 'Open menu');
+    btn.innerHTML = '<span></span>';
+    btn.onclick = toggleMobileSidebar;
+    document.body.appendChild(btn);
+  }
+  if (!document.getElementById('mobile-overlay')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'mobile-overlay';
+    overlay.className = 'mobile-overlay';
+    overlay.onclick = closeMobileSidebar;
+    document.body.appendChild(overlay);
+  }
+
   sidebar.innerHTML = `
     <div class="sb-logo" style="padding:12px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)">
       <a href="/dashboard.html" style="display:block">
@@ -298,6 +316,30 @@ function toggleSidebar() {
   const btn = document.getElementById('sb-toggle');
   if (btn) btn.textContent = collapsed ? '☰' : '✕';
 }
+
+function toggleMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  const isOpen = sidebar.classList.toggle('mobile-open');
+  if (overlay) overlay.classList.toggle('show', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+
+function closeMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  sidebar.classList.remove('mobile-open');
+  if (overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// Auto-close mobile sidebar when a nav link is tapped
+document.addEventListener('click', (e) => {
+  if (window.innerWidth <= 720) {
+    const link = e.target.closest('.sidebar a, .sidebar .sb-nav a');
+    if (link) closeMobileSidebar();
+  }
+});
 
 // Apply on load
 function applySidebarState() {

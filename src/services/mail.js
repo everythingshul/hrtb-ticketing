@@ -168,13 +168,15 @@ export function inviteEmail({ fromName, accountName, url, role }) {
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'mamudemtickets@gmail.com';
 const ADMIN_NOTIFY  = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER; // where to send admin copies
 
-function notifyEmailBase(title, bodyHtml) {
-  const appUrl = process.env.APP_URL || 'https://mamudem.com';
+export function notifyEmailBase(title, bodyHtml) {
+  const appUrl = (process.env.APP_URL || 'https://mamudem.com').replace(/\/$/, '');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:Arial,sans-serif;background:#f0f4f8;margin:0;padding:24px 12px">
 <div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08)">
-  <div style="background:#1a3a6b;padding:20px 24px;text-align:center">
-    <img src="${appUrl}/logo.png" alt="Mamudem" style="height:52px;width:auto;display:block;margin:0 auto;filter:brightness(0) invert(1)">
+  <div style="background:#1a3a6b;padding:16px 24px;text-align:center">
+    <div style="background:#ffffff;display:inline-block;border-radius:10px;padding:10px 20px">
+      <img src="${appUrl}/logo.png" alt="Mamudem" style="height:44px;width:auto;display:block">
+    </div>
   </div>
   <div style="padding:24px">
     <h2 style="color:#1a3a6b;font-size:18px;font-weight:800;margin-bottom:14px">${title}</h2>
