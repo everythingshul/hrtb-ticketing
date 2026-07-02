@@ -111,6 +111,11 @@ app.get('/api/health', (_, res) => res.json({ ok: true }));
 const FRONTEND = join(__dirname, '../frontend');
 app.use(express.static(FRONTEND));
 
+// Serve uploaded logos and audio from persistent disk at /data
+const DATA_DIR = process.env.DATA_DIR || '/data';
+app.use('/uploads/logos',     express.static(join(DATA_DIR, 'logos')));
+app.use('/uploads/ivr-audio', express.static(join(DATA_DIR, 'ivr-audio')));
+
 // Any unknown route → serve index.html (so page refreshes work)
 app.get('*', (_, res) => res.sendFile(join(FRONTEND, 'index.html')));
 

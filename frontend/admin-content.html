@@ -573,15 +573,22 @@ function renderLogoList() {
   const list = document.getElementById('logo-list');
   if (!list) return;
   if (!_logos.length) {
-    list.innerHTML = '<span class="xs text2" style="padding:8px">No logos yet — upload one above</span>';
+    list.innerHTML = '<span class="xs text2" style="padding:8px;color:var(--text3)">No logos yet — upload one above</span>';
     return;
   }
   list.innerHTML = _logos.map((l, i) => `
-    <div draggable="true" data-idx="${i}" ondragstart="logoDragStart(event,${i})" ondragover="logoDragOver(event)" ondrop="logoDrop(event,${i})"
-      style="position:relative;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px;cursor:grab;text-align:center;width:110px">
-      <img src="${l.url}" alt="${esc(l.name)}" style="height:44px;width:auto;max-width:90px;object-fit:contain;display:block;margin:0 auto 4px">
-      <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.name||'')}</div>
-      <button onclick="removeLogo(${i})" style="position:absolute;top:2px;right:4px;background:none;border:none;font-size:13px;cursor:pointer;color:#aaa;line-height:1" title="Remove">&#x2715;</button>
+    <div draggable="true" data-idx="${i}"
+      ondragstart="logoDragStart(event,${i})"
+      ondragover="logoDragOver(event)"
+      ondrop="logoDrop(event,${i})"
+      style="position:relative;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px;cursor:grab;text-align:center;width:110px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <img src="${l.url}" alt="${esc(l.name)}"
+        style="height:44px;width:auto;max-width:90px;object-fit:contain;display:block;margin:0 auto 4px"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect width=%2240%22 height=%2240%22 fill=%22%23eee%22/><text x=%2250%%22 y=%2255%%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%228%22>error</text></svg>'">
+      <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:94px">${esc(l.name||'')}</div>
+      <button onclick="removeLogo(${i})"
+        style="position:absolute;top:2px;right:4px;background:none;border:none;font-size:14px;cursor:pointer;color:#aaa;line-height:1"
+        title="Remove">&#x2715;</button>
     </div>`).join('');
 }
 
@@ -623,10 +630,9 @@ async function uploadLogo(input) {
   const file = input.files[0];
   if (!file) return;
   input.value = '';
-  const name = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
   const formData = new FormData();
   formData.append('logo', file);
-  formData.append('name', name);
+  formData.append('name', file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
   toast('Uploading…');
   try {
     const d = await fetch('/api/admin/logos/upload', {
@@ -638,7 +644,7 @@ async function uploadLogo(input) {
     _logos.push({ name: d.name, url: d.url });
     renderLogoList();
     await saveLogoOrder();
-    toast('Logo uploaded');
+    toast('Logo added — visible on homepage when toggle is on');
   } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 

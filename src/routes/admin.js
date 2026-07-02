@@ -510,30 +510,28 @@ r.post('/logos/upload', auth, async (req, res) => {
     if (!fs.existsSync(logoDir)) fs.mkdirSync(logoDir, { recursive: true });
     const storage = multer.diskStorage({
       destination: logoDir,
-      filename: (req, file, cb) => {
+      filename: (_req, file, cb) => {
         const ext = pathMod.extname(file.originalname).toLowerCase() || '.png';
         cb(null, Date.now() + '-' + Math.random().toString(36).slice(2) + ext);
       }
     });
-    const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 }, fileFilter: (req, file, cb) => {
-      if (!file.mimetype.startsWith('image/')) return cb(new Error('Images only'));
-      cb(null, true);
-    }});
+    const upload = multer({
+      storage,
+      limits: { fileSize: 2 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ok = file.mimetype.startsWith('image/');
+        cb(ok ? null : new Error('Images only'), ok);
+      }
+    });
     upload.single('logo')(req, res, (err) => {
       if (err) return res.status(400).json({ error: err.message });
       if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-      const url = '/api/admin/logos/file/' + req.file.filename;
-      res.json({ ok: true, url, filename: req.file.filename, name: req.body.name || req.file.originalname });
+      // Return a simple static URL served by express.static
+      const url = '/uploads/logos/' + req.file.filename;
+      const name = (req.body.name || req.file.originalname).replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      res.json({ ok: true, url, name, filename: req.file.filename });
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
-});
-
-// Serve uploaded logo files
-r.get('/logos/file/:filename', async (req, res) => {
-  const pathMod = await import('path');
-  const logoDir = pathMod.join(process.env.DATA_DIR || '/data', 'logos');
-  const file = pathMod.join(logoDir, req.params.filename.replace(/[^a-zA-Z0-9._-]/g, ''));
-  res.sendFile(file, err => { if (err) res.status(404).end(); });
 });
 
 // ── IVR Audio Recording Upload ────────────────────────────
@@ -984,7 +982,13 @@ r.patch('/site-content', auth, (req, res) => {
   const { updates } = req.body;
   if (!updates || typeof updates !== 'object') return res.status(400).json({ error: 'updates object required' });
   const current = readSiteContent();
-  for (const [key, value] of Object.entries(updates)) current[key] = String(value);
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === null || value === undefined) {
+      delete current[key]; // null means remove the key
+    } else {
+      current[key] = String(value); // always store as string
+    }
+  }
   writeSiteContent(current);
   res.json({ ok: true });
 });
