@@ -336,19 +336,20 @@ async function selectPlan(planId) {
   if (!selectedPlan) return;
 
   document.getElementById('selected-plan-name').textContent = selectedPlan.name;
-  document.getElementById('selected-plan-price').textContent = '$' + (selectedPlan.price_cents/100).toFixed(2);
+  document.getElementById('selected-plan-price').textContent = selectedPlan.price_cents === 0 ? 'Free' : '$' + (selectedPlan.price_cents/100).toFixed(2).replace(/\.00$/, '');
 
   if (selectedPlan.price_cents === 0) {
-    // Free plan — skip payment
     document.getElementById('plan-payment-element').innerHTML = '<div class="info-box ok">This plan is free — no payment required.</div>';
     document.getElementById('btn-pay-plan').textContent = 'Create Event →';
     document.getElementById('payment-section').style.display = 'block';
+    document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
 
   document.getElementById('plan-payment-element').innerHTML = '<div class="text2 sm">Loading payment form…</div>';
   document.getElementById('btn-pay-plan').textContent = 'Pay & Create Event →';
   document.getElementById('payment-section').style.display = 'block';
+  document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   const { clientSecret, publishableKey } = await api.connect.createPaymentIntent({ planId });
   stripeInstance = Stripe(publishableKey);

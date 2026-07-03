@@ -179,7 +179,7 @@ async function load() {
           </div>
           <div style="font-size:11px;color:var(--text2);margin-top:6px">${over ? '⚠ Limit reached' : warn ? `${100-pct}% remaining` : `${m.max - m.used} remaining`}</div>
         </div>`;
-      }).join('') + (planUsage.plan_name ? `<div class="card" style="padding:14px;background:var(--bg3)"><div style="font-size:11px;color:var(--text2)">Current plan</div><div style="font-size:14px;font-weight:700;color:var(--navy)">${esc(planUsage.plan_name)}</div><a href="/pricing.html" style="font-size:11px;color:var(--navy)">Upgrade →</a></div>` : '');
+      }).join('') + (planUsage.plan_name ? `<div class="card" style="padding:14px;background:var(--bg3)"><div style="font-size:11px;color:var(--text2)">Current plan</div><div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px">${esc(planUsage.plan_name)}</div><a href="/events.html?new=1" class="btn btn-sm btn-gold" style="width:100%;justify-content:center;text-decoration:none">+ Buy Another Event</a></div>` : '');
     }
   }
 
