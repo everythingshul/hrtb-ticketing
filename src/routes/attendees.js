@@ -275,7 +275,24 @@ r.post('/event/:eventId/commit', requireEvent, blockIfClosed, (req, res) => {
 r.post('/event/:eventId', requireEvent, blockIfClosed, (req, res) => {
   const { first_name, last_name, phone, email, table_number, seat_number, level_id } = req.body;
   if (!first_name || !last_name) return res.status(400).json({ error: 'First and last name required' });
+
+  // Enforce max_attendees plan limit (skip staff)
   const lvl = level_id ? db.prepare('SELECT is_staff FROM ticket_levels WHERE id=?').get(level_id) : null;
+  if (!lvl?.is_staff) {
+    const limits = getPlanLimits(req.event.account_id);
+    if (limits?.max_attendees != null) {
+      const currentCount = db.prepare("SELECT COUNT(*) c FROM attendees WHERE event_id=? AND deleted_at IS NULL AND (source IS NULL OR source != 'staff')").get(req.params.eventId).c;
+      if (currentCount >= limits.max_attendees) {
+        return res.status(403).json({
+          error: 'PLAN_LIMIT',
+          message: `Your plan allows ${limits.max_attendees} attendee${limits.max_attendees !== 1 ? 's' : ''} per event. Upgrade to add more.`,
+          limit: limits.max_attendees,
+          current: currentCount
+        });
+      }
+    }
+  }
+
   const source = lvl?.is_staff ? 'staff' : 'offline';
   const id = uuid(), ticketId = tid();
   db.prepare(`INSERT INTO attendees (id,event_id,account_id,first_name,last_name,phone,email,table_number,seat_number,ticket_id,status,level_id,source) VALUES (?,?,?,?,?,?,?,?,?,?,'pending',?,?)`).run(id, req.params.eventId, req.event.account_id, first_name, last_name, phone||null, email||null, table_number||null, seat_number||null, ticketId, level_id||null, source);
@@ -662,6 +679,24 @@ r.post('/event/:eventId/levels', requireEvent, blockIfClosed, (req, res) => {
   const { name, color, description, is_staff } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   if (name.length > 11) return res.status(400).json({ error: 'Level name must be 11 characters or less (fits on ticket badge)' });
+
+  // Enforce max_levels plan limit (skip for staff levels)
+  if (!is_staff) {
+    const event = db.prepare('SELECT account_id FROM events WHERE id=?').get(req.params.eventId);
+    const limits = event ? getPlanLimits(event.account_id) : null;
+    if (limits?.max_levels != null) {
+      const currentLevels = db.prepare("SELECT COUNT(*) c FROM ticket_levels WHERE event_id=? AND is_staff=0").get(req.params.eventId).c;
+      if (currentLevels >= limits.max_levels) {
+        return res.status(403).json({
+          error: 'PLAN_LIMIT',
+          message: `Your plan allows ${limits.max_levels} ticket level${limits.max_levels !== 1 ? 's' : ''} per event. Upgrade to add more.`,
+          limit: limits.max_levels,
+          current: currentLevels
+        });
+      }
+    }
+  }
+
   const id = uuid();
   db.prepare('INSERT INTO ticket_levels (id,event_id,name,color,description,is_staff) VALUES (?,?,?,?,?,?)').run(id, req.params.eventId, name.trim(), color || '#6366f1', description||null, is_staff?1:0);
   res.json({ level: db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(id) });
@@ -893,3 +928,20 @@ r.patch('/event/:eventId/level-capacity/:levelId', requireEvent, blockIfClosed, 
     .run(max_tickets||null, alert_at||null, show_availability?1:0, req.params.levelId, req.params.eventId);
   res.json({ ok: true });
 });
+
+// ── Plan limit helper ─────────────────────────────────────
+function getPlanLimits(accountId) {
+  const acct = db.prepare('SELECT plan_id, max_events, role FROM accounts WHERE id=?').get(accountId);
+  if (!acct || acct.role === 'admin') return null; // no limits for admins
+  let limits = { max_events: acct.max_events ?? null, max_levels: null, max_attendees: null };
+  if (acct.plan_id) {
+    const plan = db.prepare('SELECT max_events, max_levels, max_attendees, name FROM pricing_plans WHERE id=?').get(acct.plan_id);
+    if (plan) {
+      if (plan.max_events    != null) limits.max_events    = plan.max_events;
+      if (plan.max_levels    != null) limits.max_levels    = plan.max_levels;
+      if (plan.max_attendees != null) limits.max_attendees = plan.max_attendees;
+      limits.plan_name = plan.name;
+    }
+  }
+  return limits;
+}

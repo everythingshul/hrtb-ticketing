@@ -104,6 +104,26 @@ r.post('/', (req, res) => {
   res.json({ event: newEvent });
 });
 
+// Plan usage — for stats page meters
+r.get('/plan-usage', auth, (req, res) => {
+  const acct = db.prepare('SELECT plan_id, max_events, role FROM accounts WHERE id=?').get(req.user.id);
+  if (!acct || acct.role === 'admin') return res.json({ unlimited: true });
+
+  let limits = { max_events: acct.max_events ?? null, max_levels: null, max_attendees: null, plan_name: null };
+  if (acct.plan_id) {
+    const plan = db.prepare('SELECT max_events, max_levels, max_attendees, name FROM pricing_plans WHERE id=?').get(acct.plan_id);
+    if (plan) {
+      if (plan.max_events    != null) limits.max_events    = plan.max_events;
+      if (plan.max_levels    != null) limits.max_levels    = plan.max_levels;
+      if (plan.max_attendees != null) limits.max_attendees = plan.max_attendees;
+      limits.plan_name = plan.name;
+    }
+  }
+
+  const eventCount = db.prepare("SELECT COUNT(*) c FROM events WHERE account_id=? AND deleted_at IS NULL").get(req.user.id).c;
+  res.json({ limits, usage: { events: eventCount }, plan_name: limits.plan_name });
+});
+
 // Admin: create event under any account
 r.post('/admin', (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
