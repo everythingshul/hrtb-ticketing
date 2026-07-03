@@ -57,29 +57,38 @@ r.post('/', (req, res) => {
   if (!date) return res.status(400).json({ error: 'Event date required' });
   if (!venue) return res.status(400).json({ error: 'Venue required' });
 
-  // Demo accounts cannot create live events — show pricing paywall
+  // Non-admin accounts: enforce demo mode and plan limits
   if (req.user.role !== 'admin') {
-    const account = db.prepare('SELECT demo_mode, plan_id FROM accounts WHERE id=?').get(req.user.id);
+    const account = db.prepare('SELECT demo_mode, plan_id, max_events FROM accounts WHERE id=?').get(req.user.id);
+
+    // Demo mode — must pay for a plan first
     if (account?.demo_mode) {
       return res.status(403).json({ error: 'DEMO_MODE', message: 'Upgrade to create live events.' });
     }
-    // Enforce plan event limits
+
+    // Count existing non-deleted events for this account
+    const eventCount = db.prepare("SELECT COUNT(*) c FROM events WHERE account_id=? AND deleted_at IS NULL").get(req.user.id).c;
+
+    // Check plan limit (from the pricing plan they purchased)
+    let planLimit = null;
     if (account?.plan_id) {
-      const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(account.plan_id);
-      if (plan?.max_events) {
-        const eventCount = db.prepare("SELECT COUNT(*) c FROM events WHERE account_id=? AND deleted_at IS NULL").get(req.user.id).c;
-        if (eventCount >= plan.max_events) {
-          return res.status(403).json({
-            error: 'PLAN_LIMIT',
-            message: `Your plan (${plan.name}) allows ${plan.max_events} event${plan.max_events!==1?'s':''}. You have used all ${plan.max_events}. Purchase a new plan to create another event.`,
-            plan_id: plan.id,
-            plan_name: plan.name,
-            limit: plan.max_events,
-            current: eventCount,
-            upgrade: true
-          });
-        }
-      }
+      const plan = db.prepare('SELECT name, max_events FROM pricing_plans WHERE id=?').get(account.plan_id);
+      if (plan?.max_events != null) planLimit = { name: plan.name, max: plan.max_events };
+    }
+
+    // Fall back to account-level max_events if no plan limit set
+    if (!planLimit && account?.max_events != null) {
+      planLimit = { name: 'your plan', max: account.max_events };
+    }
+
+    if (planLimit && eventCount >= planLimit.max) {
+      return res.status(403).json({
+        error: 'PLAN_LIMIT',
+        message: `${planLimit.name} allows ${planLimit.max} event${planLimit.max !== 1 ? 's' : ''}. You have used all ${planLimit.max}. Purchase a new plan to create another event.`,
+        limit: planLimit.max,
+        current: eventCount,
+        upgrade: true
+      });
     }
   }
 

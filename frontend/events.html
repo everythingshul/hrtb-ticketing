@@ -278,7 +278,11 @@ function del(e, id, name) {
   });
 }
 
-load();
+load().then(() => {
+  if (new URLSearchParams(location.search).get('new') === '1') {
+    setTimeout(() => toggleForm(), 400);
+  }
+});
 RealtimeSync.register(load, 30000);
 
 // ── Pricing / Payment Modal ───────────────────────────────
@@ -316,7 +320,7 @@ async function showPricingModal() {
   document.getElementById('plan-cards').innerHTML = plans.map(p => `
     <div style="background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--r-lg);padding:20px;cursor:pointer;transition:all .15s" onclick="selectPlan('${p.id}')" id="plan-card-${p.id}">
       <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">${esc(p.name)}</div>
-      <div style="font-size:28px;font-weight:800;color:var(--navy);margin-bottom:6px">$${(p.price_cents/100).toFixed(0)}</div>
+      <div style="font-size:28px;font-weight:800;color:var(--navy);margin-bottom:6px">$${(p.price_cents/100).toFixed(2).replace(/\.00$/,'')}</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:12px">${esc(p.description||'')}</div>
       <ul style="list-style:none;padding:0">${p.features.map(f=>`<li style="font-size:12px;padding:3px 0;display:flex;gap:6px;align-items:flex-start"><span style="color:#27a85f;font-weight:700;flex-shrink:0">✓</span>${esc(f)}</li>`).join('')}</ul>
       <button class="btn btn-gold" style="width:100%;margin-top:14px;justify-content:center">Select →</button>
