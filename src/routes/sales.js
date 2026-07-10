@@ -458,6 +458,22 @@ async function fulfillOrder(session, existingOrder) {
 r.use(auth);
 
 // Get sales settings for event
+// Admin debug: raw event sale settings
+r.get('/debug/event/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const ev = db.prepare('SELECT id, name, slug, sale_enabled, can_sell_online_override, expires_at, deleted_at, closed_at FROM events WHERE id=?').get(req.params.id);
+  const acct = ev ? db.prepare('SELECT id, name, role, can_sell_online, demo_mode FROM accounts WHERE id=(SELECT account_id FROM events WHERE id=?)').get(req.params.id) : null;
+  const levels = ev ? db.prepare('SELECT id, name, price, online_sale FROM ticket_levels WHERE event_id=?').all(req.params.id) : [];
+  res.json({ event: ev, account: acct, levels, diagnosis: {
+    has_slug: !!(ev?.slug),
+    sale_enabled: ev?.sale_enabled,
+    can_sell_online: acct?.can_sell_online,
+    is_admin: acct?.role === 'admin',
+    levels_with_online_sale: levels.filter(l => l.online_sale).length,
+    ready: !!(ev?.slug && ev?.sale_enabled && (acct?.role === 'admin' || acct?.can_sell_online) && levels.some(l => l.online_sale))
+  }});
+});
+
 r.get('/settings/:eventId', auth, (req, res) => {
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Not found' });
