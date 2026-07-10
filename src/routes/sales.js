@@ -177,7 +177,7 @@ r.get('/image/:slug', (req, res) => {
 });
 
 // ── Public: create PaymentIntent for Payment Element ──────
-r.post('/event/:slug/checkout', async (req, res) => {
+r.post('/event/:slug/checkout', auth, async (req, res) => {
   try {
     const event = db.prepare(`SELECT * FROM events WHERE slug=? AND sale_enabled=1 AND deleted_at IS NULL`).get(req.params.slug);
     if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -458,7 +458,7 @@ async function fulfillOrder(session, existingOrder) {
 r.use(auth);
 
 // Get sales settings for event
-r.get('/settings/:eventId', (req, res) => {
+r.get('/settings/:eventId', auth, (req, res) => {
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Not found' });
   // Only admin or accounts with can_sell_online
@@ -478,7 +478,7 @@ r.get('/settings/:eventId', (req, res) => {
 });
 
 // Update sales settings (user-facing — no Stripe key access)
-r.patch('/settings/:eventId', (req, res) => {
+r.patch('/settings/:eventId', auth, (req, res) => {
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Not found' });
   const { slug, sale_enabled, expires_at, allow_activation } = req.body;
@@ -502,7 +502,7 @@ r.patch('/settings/:eventId', (req, res) => {
 });
 
 // Admin-only: set Stripe key per event + toggle which key source to use
-r.patch('/settings/:eventId/stripe', (req, res) => {
+r.patch('/settings/:eventId/stripe', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Not found' });
@@ -514,7 +514,7 @@ r.patch('/settings/:eventId/stripe', (req, res) => {
 });
 
 // Update level pricing + online availability
-r.patch('/level/:levelId', (req, res) => {
+r.patch('/level/:levelId', auth, (req, res) => {
   const lvl = db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(req.params.levelId);
   if (!lvl) return res.status(404).json({ error: 'Not found' });
   const { price, online_sale } = req.body;
@@ -524,7 +524,7 @@ r.patch('/level/:levelId', (req, res) => {
 });
 
 // Admin: toggle can_sell_online per account
-r.patch('/account/:accountId/enable', (req, res) => {
+r.patch('/account/:accountId/enable', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { enabled } = req.body;
   db.prepare('UPDATE accounts SET can_sell_online=? WHERE id=?').run(enabled?1:0, req.params.accountId);
@@ -558,7 +558,7 @@ r.post('/image/:eventId', auth, upload.single('image'), async (req, res) => {
 });
 
 // Get online orders for event (for admin/user portal)
-r.get('/orders/:eventId', (req, res) => {
+r.get('/orders/:eventId', auth, (req, res) => {
   const orders = db.prepare(`SELECT * FROM online_orders WHERE event_id=? ORDER BY created_at DESC`).all(req.params.eventId);
   res.json({ orders });
 });
