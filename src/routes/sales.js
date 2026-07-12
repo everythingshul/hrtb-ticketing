@@ -475,22 +475,37 @@ r.get('/debug/event/:id', auth, (req, res) => {
 });
 
 r.get('/settings/:eventId', auth, (req, res) => {
-  const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
-  if (!ev) return res.status(404).json({ error: 'Not found' });
-  // Only admin or accounts with can_sell_online
-  if (req.user.role !== 'admin') {
-    const acc = db.prepare('SELECT can_sell_online FROM accounts WHERE id=?').get(req.user.id);
-    if (!acc?.can_sell_online) return res.status(403).json({ error: 'Online sales not enabled for your account' });
-  }
-  const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(ev.id);
-  const orders = db.prepare("SELECT COUNT(*) c FROM online_orders WHERE event_id=? AND status='completed'").get(ev.id);
-  res.json({
-    slug: ev.slug, sale_enabled: ev.sale_enabled, sale_image: ev.sale_image,
-    stripe_key: ev.stripe_key ? '***configured***' : null,
-    expires_at: ev.expires_at, levels,
-    total_online_sales: orders.c,
-    allow_activation: ev.allow_activation || 0
-  });
+  try {
+    const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
+    if (!ev) return res.status(404).json({ error: 'Not found' });
+
+    // Admins always have access; non-admins need can_sell_online OR to own the event
+    if (req.user.role !== 'admin') {
+      if (ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+      const acc = db.prepare('SELECT can_sell_online, demo_mode FROM accounts WHERE id=?').get(req.user.id);
+      // Auto-enable can_sell_online if account has paid (not demo)
+      if (!acc?.demo_mode && !acc?.can_sell_online) {
+        db.prepare('UPDATE accounts SET can_sell_online=1 WHERE id=?').run(req.user.id);
+      }
+    }
+
+    const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(ev.id);
+    let totalSales = 0;
+    try { totalSales = db.prepare("SELECT COUNT(*) c FROM online_orders WHERE event_id=? AND status='completed'").get(ev.id)?.c || 0; } catch {}
+
+    res.json({
+      slug: ev.slug,
+      sale_enabled: ev.sale_enabled,
+      sale_image: ev.sale_image,
+      stripe_key: ev.stripe_key ? '***configured***' : null,
+      expires_at: ev.expires_at,
+      levels,
+      total_online_sales: totalSales,
+      allow_activation: ev.allow_activation || 0,
+      allow_unconfirmed_checkin: ev.allow_unconfirmed_checkin || 0,
+      show_seating: ev.show_seating || 0,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // Update sales settings (user-facing — no Stripe key access)
