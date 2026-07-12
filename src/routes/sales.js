@@ -477,59 +477,84 @@ r.get('/debug/event/:id', auth, (req, res) => {
 r.get('/settings/:eventId', auth, (req, res) => {
   try {
     const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
-    if (!ev) return res.status(404).json({ error: 'Not found' });
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
 
-    // Admins always have access; non-admins need can_sell_online OR to own the event
+    // Access: admin always yes, account owner always yes
+    if (req.user.role !== 'admin' && ev.account_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Auto-fix: if account has paid (not demo), enable can_sell_online
     if (req.user.role !== 'admin') {
-      if (ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
-      const acc = db.prepare('SELECT can_sell_online, demo_mode FROM accounts WHERE id=?').get(req.user.id);
-      // Auto-enable can_sell_online if account has paid (not demo)
-      if (!acc?.demo_mode && !acc?.can_sell_online) {
+      const acc = db.prepare('SELECT demo_mode, can_sell_online FROM accounts WHERE id=?').get(req.user.id);
+      if (acc && !acc.demo_mode && !acc.can_sell_online) {
         db.prepare('UPDATE accounts SET can_sell_online=1 WHERE id=?').run(req.user.id);
       }
     }
 
-    const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=?').all(ev.id);
-    let totalSales = 0;
-    try { totalSales = db.prepare("SELECT COUNT(*) c FROM online_orders WHERE event_id=? AND status='completed'").get(ev.id)?.c || 0; } catch {}
+    const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=? ORDER BY created_at').all(ev.id);
+
+    let totalOnlineSales = 0;
+    try {
+      totalOnlineSales = db.prepare("SELECT COUNT(*) c FROM online_orders WHERE event_id=? AND status='completed'").get(ev.id)?.c || 0;
+    } catch {}
 
     res.json({
-      slug: ev.slug,
-      sale_enabled: ev.sale_enabled,
-      sale_image: ev.sale_image,
-      stripe_key: ev.stripe_key ? '***configured***' : null,
-      expires_at: ev.expires_at,
+      slug:                      ev.slug || null,
+      sale_enabled:              ev.sale_enabled || 0,
+      sale_image:                ev.sale_image || 0,
+      stripe_key:                ev.stripe_key ? '***configured***' : null,
+      expires_at:                ev.expires_at || null,
       levels,
-      total_online_sales: totalSales,
-      allow_activation: ev.allow_activation || 0,
+      total_online_sales:        totalOnlineSales,
+      allow_activation:          ev.allow_activation || 0,
       allow_unconfirmed_checkin: ev.allow_unconfirmed_checkin || 0,
-      show_seating: ev.show_seating || 0,
+      show_seating:              ev.show_seating || 0,
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) {
+    console.error('[sales/settings GET]', e.message, e.stack);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Update sales settings (user-facing — no Stripe key access)
 r.patch('/settings/:eventId', auth, (req, res) => {
-  const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
-  if (!ev) return res.status(404).json({ error: 'Not found' });
-  const { slug, sale_enabled, expires_at, allow_activation } = req.body;
+  try {
+    const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
 
-  if (slug !== undefined) {
-    // Once a slug is set, only admin can change it
-    if (ev.slug && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'SLUG_LOCKED: The event URL has already been set. Contact an Administrator to change it.' });
+    // Access: admin always yes, account owner always yes
+    if (req.user.role !== 'admin' && ev.account_id !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied' });
     }
-    const clean = slug.toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,60);
-    if (!clean) return res.status(400).json({ error: 'Invalid slug — use letters, numbers and hyphens only' });
-    const existing = db.prepare('SELECT id FROM events WHERE slug=? AND id!=?').get(clean, ev.id);
-    if (existing) return res.status(400).json({ error: 'This URL is already taken — choose another' });
-    db.prepare('UPDATE events SET slug=? WHERE id=?').run(clean, ev.id);
-  }
-  if (sale_enabled !== undefined) db.prepare('UPDATE events SET sale_enabled=? WHERE id=?').run(sale_enabled?1:0, ev.id);
-  if (expires_at !== undefined) db.prepare('UPDATE events SET expires_at=? WHERE id=?').run(expires_at||null, ev.id);
-  if (allow_activation !== undefined) db.prepare('UPDATE events SET allow_activation=? WHERE id=?').run(allow_activation?1:0, ev.id);
 
-  res.json({ ok: true });
+    const { slug, sale_enabled, expires_at, allow_activation, allow_unconfirmed_checkin, show_seating } = req.body;
+
+    if (slug !== undefined) {
+      if (ev.slug && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'SLUG_LOCKED: Contact an Administrator to change the event URL.' });
+      }
+      const clean = slug.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
+      if (!clean) return res.status(400).json({ error: 'Invalid slug — use letters, numbers and hyphens only' });
+      const existing = db.prepare('SELECT id FROM events WHERE slug=? AND id!=?').get(clean, ev.id);
+      if (existing) return res.status(400).json({ error: 'This URL is already taken — choose another' });
+      db.prepare('UPDATE events SET slug=? WHERE id=?').run(clean, ev.id);
+    }
+
+    if (sale_enabled !== undefined) {
+      db.prepare('UPDATE events SET sale_enabled=? WHERE id=?').run(sale_enabled ? 1 : 0, ev.id);
+      console.log(`[sales/settings] sale_enabled=${sale_enabled?1:0} for event ${ev.id} (${ev.name})`);
+    }
+    if (expires_at !== undefined)                db.prepare('UPDATE events SET expires_at=? WHERE id=?').run(expires_at || null, ev.id);
+    if (allow_activation !== undefined)          db.prepare('UPDATE events SET allow_activation=? WHERE id=?').run(allow_activation ? 1 : 0, ev.id);
+    if (allow_unconfirmed_checkin !== undefined) db.prepare('UPDATE events SET allow_unconfirmed_checkin=? WHERE id=?').run(allow_unconfirmed_checkin ? 1 : 0, ev.id);
+    if (show_seating !== undefined)              db.prepare('UPDATE events SET show_seating=? WHERE id=?').run(show_seating ? 1 : 0, ev.id);
+
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[sales/settings PATCH]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // Admin-only: set Stripe key per event + toggle which key source to use

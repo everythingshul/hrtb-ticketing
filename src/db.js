@@ -409,7 +409,25 @@ try { db.exec("ALTER TABLE events ADD COLUMN phone_number_expires TEXT"); } catc
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DEFAULT 0"); } catch {}
 
-try { db.exec("ALTER TABLE pricing_plans ADD COLUMN show_on_pricing INTEGER NOT NULL DEFAULT 1"); } catch {}
+// Online orders table for Stripe checkout sessions
+db.exec(`CREATE TABLE IF NOT EXISTS online_orders (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  account_id TEXT,
+  stripe_payment_intent_id TEXT,
+  stripe_session_id TEXT,
+  amount_cents INTEGER,
+  status TEXT DEFAULT 'pending',
+  email TEXT,
+  name TEXT,
+  level_id TEXT,
+  quantity INTEGER DEFAULT 1,
+  promo_code TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+)`);
+try { db.exec("ALTER TABLE online_orders ADD COLUMN metadata TEXT"); } catch {}
+try { db.exec("ALTER TABLE online_orders ADD COLUMN attendee_ids TEXT"); } catch {}
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1"); } catch {}
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_events INTEGER"); } catch {}        // null = unlimited
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_attendees INTEGER"); } catch {}     // null = unlimited per event
