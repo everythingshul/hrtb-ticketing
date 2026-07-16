@@ -474,42 +474,45 @@ r.get('/debug/event/:id', auth, (req, res) => {
   }});
 });
 
+// Admin: directly enable/disable sale page for any event
+r.post('/admin/enable/:eventId', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { sale_enabled, slug } = req.body;
+  const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  if (slug) {
+    const clean = slug.toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,60);
+    if (clean) db.prepare('UPDATE events SET slug=? WHERE id=?').run(clean, ev.id);
+  }
+  if (sale_enabled !== undefined) {
+    db.prepare('UPDATE events SET sale_enabled=? WHERE id=?').run(sale_enabled?1:0, ev.id);
+  }
+  // Also ensure account has can_sell_online=1
+  db.prepare('UPDATE accounts SET can_sell_online=1 WHERE id=?').run(ev.account_id);
+  const updated = db.prepare('SELECT id, name, slug, sale_enabled FROM events WHERE id=?').get(ev.id);
+  res.json({ ok: true, event: updated });
+});
+
 r.get('/settings/:eventId', auth, (req, res) => {
   try {
     const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
     if (!ev) return res.status(404).json({ error: 'Event not found' });
-
-    // Access: admin always yes, account owner always yes
-    if (req.user.role !== 'admin' && ev.account_id !== req.user.id) {
-      return res.status(403).json({ error: 'Access denied' });
-    }
-
-    // Auto-fix: if account has paid (not demo), enable can_sell_online
+    if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+    // Auto-fix can_sell_online for paid accounts
     if (req.user.role !== 'admin') {
       const acc = db.prepare('SELECT demo_mode, can_sell_online FROM accounts WHERE id=?').get(req.user.id);
-      if (acc && !acc.demo_mode && !acc.can_sell_online) {
-        db.prepare('UPDATE accounts SET can_sell_online=1 WHERE id=?').run(req.user.id);
-      }
+      if (acc && !acc.demo_mode && !acc.can_sell_online) db.prepare('UPDATE accounts SET can_sell_online=1 WHERE id=?').run(req.user.id);
     }
-
     const levels = db.prepare('SELECT * FROM ticket_levels WHERE event_id=? ORDER BY created_at').all(ev.id);
-
     let totalOnlineSales = 0;
-    try {
-      totalOnlineSales = db.prepare("SELECT COUNT(*) c FROM online_orders WHERE event_id=? AND status='completed'").get(ev.id)?.c || 0;
-    } catch {}
-
+    try { totalOnlineSales = db.prepare("SELECT COUNT(*) c FROM online_orders WHERE event_id=? AND status='completed'").get(ev.id)?.c || 0; } catch {}
     res.json({
-      slug:                      ev.slug || null,
-      sale_enabled:              ev.sale_enabled || 0,
-      sale_image:                ev.sale_image || 0,
-      stripe_key:                ev.stripe_key ? '***configured***' : null,
-      expires_at:                ev.expires_at || null,
-      levels,
-      total_online_sales:        totalOnlineSales,
-      allow_activation:          ev.allow_activation || 0,
+      slug: ev.slug || null, sale_enabled: ev.sale_enabled || 0, sale_image: ev.sale_image || 0,
+      stripe_key: ev.stripe_key ? '***configured***' : null, expires_at: ev.expires_at || null,
+      levels, total_online_sales: totalOnlineSales,
+      allow_activation: ev.allow_activation || 0,
       allow_unconfirmed_checkin: ev.allow_unconfirmed_checkin || 0,
-      show_seating:              ev.show_seating || 0,
+      show_seating: ev.show_seating || 0,
     });
   } catch(e) {
     console.error('[sales/settings GET]', e.message, e.stack);

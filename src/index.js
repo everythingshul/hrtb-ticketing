@@ -74,17 +74,19 @@ initMail();
 // Maintenance mode — shows message to regular users, allows admin API through
 app.use((req, res, next) => {
   if (process.env.MAINTENANCE_MODE !== '1') return next();
-  // Always allow API calls through (so admin can restore and turn off maintenance)
+  // Always allow API calls, login page, and static assets through
   if (req.path.startsWith('/api/')) return next();
+  if (req.path === '/login.html' || req.path === '/login' || req.path === '/') return next();
+  if (req.path.startsWith('/css/') || req.path.startsWith('/js/') || req.path.startsWith('/icons/') || req.path.endsWith('.ico') || req.path.endsWith('.png')) return next();
   // Serve a simple maintenance page to all website visitors
-  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HRTB Ticketing</title>
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;background:#0a0a0a;color:#f0ede8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mamudem — Maintenance</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;background:#0a1628;color:#f0ede8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
   .box{text-align:center;max-width:400px}.ico{font-size:48px;margin-bottom:20px}.h1{font-size:24px;font-weight:700;margin-bottom:10px}.p{font-size:14px;color:#888;line-height:1.7}
   .note{margin-top:24px;font-size:12px;color:#444}</style></head>
-  <body><div class="box"><div class="ico">🎟</div><div class="h1">HRTB Ticketing</div>
+  <body><div class="box"><div class="ico">🎟</div><div class="h1">Mamudem</div>
   <div class="p">We're doing a quick update.<br>Please try again in a few minutes.<br>Your account and data are safe.</div>
   <div class="note">If you need access, contact your event organiser.</div>
-  <div class="note" style="margin-top:32px"><a href="/admin.html" style="color:#444;font-size:11px">Admin access</a></div>
+  <div class="note" style="margin-top:32px"><a href="/login.html" style="color:#666;font-size:11px">Admin login</a></div>
   </div></body></html>`);
 });
 
