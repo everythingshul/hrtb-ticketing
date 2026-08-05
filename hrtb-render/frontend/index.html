@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mamudem — Event Ticketing for Synagogues & Communities</title>
+<meta name="description" content="Professional event ticketing for synagogues and community organizations. Sell tickets online, manage attendees, scan at the door, and take orders by phone or SMS.">
+<meta name="keywords" content="synagogue event ticketing, jewish community event tickets, shul ticketing system, event management synagogue, online ticket sales community, IVR phone ticket ordering">
+<meta name="robots" content="index, follow">
+<meta name="author" content="Mamudem">
+<link rel="canonical" href="https://mamudem.com/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Mamudem">
+<meta property="og:title" content="Mamudem — Event Ticketing for Communities">
+<meta property="og:description" content="The complete ticketing platform built for synagogues and community organizations. Online sales, phone/SMS ordering, door scanning, and attendee management.">
+<meta property="og:url" content="https://mamudem.com/">
+<meta property="og:image" content="https://mamudem.com/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mamudem — Event Ticketing for Communities">
+<meta name="twitter:description" content="The complete ticketing platform built for synagogues and community organizations. Online sales, phone/SMS ordering, door scanning, and attendee management.">
+<meta name="twitter:image" content="https://mamudem.com/icons/icon-512.png">
+<meta name="description" content="Sell tickets online, manage attendees, scan at the door, take orders by phone and SMS. Built for synagogues and community organizations.">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1a3a6b;--navy2:#0d2454;--cyan:#00aadd;--gold:#c8960c;--gold2:#e8ad14;
+  --bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0;
+  --r:10px;--shadow:0 4px 20px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:var(--text);line-height:1.6}
+a{color:inherit;text-decoration:none}
+img{max-width:100%}
+
+/* ── NAV ─────────────────────────────────────────────── */
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand{display:flex;align-items:center;gap:12px}
+.nav-brand img{height:54px;filter:brightness(0) invert(1)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-links a.active{font-weight:700}
+.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important;padding:9px 20px!important;border-radius:8px!important}
+.btn-nav-cta:hover{background:var(--gold2)!important;transform:translateY(-1px)}
+.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important;color:#fff!important}
+.btn-nav-login:hover{border-color:rgba(255,255,255,.7)!important;background:rgba(255,255,255,.08)!important}
+
+/* ── HERO ─────────────────────────────────────────────── */
+.hero{background:linear-gradient(135deg,var(--navy) 0%,#0f2d5e 50%,var(--navy2) 100%);color:#fff;padding:90px 32px 80px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&q=80&auto=format&fit=crop') center/cover no-repeat;opacity:0.15;pointer-events:none}
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,22,40,0.55) 0%,rgba(15,45,94,0.6) 60%,rgba(10,22,40,0.85) 100%);pointer-events:none}
+.hero-inner{position:relative;z-index:2}
+.hero-eyebrow{display:inline-block;background:rgba(200,150,12,.2);border:1px solid rgba(200,150,12,.4);color:var(--gold2);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:20px}
+.hero h1{font-size:clamp(30px,5.5vw,58px);font-weight:900;line-height:1.1;max-width:800px;margin:0 auto 22px;letter-spacing:-.02em}
+.hero h1 em{color:var(--gold2);font-style:normal}
+.hero p{font-size:clamp(15px,2vw,19px);color:rgba(255,255,255,.78);max-width:600px;margin:0 auto 38px;line-height:1.7}
+.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn-gold{display:inline-block;background:var(--gold);color:#000;font-weight:700;padding:15px 34px;border-radius:10px;font-size:15px;transition:all .15s;border:none;cursor:pointer}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(200,150,12,.35)}
+.btn-outline{display:inline-block;background:transparent;color:#fff;border:2px solid rgba(255,255,255,.4);font-weight:600;padding:13px 28px;border-radius:10px;font-size:15px;transition:all .15s}
+.btn-outline:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.7)}
+
+/* ── TRUST BAR ──────────────────────────────────────── */
+.trust-bar{background:var(--navy2);padding:16px 32px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08)}
+.trust-bar p{color:rgba(255,255,255,.5);font-size:12px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.trust-logos{display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap}
+.trust-logos span{color:rgba(255,255,255,.35);font-size:13px;font-weight:600}
+
+/* ── CHANNELS ───────────────────────────────────────── */
+.channels{background:var(--bg);padding:60px 32px;text-align:center}
+.section-eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);margin-bottom:10px}
+.section-title{font-size:clamp(22px,3vw,38px);font-weight:800;color:var(--navy);margin-bottom:12px;letter-spacing:-.01em}
+.section-sub{font-size:16px;color:var(--text2);max-width:580px;margin:0 auto 48px}
+.channel-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:900px;margin:0 auto}
+.channel-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:28px 22px;text-align:left;transition:all .2s}
+.channel-card:hover{border-color:var(--navy);box-shadow:0 8px 28px rgba(0,0,0,.09);transform:translateY(-2px)}
+.channel-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:20px}
+.channel-card h3{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.channel-card p{font-size:13px;color:var(--text2);line-height:1.65}
+.badge-new{display:inline-block;background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px;vertical-align:middle}
+
+/* ── FEATURES ───────────────────────────────────────── */
+.features{padding:70px 32px;max-width:1060px;margin:0 auto}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:28px}
+.feat{padding:4px}
+.feat-ico{font-size:28px;margin-bottom:12px}
+.feat h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.feat p{font-size:13px;color:var(--text2);line-height:1.65}
+
+/* ── CUSTOMER LOGOS ─────────────────────────────────── */
+.customers{background:var(--bg);padding:56px 32px;text-align:center}
+.logo-strip-wrap{overflow:hidden;position:relative;margin-top:28px;padding:4px 0}
+.logo-strip-wrap::before,.logo-strip-wrap::after{content:'';position:absolute;top:0;bottom:0;width:80px;z-index:2;pointer-events:none}
+.logo-strip-wrap::before{left:0;background:linear-gradient(to right,var(--bg),transparent)}
+.logo-strip-wrap::after{right:0;background:linear-gradient(to left,var(--bg),transparent)}
+.logo-strip{display:flex;align-items:center;gap:48px;width:max-content;animation:logoScroll 28s linear infinite}
+.logo-strip:hover{animation-play-state:paused}
+@keyframes logoScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.logo-item{height:44px;width:auto;max-width:140px;opacity:.5;filter:grayscale(1);transition:all .25s;flex-shrink:0}
+.logo-item:hover{opacity:.9;filter:none;transform:scale(1.05)}
+.logo-placeholder{height:40px;width:110px;background:var(--border);border-radius:8px;flex-shrink:0;opacity:.4}
+.customer-placeholder{width:120px;height:48px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);font-weight:600}
+
+/* ── HOW IT WORKS ───────────────────────────────────── */
+.how{padding:70px 32px;max-width:900px;margin:0 auto;text-align:center}
+.steps{display:grid;grid-template-columns:repeat(2,1fr);gap:28px 40px;margin-top:48px;max-width:680px;margin-left:auto;margin-right:auto}
+.step{position:relative}
+.step-num{width:40px;height:40px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;margin:0 auto 14px}
+.step h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.step p{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* ── CTA BAND ───────────────────────────────────────── */
+.cta-band{background:linear-gradient(135deg,var(--navy),var(--navy2));padding:70px 32px;text-align:center;color:#fff}
+.cta-band h2{font-size:clamp(24px,4vw,40px);font-weight:800;margin-bottom:14px;letter-spacing:-.01em}
+.cta-band p{color:rgba(255,255,255,.72);font-size:16px;margin-bottom:32px}
+
+/* ── FOOTER ─────────────────────────────────────────── */
+footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px;text-align:left}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
+.footer-brand img{height:64px;width:auto;filter:brightness(0) invert(1);margin-bottom:16px;display:block}
+.footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
+.footer-col h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:14px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px;max-width:1060px;margin:0 auto;font-size:12px}
+.footer-bottom a{color:rgba(255,255,255,.4);margin-left:16px}
+.footer-bottom a:hover{color:rgba(255,255,255,.8)}
+
+@media(max-width:700px){
+  nav{padding:0 16px}
+  .nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .footer-brand{grid-column:1/-1}
+  .hero{padding:60px 20px 50px}
+  .channels,.features,.how,.customers,.cta-band{padding-left:20px;padding-right:20px}
+}
+</style>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Mamudem","applicationCategory":"BusinessApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free demo, then per-event pricing"},"description":"Professional event ticketing platform for synagogues and community organizations. Online ticket sales, phone/SMS ordering, door scanning, attendee management.","url":"https://mamudem.com","author":{"@type":"Organization","name":"Mamudem","url":"https://mamudem.com"},"featureList":["Online ticket sales","IVR phone ordering","SMS ticket ordering","QR code door scanner","Attendee management","Staff tickets","Promo codes","Stripe payments"]}
+</script>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-brand">
+    <img src="/logo.png" alt="Mamudem">
+  </a>
+  <div class="nav-links">
+    <a href="/" class="active">Home</a>
+    <a href="/pricing.html">Pricing</a>
+    <a href="/faq.html">FAQ</a>
+    <a href="#" onclick="openContactForm();return false">Contact</a>
+    <a href="/login.html" class="btn-nav-login">Sign In</a>
+    <a href="/signup.html" class="btn-nav-cta">Start Free</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Built for synagogues &amp; communities</div>
+    <h1 id="hero-title">Event Ticketing That <em>Works the Way You Do</em></h1>
+    <p id="hero-subtitle">Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.</p>
+    <div class="hero-btns">
+      <a href="/signup.html" class="btn-gold" id="cta-primary">Get Started Free →</a>
+      <a href="/pricing.html" class="btn-outline" id="cta-secondary">View Pricing</a>
+    </div>
+  </div>
+</div>
+
+<!-- Sales Channels -->
+<div class="channels">
+  <div class="section-eyebrow" id="channels-eyebrow">Multiple ways to sell</div>
+  <div class="section-title" id="channels-title">Meet your guests where they are</div>
+  <div class="section-sub" id="channels-sub">Not everyone buys tickets online. Mamudem lets guests purchase the way they prefer.</div>
+  <div class="channel-grid">
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#e8f4fb">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a6b9a" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      </div>
+      <h3 id="ch1-title">Online Sales Page</h3>
+      <p id="ch1-desc">A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.</p>
+    </div>
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#fef3c7">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.9.372 1.845.566 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </div>
+      <h3 id="ch2-title">IVR Phone Ordering <span class="badge-new">NEW</span></h3>
+      <p id="ch2-desc">Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.</p>
+    </div>
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#dcfce7">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <h3 id="ch3-title">SMS Ordering <span class="badge-new">NEW</span></h3>
+      <p id="ch3-desc">Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.</p>
+    </div>
+    <div class="channel-card">
+      <div class="channel-icon" style="background:#f3e8ff">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b21a8" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3 id="ch4-title">Staff Portal Sale</h3>
+      <p id="ch4-desc">Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<div class="features">
+  <div style="text-align:center;margin-bottom:48px">
+    <div class="section-eyebrow" id="features-eyebrow">Everything included</div>
+    <div class="section-title" id="features-title">All the tools you need</div>
+  </div>
+  <div class="features-grid" id="features-grid">
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    </div><h3 id="f1-title">Attendee Management</h3><p id="f1-desc">Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div><h3 id="f2-title">Door Scanner</h3><p id="f2-desc">Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    </div><h3 id="f3-title">Staff Tickets</h3><p id="f3-desc">Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+    </div><h3 id="f4-title">Promo Codes</h3><p id="f4-desc">Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div><h3 id="f5-title">Your Own Stripe</h3><p id="f5-desc">Connect your Stripe account. All funds go directly to you — we never touch your money.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
+    </div><h3 id="f6-title">Reports &amp; Stats</h3><p id="f6-desc">Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div><h3 id="f7-title">Demo Mode</h3><p id="f7-desc">Every account starts with a full demo event loaded with sample data — explore everything before going live.</p></div>
+    <div class="feat"><div class="feat-ico">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 2.93 19.07m16.14 0A10 10 0 0 0 4.93 4.93"/></svg>
+    </div><h3 id="f8-title">Capacity Control</h3><p id="f8-desc">Set max tickets per event or per level, with automatic alerts when you're getting close.</p></div>
+  </div>
+</div>
+
+<!-- Customer logos -->
+<div class="customers" id="customers-section" style="display:none">
+  <div class="section-eyebrow" id="logos-eyebrow">Our customers</div>
+  <div class="section-title" id="logos-title">Organizations that trust us</div>
+  <div class="logo-strip-wrap">
+    <div class="logo-strip" id="logo-strip"></div>
+  </div>
+  <p id="logos-sub" style="font-size:12px;color:var(--text2);margin-top:20px">Contact us to have your organization featured here.</p>
+</div>
+
+<!-- How it works -->
+<div class="how">
+  <div class="section-eyebrow" id="how-eyebrow">Simple setup</div>
+  <div class="section-title" id="how-title">Up and running in minutes</div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><h3 id="step1-title">Create your account</h3><p id="step1-desc">Sign up free. Your demo event is ready instantly with sample data to explore.</p></div>
+    <div class="step"><div class="step-num">2</div><h3 id="step2-title">Connect Stripe</h3><p id="step2-desc">Link your own Stripe account. All ticket revenue goes directly to you.</p></div>
+    <div class="step"><div class="step-num">3</div><h3 id="step3-title">Create your event</h3><p id="step3-desc">Add details, set ticket levels, enable online sales, phone ordering, or both.</p></div>
+    <div class="step"><div class="step-num">4</div><h3 id="step4-title">Sell &amp; scan</h3><p id="step4-desc">Share your ticket link, scan QR codes at the door, track everything in real time.</p></div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-band">
+  <h2 id="cta-band-title">Ready to run a better event?</h2>
+  <p id="cta-band-sub">Start free with a full demo — no credit card required.</p>
+  <a href="/signup.html" class="btn-gold" id="cta-band-btn">Create Your Free Account →</a>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <img src="/logo.png" alt="Mamudem">
+      <p>Professional event ticketing for synagogues, community organizations, and private events. Sell online, by phone, or by SMS.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <a href="/pricing.html">Pricing</a>
+      <a href="/faq.html">FAQ</a>
+      <a href="/signup.html">Get Started Free</a>
+      <a href="/login.html">Sign In</a>
+    </div>
+    <div class="footer-col">
+      <h4>Features</h4>
+      <a href="/signup.html">Online Sales</a>
+      <a href="/signup.html">Phone &amp; SMS Orders</a>
+      <a href="/signup.html">Door Scanner</a>
+      <a href="/signup.html">Staff Tickets</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="/terms.html">Terms &amp; Conditions</a>
+      <a href="/pricing.html">Pricing</a>
+      <a href="#" onclick="openContactForm();return false">Contact Us</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2025 <a href="/" style="color:rgba(255,255,255,.6);text-decoration:none">mamudem.com</a></span>
+    <div>
+      <a href="/terms.html">Terms</a>
+      <a href="/pricing.html">Pricing</a>
+      <a href="#" onclick="openContactForm();return false">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Load all editable content from admin site-content
+fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
+  const set = (id, val, html) => { const el = document.getElementById(id); if (el && val) { if (html) el.innerHTML = val; else el.textContent = val; } };
+
+  // Hero
+  set('hero-title',   c['home.hero_title'],    true);
+  set('hero-subtitle',c['home.hero_subtitle'],  false);
+  set('cta-primary',  c['home.cta_primary'] ? c['home.cta_primary']+' →' : null, false);
+  set('cta-secondary',c['home.cta_secondary'],  false);
+
+  // Channels section
+  set('channels-eyebrow', c['home.channels_eyebrow'],  false);
+  set('channels-title',   c['home.channels_title'],    false);
+  set('channels-sub',     c['home.channels_sub'],      false);
+  set('ch1-title', c['home.ch1_title'], false); set('ch1-desc', c['home.ch1_desc'], false);
+  set('ch2-title', c['home.ch2_title'], false); set('ch2-desc', c['home.ch2_desc'], false);
+  set('ch3-title', c['home.ch3_title'], false); set('ch3-desc', c['home.ch3_desc'], false);
+  set('ch4-title', c['home.ch4_title'], false); set('ch4-desc', c['home.ch4_desc'], false);
+
+  // Features section
+  set('features-eyebrow', c['home.features_eyebrow'], false);
+  set('features-title',   c['home.features_title'],   false);
+  set('f1-title', c['home.f1_title'], false); set('f1-desc', c['home.f1_desc'], false);
+  set('f2-title', c['home.f2_title'], false); set('f2-desc', c['home.f2_desc'], false);
+  set('f3-title', c['home.f3_title'], false); set('f3-desc', c['home.f3_desc'], false);
+  set('f4-title', c['home.f4_title'], false); set('f4-desc', c['home.f4_desc'], false);
+  set('f5-title', c['home.f5_title'], false); set('f5-desc', c['home.f5_desc'], false);
+  set('f6-title', c['home.f6_title'], false); set('f6-desc', c['home.f6_desc'], false);
+  set('f7-title', c['home.f7_title'], false); set('f7-desc', c['home.f7_desc'], false);
+  set('f8-title', c['home.f8_title'], false); set('f8-desc', c['home.f8_desc'], false);
+
+  // How it works / Steps
+  set('how-eyebrow',  c['home.how_eyebrow'],  false);
+  set('how-title',    c['home.how_title'],    false);
+  set('step1-title',  c['home.step1_title'],  false); set('step1-desc', c['home.step1_desc'], false);
+  set('step2-title',  c['home.step2_title'],  false); set('step2-desc', c['home.step2_desc'], false);
+  set('step3-title',  c['home.step3_title'],  false); set('step3-desc', c['home.step3_desc'], false);
+  set('step4-title',  c['home.step4_title'],  false); set('step4-desc', c['home.step4_desc'], false);
+
+  // Logos section
+  set('logos-eyebrow', c['home.logos_eyebrow'], false);
+  set('logos-title',   c['home.logos_title'],   false);
+  set('logos-sub',     c['home.logos_sub'],      false);
+
+  // CTA band
+  set('cta-band-title', c['home.cta_band_title'], false);
+  set('cta-band-sub',   c['home.cta_band_sub'],   false);
+  set('cta-band-btn',   c['home.cta_band_btn'] ? c['home.cta_band_btn']+' →' : null, false);
+
+  // ── Customer logos strip ─────────────────────────────────
+  (function() {
+    const showLogos = c['home.show_customer_logos'] === '1';
+    const section   = document.getElementById('customers-section');
+    if (!section) return;
+    if (!showLogos) { section.style.display = 'none'; return; }
+
+    // Parse logos
+    let logos = [];
+    try {
+      const raw = c['home.customer_logos'];
+      if (raw && raw !== 'null' && raw !== '[]') {
+        logos = JSON.parse(raw);
+        if (!Array.isArray(logos)) logos = [];
+      }
+    } catch(e) { logos = []; }
+
+    // Only valid logos with a URL
+    const valid = logos.filter(l => l && typeof l.url === 'string' && l.url.length > 0);
+
+    section.style.display = 'block';
+
+    const strip = document.getElementById('logo-strip');
+    if (!strip) return;
+
+    if (valid.length === 0) {
+      strip.innerHTML = '';
+      return;
+    }
+
+    // Build logos — duplicate for seamless infinite scroll
+    const makeLogos = () => valid.map(l =>
+      `<img src="${l.url}" alt="${(l.name||'').replace(/"/g,'&quot;')}" class="logo-item" title="${(l.name||'').replace(/"/g,'&quot;')}" onerror="this.style.display='none'">`
+    ).join('');
+    strip.innerHTML = makeLogos() + makeLogos();
+
+    // Only animate if there are enough logos to scroll
+    if (valid.length < 4) {
+      strip.style.animation = 'none';
+      strip.style.justifyContent = 'center';
+      strip.style.width = 'auto';
+    }
+  })();
+}).catch(e => console.warn('[site-content]', e));
+</script>
+
+<!-- Contact Form Modal -->
+<div id="contact-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeContactForm()">
+  <div style="background:#fff;border-radius:14px;padding:32px;max-width:480px;width:100%;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <button onclick="closeContactForm()" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1">&#x2715;</button>
+    <div id="cf-form">
+      <h2 style="font-size:20px;font-weight:800;color:var(--navy);margin-bottom:6px">Contact Us</h2>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:20px">Fill in the form below and we'll get back to you.</p>
+      <div style="margin-bottom:12px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Your Name</label>
+        <input id="cf-name" placeholder="First and last name" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit"></div>
+      <div style="margin-bottom:12px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Email Address</label>
+        <input id="cf-email" type="email" placeholder="you@example.com" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit"></div>
+      <div style="margin-bottom:12px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Subject</label>
+        <input id="cf-subject" placeholder="How can we help?" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit"></div>
+      <div style="margin-bottom:16px"><label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Message *</label>
+        <textarea id="cf-body" placeholder="Tell us what you need…" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;min-height:100px;resize:vertical;outline:none;font-family:inherit"></textarea></div>
+      <div id="cf-err" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 12px;font-size:12px;color:#dc2626;margin-bottom:12px"></div>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeContactForm()" style="flex:1;padding:11px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;font-family:inherit">Cancel</button>
+        <button id="cf-btn" onclick="submitContactForm()" style="flex:2;padding:11px;border:none;border-radius:8px;background:var(--navy);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Send Message</button>
+      </div>
+    </div>
+    <div id="cf-success" style="display:none;text-align:center;padding:20px 0">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#27a85f" stroke-width="2" style="margin-bottom:14px"><polyline points="20 6 9 17 4 12"/></svg>
+      <div style="font-size:18px;font-weight:800;color:var(--navy);margin-bottom:6px">Message sent!</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">We'll get back to you at the email you provided.</div>
+      <button onclick="closeContactForm()" style="padding:10px 24px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;font-size:13px;cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('contact-modal').style.display = 'none';
+function openContactForm() {
+  document.getElementById('contact-modal').style.display = 'flex';
+  document.getElementById('cf-form').style.display = 'block';
+  document.getElementById('cf-success').style.display = 'none';
+  document.getElementById('cf-err').style.display = 'none';
+  document.getElementById('cf-btn').disabled = false;
+  document.getElementById('cf-btn').textContent = 'Send Message';
+}
+function closeContactForm() { document.getElementById('contact-modal').style.display = 'none'; }
+async function submitContactForm() {
+  const name    = document.getElementById('cf-name').value.trim();
+  const email   = document.getElementById('cf-email').value.trim();
+  const subject = document.getElementById('cf-subject').value.trim();
+  const body    = document.getElementById('cf-body').value.trim();
+  const errEl   = document.getElementById('cf-err');
+  errEl.style.display = 'none';
+  if (!body) { errEl.textContent = 'Please enter a message.'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('cf-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const r = await fetch('/api/admin/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_name: name, from_email: email, subject: subject || 'Contact form inquiry', message: body })
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    document.getElementById('cf-form').style.display = 'none';
+    document.getElementById('cf-success').style.display = 'block';
+  } catch(e) {
+    errEl.textContent = 'Failed to send. Please try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Send Message';
+  }
+}
+</script>
+
+<!-- PWA Install Prompt -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.18);padding:18px 22px;max-width:380px;width:calc(100% - 40px);border:1.5px solid var(--border)">
+  <button onclick="document.getElementById('pwa-banner').style.display='none';localStorage.setItem('pwa-dismissed','1')" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:#888;line-height:1">&#x2715;</button>
+  <div style="display:flex;align-items:center;gap:14px">
+    <img src="/icons/icon-192.png" alt="" style="width:48px;height:48px;border-radius:10px;flex-shrink:0" onerror="this.style.display='none'">
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700;color:var(--navy)">Install Mamudem</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px" id="pwa-subtitle">Add to your home screen for quick access</div>
+    </div>
+  </div>
+  <div id="pwa-android-btn" style="display:none;margin-top:14px">
+    <button id="pwa-install-btn" onclick="pwaInstall()" class="btn btn-gold" style="width:100%;justify-content:center;padding:10px">Install App</button>
+  </div>
+  <div id="pwa-ios-steps" style="display:none;margin-top:14px;background:#f8fafc;border-radius:10px;padding:12px">
+    <div style="font-size:12px;color:var(--text2);line-height:1.8">
+      <strong style="color:var(--navy)">Install on iPhone/iPad:</strong><br>
+      1. Tap the <strong>Share</strong> button <span style="font-size:14px">⬆</span> at the bottom of Safari<br>
+      2. Scroll down and tap <strong>"Add to Home Screen"</strong><br>
+      3. Tap <strong>Add</strong> in the top right
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// PWA Install logic
+let _pwaPrompt = null;
+const _pwaDismissed = localStorage.getItem('pwa-dismissed');
+const _pwaInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+if (!_pwaDismissed && !_pwaInstalled) {
+  // Android / Chrome — capture beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _pwaPrompt = e;
+    const banner = document.getElementById('pwa-banner');
+    document.getElementById('pwa-android-btn').style.display = 'block';
+    setTimeout(() => { banner.style.display = 'block'; }, 3000);
+  });
+
+  // iOS detection (Safari only, not standalone)
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if (isIos && isSafari) {
+    document.getElementById('pwa-ios-steps').style.display = 'block';
+    document.getElementById('pwa-subtitle').textContent = 'Follow steps below to add to your home screen';
+    setTimeout(() => { document.getElementById('pwa-banner').style.display = 'block'; }, 3000);
+  }
+}
+
+async function pwaInstall() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  const { outcome } = await _pwaPrompt.userChoice;
+  _pwaPrompt = null;
+  document.getElementById('pwa-banner').style.display = 'none';
+  if (outcome === 'accepted') localStorage.setItem('pwa-dismissed', '1');
+}
+</script>
+</body>
+</html>

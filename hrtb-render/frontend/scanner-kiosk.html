@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mamudem — Door Check-in</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .sb-restricted-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(176,128,224,.15); color: var(--purple);
+    border-radius: 99px; font-size: 9px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em;
+    padding: 2px 8px; margin-top: 6px;
+  }
+  .result-card {
+    border-radius: var(--r-lg); padding: 20px 22px;
+    border: 2px solid; animation: su .18s; margin-bottom: 16px;
+  }
+  .result-card.valid   { background: rgba(76,175,121,.07);  border-color: rgba(76,175,121,.4); }
+  .result-card.invalid { background: rgba(224,80,80,.07);   border-color: rgba(224,80,80,.4); }
+  .result-card.warn    { background: rgba(224,144,32,.07);  border-color: rgba(224,144,32,.4); }
+  .result-card.assign  { background: rgba(176,128,224,.07); border-color: rgba(176,128,224,.4); }
+  .result-ico  { font-size: 28px; margin-bottom: 6px; }
+  .result-head { font-family: var(--font-d); font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .result-name { font-family: var(--font-d); font-size: 26px; font-weight: 700; margin-bottom: 3px; line-height: 1.15; }
+  .result-sub  { font-size: 13px; color: var(--text2); }
+  .result-seats { display: flex; gap: 22px; margin-top: 12px; }
+  .rseat-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); }
+  .rseat-val { font-family: var(--font-d); font-size: 26px; font-weight: 700; }
+  .assign-inline { margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
+  .assign-inline .arow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .assign-inline input {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 9px 11px; color: var(--text);
+    font-family: var(--font); font-size: 14px; width: 100%;
+  }
+  .assign-inline input:focus { outline: none; border-color: var(--purple); }
+  .btn-go {
+    background: var(--gold); color: #000; border: none; border-radius: var(--r);
+    padding: 11px; font-size: 14px; font-weight: 700; cursor: pointer;
+    width: 100%; font-family: var(--font); transition: background .13s;
+  }
+  .btn-go:hover { background: var(--gold2); }
+  .stat-pills { display: flex; gap: 20px; }
+  .stat-pill .n { font-family: var(--font-d); font-size: 22px; font-weight: 700; line-height: 1; }
+  .stat-pill .l { font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: var(--text3); }
+  .log-entry {
+    display: flex; align-items: center; gap: 10px; padding: 10px 13px;
+    border-radius: var(--r); border: 1px solid var(--border); background: var(--bg2);
+    margin-bottom: 7px;
+  }
+  .log-entry.valid   { border-color: rgba(76,175,121,.22);  background: rgba(76,175,121,.04); }
+  .log-entry.invalid { border-color: rgba(224,80,80,.18);   background: rgba(224,80,80,.04); }
+  .log-entry.warn    { border-color: rgba(224,144,32,.2);   background: rgba(224,144,32,.04); }
+  .log-ico  { font-size: 17px; flex-shrink: 0; }
+  .log-name { font-size: 13px; font-weight: 600; }
+  .log-det  { font-size: 11px; color: var(--text2); }
+  .log-time { font-size: 10px; color: var(--text3); margin-left: auto; flex-shrink: 0; }
+  /* On desktop, camera moves below scanner and manual lookup */
+  @media (min-width: 801px) {
+    .scan-panel { display: flex; flex-direction: column; }
+    #camera-card { order: 99; margin-top: 4px; }
+  }
+  .cam-wrap {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--r-lg); overflow: hidden;
+    aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+  }
+  .cam-wrap #qr-reader { width: 100%; }
+  .cam-off-msg { text-align: center; padding: 28px; }
+  .cam-off-msg .ico { font-size: 34px; opacity: .25; margin-bottom: 10px; }
+  /* USB indicator */
+  .usb-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border-radius: var(--r);
+    background: rgba(76,175,121,.06); border: 1px solid rgba(76,175,121,.18);
+    font-size: 12px; color: var(--green); margin-bottom: 16px;
+  }
+  .usb-bar .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0;
+    animation: blink 1.8s ease-in-out infinite;
+  }
+  .usb-bar.active { background: rgba(232,201,122,.1); border-color: rgba(232,201,122,.3); color: var(--gold); }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .name-result-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px; background: var(--bg3);
+    border: 1px solid var(--border); border-radius: var(--r); gap: 10px;
+    margin-bottom: 6px;
+  }
+  .name-result-row:hover { border-color: var(--border2); }
+  @media (max-width: 800px) { .two-col { grid-template-columns: 1fr !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Restricted sidebar -->
+  <aside class="sidebar">
+    <div class="sb-logo" style="padding:14px 16px 12px;border-bottom:1px solid var(--border)">
+      <img src="/logo.png" alt="Mamudem" style="width:100%;max-width:160px;height:auto;display:block">
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-group">
+        <div class="sb-group-label">Check-in</div>
+        <a href="/scanner-kiosk.html" class="sb-item active">Scanner &amp; Check-in</a>
+      </div>
+      <div style="padding:0 9px;margin-top:6px;">
+        <div class="sb-restricted-badge"> Restricted access</div>
+        <p class="xs text3" style="margin-top:8px;line-height:1.7">
+          Logged in as door staff.<br>Check-in actions only.
+        </p>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <div class="sb-user">
+        <div class="sb-avatar" id="sb-av">S</div>
+        <div>
+          <div class="sb-uname" id="sb-name">Scanner</div>
+          <div class="sb-urole">Door Staff</div>
+        </div>
+        <button class="sb-logout" onclick="exitScanner()" title="Exit">Exit</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page">
+
+      <!-- Header -->
+      <div class="ph">
+        <div class="ph-left">
+          <h1 id="ev-name">Loading…</h1>
+          <p id="ev-sub" class="text2 sm"></p>
+        </div>
+        <div class="stat-pills">
+          <div class="stat-pill" style="text-align:center">
+            <div class="n green" id="stat-in">0</div>
+            <div class="l">Checked In (Event)</div>
+          </div>
+          <div class="stat-pill" style="text-align:center">
+            <div class="n gold" id="stat-session">0</div>
+            <div class="l">This Kiosk Session</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USB scanner status -->
+      <div class="usb-bar" id="usb-bar">
+        <div class="dot"></div>
+        <span id="usb-label">USB / Bluetooth scanner ready — scan any ticket at any time, even without clicking anything first</span>
+      </div>
+
+      <!-- Two-column layout -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start" class="two-col">
+
+        <!-- LEFT -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+          <!-- Result area -->
+          <div id="result-area"></div>
+
+          <!-- Manual ticket ID -->
+          <div class="card">
+            <div class="section-title" style="margin-bottom:10px"> Ticket ID</div>
+            <p class="sm text2 mb12">Type a ticket ID and press Enter — or just scan with a USB/Bluetooth scanner without clicking anything first.</p>
+            <div class="row" style="gap:8px">
+              <input
+                id="manual-tid"
+                value="TKT-"
+                placeholder="TKT-XXXXXXXX"
+                style="flex:1;font-family:monospace;font-size:15px;letter-spacing:.06em;text-transform:uppercase"
+                oninput="enforceTktPrefix(this)"
+                onfocus="if(this.value==='')this.value='TKT-'"
+                onkeydown="if(event.key==='Enter'){doManual();event.preventDefault()}"
+                autocomplete="off"
+              >
+              <button class="btn btn-gold" onclick="doManual()">Check In</button>
+            </div>
+          </div>
+
+          <!-- Name search -->
+          <div class="card" id="name-search-card">
+            <div class="section-title" style="margin-bottom:10px">Name &amp; Phone Search</div>
+            <p class="sm text2 mb12">Find a guest by name or phone and check them in — useful when they don't have their ticket.</p>
+            <div class="row mb12" style="gap:8px">
+              <input
+                id="name-search"
+                placeholder="Name or phone number…"
+                style="flex:1"
+                oninput="searchByName(this.value)"
+                autocomplete="off"
+              >
+              <button class="btn btn-ghost" onclick="clearNameSearch()">Clear</button>
+            </div>
+            <div id="name-results"></div>
+          </div>
+
+          <!-- Camera — desktop: below other sections via flex order -->
+          <div class="card" id="camera-card">
+            <div class="section-title" style="margin-bottom:10px"> Camera scanner (optional)</div>
+            <p class="sm text2 mb12">Use your phone or webcam as a scanner. A USB scanner is faster for high-volume check-in at a PC.</p>
+            <div class="cam-wrap">
+              <div id="cam-off-msg" class="cam-off-msg">
+                <div class="ico"></div>
+                <p class="sm text2" style="margin-bottom:12px">Camera is off</p>
+                <button class="btn btn-gold" onclick="startCam()">Start Camera</button>
+              </div>
+              <div id="qr-reader" style="display:none;width:100%"></div>
+            </div>
+            <div class="row" style="justify-content:center;gap:8px">
+              <button class="btn btn-gold" id="btn-start" onclick="startCam()">Start Camera</button>
+              <button class="btn btn-danger" id="btn-stop" style="display:none" onclick="stopCam()">Stop Camera</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: log -->
+        <div class="card" style="padding:0;overflow:hidden;position:sticky;top:24px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--border)">
+            <span class="section-title" style="margin:0">Live Check-in Log</span>
+            <span class="chip" id="log-count">0 checked in</span>
+          </div>
+          <div style="padding:12px 14px;max-height:640px;overflow-y:auto">
+            <div id="log-list">
+              <div class="empty" style="padding:24px 0">
+                <div class="ico" style="font-size:24px;margin-bottom:8px"></div>
+                <p>No check-ins yet</p>
+                <p class="xs text3" style="margin-top:4px">Scan a ticket to begin</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/js/app.js"></script>
+<script>
+// ── Session ───────────────────────────────────────────────
+let sess = null;
+try { sess = JSON.parse(localStorage.getItem('hrtb_scanner')); } catch {}
+if (!sess?.token || !sess?.event) { window.location = '/scanner-login.html'; throw 0; }
+const { token: sToken, user: sUser, event: sEvent, allow_lookup: sAllowLookup } = sess;
+
+async function sReq(path, opts = {}) {
+  const headers = { 'Content-Type': 'application/json', ...opts.headers, 'Authorization': `Bearer ${sToken}` };
+  const res = await fetch('/api' + path, { ...opts, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  return data;
+}
+
+// ── State ─────────────────────────────────────────────────
+let logEntries = [], sessionScans = 0, checkedInCount = 0;
+let allAttendees = [], cameraScanner = null, resultTimer = null;
+
+// ── Init UI ───────────────────────────────────────────────
+document.getElementById('ev-name').textContent = sEvent.name;
+document.getElementById('ev-sub').textContent = [sEvent.date, sEvent.venue].filter(Boolean).join(' · ');
+document.getElementById('sb-name').textContent = sUser.name || 'Scanner';
+document.getElementById('sb-av').textContent = (sUser.name || 'S')[0].toUpperCase();
+
+// ── Load stats + attendee cache ───────────────────────────
+async function loadStats() {
+  try {
+    const { attendees } = await sReq(`/attendees/event/${sEvent.id}`);
+    allAttendees = attendees;
+    // Event-wide checked-in count (accurate across all kiosks)
+    checkedInCount = attendees.filter(a => a.status === 'checked').length;
+    // sessionScans is local to this kiosk since login — never reset from server
+    refreshStats();
+  } catch {}
+}
+
+function refreshStats() {
+  document.getElementById('stat-in').textContent = checkedInCount;
+  document.getElementById('stat-session').textContent = sessionScans;
+  document.getElementById('log-count').textContent = `${sessionScans} this session`;
+}
+
+// ── USB / Bluetooth scanner trap ──────────────────────────
+// Physical scanners send characters rapidly then press Enter.
+// We listen globally so the scanner works even if no input is focused.
+let usbBuffer = '', usbTimer = null;
+
+document.addEventListener('keydown', e => {
+  const active = document.activeElement;
+  // If focus is on a real input that the user is typing into, don't intercept —
+  // UNLESS it's the manual ticket ID box (which we also want to catch Enter on).
+  const isUserInput = active.tagName === 'INPUT' && active.id !== 'manual-tid';
+  const isTextarea  = active.tagName === 'TEXTAREA';
+  if (isUserInput || isTextarea) return;
+
+  if (e.key === 'Enter') {
+    const buf = usbBuffer.trim();
+    usbBuffer = '';
+    clearTimeout(usbTimer);
+    if (buf.length > 3) {
+      // Scanner overwrites manual field completely, then resets to TKT-
+      const manEl = document.getElementById('manual-tid');
+      if (manEl) manEl.value = 'TKT-';
+      processTicket(buf.toUpperCase());
+    }
+    return;
+  }
+
+  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+    usbBuffer += e.key;
+    clearTimeout(usbTimer);
+    // Scanners finish in <50ms. Manual typing is slow. Discard after 120ms of silence.
+    usbTimer = setTimeout(() => { usbBuffer = ''; }, 120);
+  }
+});
+
+// Flash the status bar when USB scanner fires
+function flashUsbBar() {
+  const bar = document.getElementById('usb-bar');
+  bar.classList.add('active');
+  document.getElementById('usb-label').textContent = 'Scanner input detected…';
+  setTimeout(() => {
+    bar.classList.remove('active');
+    document.getElementById('usb-label').textContent = 'USB / Bluetooth scanner ready — scan any ticket at any time, even without clicking anything first';
+  }, 800);
+}
+
+// ── Manual ID ─────────────────────────────────────────────
+function doManual() {
+  const val = document.getElementById('manual-tid').value.trim().toUpperCase();
+  if (!val || val === 'TKT-') return;
+  document.getElementById('manual-tid').value = 'TKT-';
+  processTicket(val);
+}
+
+// ── Name search ───────────────────────────────────────────
+let nameTimer = null;
+
+function searchByName(q) {
+  clearTimeout(nameTimer);
+  const el = document.getElementById('name-results');
+  if (!q || q.length < 2) { el.innerHTML = ''; return; }
+  nameTimer = setTimeout(() => {
+    const hits = allAttendees
+      .filter(a => {
+        const name = `${a.first_name||''} ${a.last_name||''}`.toLowerCase();
+        const phone = (a.phone||'').replace(/\D/g,'');
+        const email = (a.email||'').toLowerCase();
+        const qLower = q.toLowerCase();
+        const qDigits = q.replace(/\D/g,'');
+        return name.includes(qLower)
+          || (qDigits.length >= 3 && phone.includes(qDigits))
+          || email.includes(qLower);
+      }).slice(0, 15);
+    if (!hits.length) { el.innerHTML = '<p class="sm text2" style="padding:6px 4px">No attendees found</p>'; return; }
+    el.innerHTML = hits.map(a => `
+      <div class="name-result-row">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(a.first_name)} ${esc(a.last_name)}</div>
+          <div style="font-size:11px;color:var(--text2)">
+            ${a.table_number ? `Table ${esc(a.table_number)}${a.seat_number ? ' · Seat '+esc(a.seat_number) : ''}` : ''}
+            ${a.phone ? `${a.table_number?' · ':''}${esc(a.phone)}` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
+          ${badgeHTML(a.status)}
+          ${a.status !== 'checked' && a.status !== 'deactivated'
+            ? `<button class="btn btn-sm btn-success" onclick="checkInByTicket('${a.ticket_id}')">Check In</button>`
+            : a.status === 'checked'
+              ? `<span class="badge badge-checked" style="font-size:10px">Checked In${a.checked_in_at ? ' ' + new Date(a.checked_in_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : ''}</span>`
+              : '<span style="color:var(--red);font-size:11px">Deactivated</span>'
+          }
+        </div>
+      </div>`).join('');
+  }, 200);
+}
+
+function clearNameSearch() {
+  document.getElementById('name-search').value = '';
+  document.getElementById('name-results').innerHTML = '';
+}
+
+async function checkInByTicket(ticketId) {
+  await processTicket(ticketId);
+  // Refresh name search results with updated status
+  searchByName(document.getElementById('name-search').value);
+}
+
+// ── Core scan logic ───────────────────────────────────────
+async function processTicket(ticketId) {
+  flashUsbBar();
+  try {
+    const data = await sReq('/attendees/scan', { method: 'POST', body: JSON.stringify({ ticketId }) });
+    showResult(data, ticketId);
+    sessionScans++;
+    if (data.valid) {
+      checkedInCount++;
+      const cached = allAttendees.find(a => a.ticket_id === ticketId);
+      if (cached) cached.status = 'checked';
+    }
+    addLog(data, ticketId);
+    refreshStats();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Result display ────────────────────────────────────────
+function showResult(data, ticketId) {
+  clearTimeout(resultTimer);
+  const area = document.getElementById('result-area');
+  const isPreprint = data.reason === 'Not yet assigned';
+  const isAlready  = data.reason?.includes('Already');
+
+  if (data.valid) {
+    const a = data.attendee;
+    const isStaff = a && a.source === 'staff';
+    const lvlBadge = a.level_name ? `<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:${a.level_color||'#6366f1'}22;border:1.5px solid ${a.level_color||'#6366f1'}66;margin-bottom:10px"><span style="width:9px;height:9px;border-radius:50%;background:${a.level_color||'#6366f1'};display:inline-block"></span><span style="font-size:12px;font-weight:700;color:${a.level_color||'#6366f1'};text-transform:uppercase;letter-spacing:.06em">${esc(a.level_name)}</span></div>` : '';
+    area.innerHTML = `
+      <div class="result-card valid">
+        <div style="display:inline-block;background:var(--green);color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">${isStaff ? 'STAFF' : 'VALID'}</div>
+        <div class="result-head" style="color:var(--green)">${isStaff ? 'Access Granted' : 'Entry Granted'}</div>
+        <div class="result-name">${esc(a.first_name)} ${esc(a.last_name)}</div>
+        ${lvlBadge}
+        ${a.phone ? `<div class="result-sub">${esc(a.phone)}</div>` : ''}
+        ${a.table_number || a.seat_number ? `
+          <div class="result-seats">
+            ${a.table_number ? `<div><div class="rseat-lbl">Table</div><div class="rseat-val" style="color:var(--gold)">${esc(a.table_number)}</div></div>` : ''}
+            ${a.seat_number  ? `<div><div class="rseat-lbl">Seat</div><div class="rseat-val"  style="color:var(--gold)">${esc(a.seat_number)}</div></div>` : ''}
+          </div>` : ''}
+      </div>`;
+    resultTimer = setTimeout(() => { area.innerHTML = ''; }, 5000);
+
+  } else if (isPreprint) {
+    area.innerHTML = `
+      <div class="result-card assign">
+        <div style="display:inline-block;background:var(--purple);color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">UNASSIGNED</div>
+        <div class="result-head" style="color:var(--purple)">Ticket Not Yet Assigned</div>
+        <div class="result-sub mb12">Enter the guest's name to assign and check in now.</div>
+        <div class="result-sub xs" style="font-family:monospace;opacity:.6;margin-bottom:10px">${esc(ticketId)}</div>
+        <div class="assign-inline">
+          <div class="arow">
+            <input id="af-fn" placeholder="First name *" autofocus>
+            <input id="af-ln" placeholder="Last name *">
+          </div>
+          <input id="af-ph" placeholder="Phone (optional)">
+          <button class="btn-go" onclick="assignAndCheckIn('${ticketId}')">Assign &amp; Check In →</button>
+          <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:2px" onclick="document.getElementById('result-area').innerHTML=''">Cancel</button>
+        </div>
+      </div>`;
+
+  } else if (isAlready) {
+    const a = data.attendee;
+    const lvlBadge = a?.level_name ? `<div style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;background:${a.level_color||'#6366f1'}22;border:1.5px solid ${a.level_color||'#6366f1'}66;margin-bottom:8px"><span style="width:8px;height:8px;border-radius:50%;background:${a.level_color||'#6366f1'};display:inline-block"></span><span style="font-size:11px;font-weight:700;color:${a.level_color||'#6366f1'};text-transform:uppercase;letter-spacing:.06em">${esc(a.level_name)}</span></div>` : '';
+    area.innerHTML = `
+      <div class="result-card warn">
+        <div style="display:inline-block;background:var(--orange);color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">DUPLICATE</div>
+        <div class="result-head" style="color:var(--orange)">Already Checked In</div>
+        ${a ? `<div class="result-name">${esc(a.first_name)} ${esc(a.last_name)}</div>` : ''}
+        ${lvlBadge}
+        ${data.checkedAt ? `<div class="result-sub">First scanned at ${new Date(data.checkedAt).toLocaleTimeString()}</div>` : ''}
+      </div>`;
+    resultTimer = setTimeout(() => { area.innerHTML = ''; }, 7000);
+
+  } else {
+    area.innerHTML = `
+      <div class="result-card invalid">
+        <div style="display:inline-block;background:var(--red);color:#fff;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">DENIED</div>
+        <div class="result-head" style="color:var(--red)">Entry Denied</div>
+        <div class="result-sub" style="margin-top:4px">${esc(data.reason || 'Invalid ticket')}</div>
+        <div class="result-sub xs" style="font-family:monospace;opacity:.5;margin-top:6px">${esc(ticketId)}</div>
+      </div>`;
+    resultTimer = setTimeout(() => { area.innerHTML = ''; }, 7000);
+  }
+}
+
+async function assignAndCheckIn(ticketId) {
+  const fn = document.getElementById('af-fn')?.value.trim();
+  const ln = document.getElementById('af-ln')?.value.trim();
+  const ph = document.getElementById('af-ph')?.value.trim();
+  if (!fn || !ln) { toast('Enter first and last name', 'error'); return; }
+  try {
+    await sReq('/attendees/assign', { method: 'POST', body: JSON.stringify({ ticketId, first_name: fn, last_name: ln, phone: ph || undefined }) });
+    const data = await sReq('/attendees/scan', { method: 'POST', body: JSON.stringify({ ticketId }) });
+    showResult(data, ticketId);
+    sessionScans++; checkedInCount++;
+    const cached = allAttendees.find(a => a.ticket_id === ticketId);
+    if (cached) { cached.status = 'checked'; cached.first_name = fn; cached.last_name = ln; }
+    addLog(data, ticketId);
+    refreshStats();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Log ───────────────────────────────────────────────────
+function addLog(data, ticketId) {
+  const a    = data.attendee;
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const isAlready = data.reason?.includes('Already');
+  const cls  = data.valid ? 'valid' : isAlready ? 'warn' : 'invalid';
+  const ico  = '';
+  const name = a ? `${a.first_name} ${a.last_name}`.trim() || ticketId : ticketId;
+  const det  = data.valid
+    ? [a?.table_number ? `Table ${a.table_number}` : '', a?.seat_number ? `Seat ${a.seat_number}` : ''].filter(Boolean).join(' · ')
+    : (data.reason || '');
+
+  logEntries.unshift({ cls, ico, name, det, time });
+
+  document.getElementById('log-list').innerHTML = logEntries.slice(0, 80).map(e => `
+    <div class="log-entry ${e.cls}">
+      <span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:${e.cls==='valid'?'var(--green)':e.cls==='warn'?'var(--orange)':'var(--red)'}"></span>
+      <div style="flex:1;min-width:0">
+        <div class="log-name">${esc(e.name)}</div>
+        ${e.det ? `<div class="log-det">${esc(e.det)}</div>` : ''}
+      </div>
+      <span class="log-time">${e.time}</span>
+    </div>`).join('');
+}
+
+// ── Camera ────────────────────────────────────────────────
+async function startCam() {
+  document.getElementById('cam-off-msg').style.display = 'none';
+  document.getElementById('qr-reader').style.display = 'block';
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('btn-stop').style.display = '';
+
+  let lastCamScan = 0;
+  cameraScanner = new Html5Qrcode('qr-reader');
+
+  // Get available cameras and let user pick if multiple
+  let cameraId = { facingMode: 'environment' };
+  try {
+    const cameras = await Html5Qrcode.getCameras();
+    if (cameras.length > 1) {
+      const options = cameras.map((c,i) => `${i}: ${c.label || 'Camera '+i}`).join('\n');
+      const choice = prompt(`Multiple cameras found. Enter number to select:\n${options}`, '0');
+      const idx = parseInt(choice);
+      if (!isNaN(idx) && cameras[idx]) cameraId = cameras[idx].id;
+    }
+  } catch {}
+
+  cameraScanner.start(
+    cameraId,
+    { fps: 12, qrbox: { width: 240, height: 240 } },
+    async decoded => {
+      const now = Date.now();
+      if (now - lastCamScan < 2500) return;
+      lastCamScan = now;
+      let tid = decoded.trim();
+      try { const p = JSON.parse(decoded); if (p.ticketId) tid = p.ticketId; } catch {}
+      cameraScanner.pause();
+      await processTicket(tid.toUpperCase());
+      setTimeout(() => cameraScanner?.resume(), 2500);
+    },
+    () => {}
+  ).catch(e => { toast('Camera error: ' + e.message, 'error'); stopCam(); });
+}
+
+function stopCam() {
+  cameraScanner?.stop().catch(() => {});
+  cameraScanner = null;
+  document.getElementById('cam-off-msg').style.display = '';
+  document.getElementById('qr-reader').style.display = 'none';
+  document.getElementById('qr-reader').innerHTML = '';
+  document.getElementById('btn-start').style.display = '';
+  document.getElementById('btn-stop').style.display = 'none';
+}
+
+// ── Exit ──────────────────────────────────────────────────
+function exitScanner() {
+  if (!confirm('Exit door scanner?')) return;
+  stopCam();
+  localStorage.removeItem('hrtb_scanner');
+  window.location = '/scanner-login.html';
+}
+
+// ── Start ─────────────────────────────────────────────────
+// Show/hide name search based on PIN permission
+if (!sAllowLookup) {
+  const nameCard = document.getElementById('name-search-card');
+  if (nameCard) nameCard.style.display = 'none';
+}
+loadStats();
+setInterval(loadStats, 30000);
+</script>
+</body>
+</html>

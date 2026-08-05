@@ -1,0 +1,559 @@
+import Database from 'better-sqlite3';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { mkdirSync } from 'fs';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+// Use DATA_DIR env var if set, else try /data (Render disk), else /tmp/hrtb-data (free tier)
+function resolveDataDir() {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  try { mkdirSync('/data', { recursive: true }); return '/data'; } catch {}
+  return '/tmp/hrtb-data';
+}
+const DATA_DIR = resolveDataDir();
+mkdirSync(DATA_DIR, { recursive: true });
+
+const db = new Database(join(DATA_DIR, 'hrtb.db'));
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
+    token_version INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    is_active INTEGER NOT NULL DEFAULT 1
+  );
+
+  CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    date TEXT,
+    venue TEXT,
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS attendees (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    first_name TEXT NOT NULL DEFAULT '',
+    last_name TEXT NOT NULL DEFAULT '',
+    phone TEXT,
+    email TEXT,
+    table_number TEXT,
+    seat_number TEXT,
+    ticket_id TEXT UNIQUE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    sent_at TEXT,
+    checked_in_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS invite_tokens (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    expires_at TEXT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS account_members (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    added_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    UNIQUE(account_id, user_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS scanner_pins (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    pin TEXT NOT NULL,
+    label TEXT NOT NULL DEFAULT 'Door Scanner',
+    allow_lookup INTEGER NOT NULL DEFAULT 1,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    UNIQUE(pin, event_id)
+  );
+`);
+
+// ── Migrations (safe — run every time, no-op if already done) ──
+try { db.exec('ALTER TABLE accounts ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN closed_at TEXT'); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/New_York'"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN twilio_sid TEXT"); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN demo_mode INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN account_tier TEXT NOT NULL DEFAULT \'demo\''); } catch {} // demo | starter | pro | enterprise
+try { db.exec('ALTER TABLE events ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0'); } catch {}
+
+// Site content table for editable public pages
+db.exec(`CREATE TABLE IF NOT EXISTS site_content (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+
+// Seed default site content if not present
+const defaultContent = {
+  'home.hero_title': 'Effortless Event Ticketing for Your Community',
+  'home.hero_subtitle': 'Sell tickets online, manage attendees, scan at the door — all in one place. Built for synagogues, community organizations, and private events.',
+  'home.cta_primary': 'Get Started Free',
+  'home.cta_secondary': 'See Pricing',
+  'home.feature1_title': 'Sell Tickets Online',
+  'home.feature1_body': 'Beautiful ticket sale pages with Stripe payments, promo codes, and real-time capacity tracking.',
+  'home.feature2_title': 'Manage Attendees',
+  'home.feature2_body': 'Upload lists, assign seating, send individual or bulk tickets via email with professional PDF attachments.',
+  'home.feature3_title': 'Scan at the Door',
+  'home.feature3_body': 'QR code scanner works on any phone or tablet. Multiple entrances, staff tickets, and real-time check-in counts.',
+  'home.feature4_title': 'Staff & Access Control',
+  'home.feature4_body': 'Separate staff Mamudem with ID badge PDFs. Restrict scanners to specific ticket levels.',
+  'pricing.title': 'Simple, Transparent Pricing',
+  'pricing.subtitle': 'Start free with a demo event. Upgrade when you\'re ready to go live.',
+  'pricing.tier1_name': 'Demo',
+  'pricing.tier1_price': 'Free',
+  'pricing.tier1_desc': 'Try everything with a pre-loaded demo event. No credit card required.',
+  'pricing.tier1_features': 'Full portal access\nDemo event with sample data\nAll features unlocked\nNo live events or payments',
+  'pricing.tier2_name': 'Starter',
+  'pricing.tier2_price': '$49',
+  'pricing.tier2_period': 'per event',
+  'pricing.tier2_desc': 'Everything you need for a single event.',
+  'pricing.tier2_features': '1 live event\nOnline ticket sales\nEmail delivery\nAttendee management\nDoor scanner',
+  'pricing.tier3_name': 'Pro',
+  'pricing.tier3_price': '$99',
+  'pricing.tier3_period': 'per month',
+  'pricing.tier3_desc': 'For organizations running events regularly.',
+  'pricing.tier3_features': 'Unlimited events\nOnline ticket sales\nEmail delivery\nAll features\nPriority support',
+  'faq.title': 'Frequently Asked Questions',
+  'faq.items': JSON.stringify([
+    { q: 'Do I need a credit card to sign up?', a: 'No. Sign up free and explore everything with a demo event. A credit card is only needed when you create your first live event.' },
+    { q: 'How does payment processing work?', a: 'You connect your own Stripe account. All ticket revenue goes directly to your Stripe — we never touch your money. Stripe charges their standard processing fees.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes. Each event can have its own dedicated phone number. Guests call or text that number and go through a fully automated checkout — no staff needed. They pay by card directly through the phone or text conversation.' },
+    { q: 'Can I import my existing attendee list?', a: 'Yes. Upload a CSV or Excel file. The system imports all attendees, optionally matches duplicates, and can automatically send everyone their tickets.' },
+    { q: 'How does the door scanner work?', a: 'Any smartphone or tablet can scan QR codes. Create a PIN for each entrance, open the scanner page on any device, and you\'re ready. Multiple simultaneous entrances are supported. Scanners can be restricted to specific ticket levels.' },
+    { q: 'What is a staff ticket?', a: 'Staff tickets use a business card-style ID badge PDF and are tracked separately from guest attendees. They don\'t count toward capacity and always receive "Access Granted" at the scanner regardless of check-in status.' },
+    { q: 'Can I set a seating chart or table assignments?', a: 'Yes. You can assign table and seat numbers to each attendee, either individually or by upload. Enable the seating feature in your event settings to show this column.' },
+    { q: 'What happens when my event is over?', a: 'Events automatically close 48 hours after the end date you set. Once closed, all data is locked — no changes can be made, but everything is preserved for records. Contact us to reopen if needed.' },
+    { q: 'Can I run multiple events?', a: 'Yes, as many as you need. Each event has its own ticket levels, sale page, promo codes, scanner setup, staff, and phone number.' },
+    { q: 'Can I use promo codes?', a: 'Yes. Create percent or fixed-dollar discount codes with optional expiry dates, usage limits, per-level limits, and email restrictions.' },
+    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all online payment data — card numbers are never stored. For phone and SMS orders, card digits go directly from the caller to Stripe and are never written to disk.' },
+    { q: 'How do I get started?', a: 'Sign up free — your account comes with a fully loaded demo event so you can explore every feature immediately. When ready to go live, connect your Stripe account and create your first real event.' },
+  ]),
+  'faq.items': JSON.stringify([
+    { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real, live event.' },
+    { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it. For phone and SMS orders, payments are processed through our platform Stripe account and your attendee is issued a ticket just like an online order.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Both are available on request — contact us to get a phone number assigned to your event.' },
+    { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file with your attendee list and the system will import everyone, match any existing records, and optionally email tickets to everyone automatically.' },
+    { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes at the door. You create a scanner PIN for each entrance — your staff just open the scanner page on any device and scan. No app download required. Multiple entrances can run simultaneously.' },
+    { q: 'Can I have VIP entrances that only admit certain ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always get through regardless.' },
+    { q: 'What is a staff ticket?', a: 'Staff tickets are a completely separate system from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward your event capacity, and always scan as Access Granted at the door.' },
+    { q: 'Can I set a maximum number of tickets?', a: 'Yes. Set a capacity limit per event or per ticket level. You can also set a warning threshold — when you reach it, you get an email alert. Online sales automatically stop when capacity is reached.' },
+    { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats, attendee info, and export data, but no changes can be made. Admins can reopen a closed event at any time.' },
+    { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event is completely independent with its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
+    { q: 'What are promo codes?', a: 'Promo codes let you offer discounts. You can set a percentage off, a fixed dollar amount off, an expiry date, a maximum number of uses, a spending cap, and even restrict a code to specific email addresses. Codes are entered by the buyer on the checkout page.' },
+    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private deployment. Passwords are hashed with bcrypt. Stripe handles all payment card data — we never store card numbers anywhere. For phone and SMS orders, card digits travel from Twilio directly to Stripe in memory and are never written to disk or database.' },
+    { q: 'What does the demo account include?', a: 'Your demo account comes with a fully loaded demo event: 12 sample attendees with different statuses and ticket levels, 2 staff members, a promo code, and a working scanner PIN. You can explore every single feature without any real data.' },
+  ]),
+  'terms.title': 'Terms and Conditions',
+  'terms.last_updated': new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+  'terms.content': `<h2>1. Acceptance of Terms</h2>
+<p>By creating an account and using the Mamudem ("the Service"), you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
+
+<h2>2. Description of Service</h2>
+<p>Mamudem is a software platform that allows organizations to sell event tickets, manage attendees, process check-ins at the door, and collect payments. We are a software provider — we do not organize events or sell tickets on behalf of our users.</p>
+
+<h2>3. Account Registration</h2>
+<p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. Notify us immediately of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
+
+<h2>4. Demo Accounts</h2>
+<p>All new accounts begin in Demo Mode with a fully featured demo event for evaluation purposes. Demo accounts cannot process real payments or send ticket emails to real attendees. To run a live event, you must purchase a plan. Your demo event remains accessible at no cost indefinitely.</p>
+
+<h2>5. Payments and Billing</h2>
+<p>Creating live events requires a one-time fee per event (or as otherwise indicated at the time of purchase). Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service in addition to these terms.</p>
+
+<h2>6. Ticket Sales and Payment Processing</h2>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to your Stripe account — Mamudem does not hold or transmit your ticket sale funds. You are solely responsible for refunds, disputes, chargebacks, and compliance with consumer protection laws in your jurisdiction.</p>
+<p>Phone and SMS ticket orders are processed through our platform Stripe account under our MOTO (Mail Order/Telephone Order) approval. You are responsible for ensuring compliance with card network rules when enabling phone ordering.</p>
+
+<h2>7. Your Data and Attendee Information</h2>
+<p>You retain full ownership of your event data and attendee information. By using the Service, you grant us a limited, non-exclusive license to store and process this data solely for the purpose of providing the Service. We do not sell, share, or use your attendee data for any purpose other than operating the platform. You are responsible for obtaining any necessary consent from your attendees to collect and process their personal information.</p>
+
+<h2>8. Acceptable Use</h2>
+<p>You agree not to use the Service for any unlawful purpose, including fraud, phishing, spam, or any activity that violates applicable laws. We reserve the right to suspend or terminate accounts that violate these terms without notice.</p>
+
+<h2>9. Service Availability</h2>
+<p>We aim for maximum uptime but do not guarantee uninterrupted availability. We are not liable for losses resulting from service interruptions. We recommend exporting your attendee list before any major event as a precaution.</p>
+
+<h2>10. Limitation of Liability</h2>
+<p>The Service is provided "as is" without warranty of any kind. To the maximum extent permitted by law, Mamudem shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the platform, including lost revenue, lost data, or event disruptions.</p>
+
+<h2>11. Changes to These Terms</h2>
+<p>We may update these Terms at any time. Continued use of the Service after changes constitutes acceptance. We recommend checking this page periodically.</p>
+
+<h2>12. Contact Us</h2>
+<p>For questions about these Terms, contact us at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a></p>`
+};
+for (const [key, value] of Object.entries(defaultContent)) {
+  try { db.prepare('INSERT OR IGNORE INTO site_content (key, value) VALUES (?,?)').run(key, value); } catch {}
+}
+try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allowed_levels TEXT'); } catch {}
+
+// Staff table — completely separate from attendees
+db.exec(`CREATE TABLE IF NOT EXISTS staff (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  first_name TEXT NOT NULL DEFAULT '',
+  last_name TEXT NOT NULL DEFAULT '',
+  phone TEXT,
+  email TEXT,
+  ticket_id TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  confirmed INTEGER NOT NULL DEFAULT 0,
+  level_id TEXT,
+  sent_at TEXT,
+  checked_in_at TEXT,
+  checkout_data TEXT,
+  deleted_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);`);
+db.exec(`CREATE TABLE IF NOT EXISTS promo_codes (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  code TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'percent', -- 'percent' or 'fixed'
+  value INTEGER NOT NULL, -- percent (0-100) or cents
+  expires_at TEXT,
+  max_uses INTEGER, -- null = unlimited total uses
+  max_tickets_per_level TEXT, -- JSON {levelId: maxTickets}
+  max_money INTEGER, -- max total cents given away
+  max_total_tickets INTEGER, -- max total tickets across all levels
+  allowed_emails TEXT, -- JSON array of emails, null = all
+  uses INTEGER NOT NULL DEFAULT 0,
+  money_given INTEGER NOT NULL DEFAULT 0,
+  tickets_given INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);`);
+try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS promo_code_event ON promo_codes (event_id, code)'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN first_name TEXT'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN last_name TEXT'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN phone TEXT'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN company TEXT'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN reply_to TEXT'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN max_events INTEGER NOT NULL DEFAULT 1'); } catch {}
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN description TEXT'); } catch {}
+try { db.exec('ALTER TABLE attendees ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE attendees ADD COLUMN level_id TEXT'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN allow_unconfirmed_checkin INTEGER NOT NULL DEFAULT 1'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN can_sell_online INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN price INTEGER NOT NULL DEFAULT 0'); } catch {} // price in cents
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN online_sale INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN slug TEXT'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN sale_image TEXT'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN sale_enabled INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN stripe_key TEXT'); } catch {} // per-event stripe secret key
+try { db.exec('ALTER TABLE events ADD COLUMN expires_at TEXT'); } catch {}
+// Source column — add without NOT NULL constraint first (safer for migration)
+try { db.exec("ALTER TABLE attendees ADD COLUMN source TEXT DEFAULT 'offline'"); } catch {}
+// Fix any bad values from previous migration attempts
+try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR source='' OR (source NOT IN ('online','offline','staff'))"); } catch {}
+try { db.exec('ALTER TABLE attendees ADD COLUMN checkout_data TEXT'); } catch {} // JSON: billing info
+
+// Online orders table
+db.exec(`CREATE TABLE IF NOT EXISTS online_orders (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  stripe_session_id TEXT,
+  stripe_payment_intent TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  email TEXT,
+  total_cents INTEGER NOT NULL DEFAULT 0,
+  line_items TEXT NOT NULL DEFAULT '[]',
+  checkout_data TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  completed_at TEXT,
+  FOREIGN KEY (event_id) REFERENCES events(id)
+);`);
+try { db.exec('ALTER TABLE attendees ADD COLUMN deleted_at TEXT'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN deleted_at TEXT'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN deleted_at TEXT'); } catch {}
+
+// Trash / soft-delete table — stores deleted events, attendees, accounts for 30 days
+db.exec(`
+  CREATE TABLE IF NOT EXISTS deleted_items (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    item_data TEXT NOT NULL,
+    deleted_by TEXT NOT NULL,
+    deleted_at TEXT NOT NULL DEFAULT (datetime('now')),
+    expires_at TEXT NOT NULL,
+    event_id TEXT,
+    account_id TEXT
+  );
+`);
+
+// Ticket levels table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ticket_levels (
+    id TEXT PRIMARY KEY,
+    event_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT '#6366f1',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+  );
+`);
+
+// Safe migrations for capacity columns
+try { db.exec("ALTER TABLE events ADD COLUMN max_tickets INTEGER"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN capacity_alert_at INTEGER"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN capacity_alert_email TEXT"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN capacity_count_unconfirmed INTEGER"); } catch {}
+try { db.exec("UPDATE events SET capacity_count_unconfirmed=1 WHERE capacity_count_unconfirmed IS NULL"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN allow_activation INTEGER NOT NULL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN show_seating INTEGER NOT NULL DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN max_tickets INTEGER"); } catch {}
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN alert_at INTEGER"); } catch {}
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN show_availability INTEGER"); } catch {}
+try { db.exec("UPDATE ticket_levels SET show_availability=0 WHERE show_availability IS NULL"); } catch {}
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN phone_enabled INTEGER NOT NULL DEFAULT 1"); } catch {}  // 1=sell via phone, 0=block
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN phone_max INTEGER"); } catch {}                          // max tickets via phone (null=unlimited)
+try { db.exec("ALTER TABLE ticket_levels ADD COLUMN phone_alert_at INTEGER"); } catch {}                     // alert when phone count reaches this
+
+// Stripe Connect per-account
+try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_id TEXT'); } catch {}        // Stripe account ID (acct_...)
+try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_key TEXT'); } catch {}       // access_token
+try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_refresh TEXT'); } catch {}   // refresh_token
+try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_pub TEXT'); } catch {}       // stripe_publishable_key
+try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_livemode INTEGER'); } catch {}
+try { db.exec('ALTER TABLE events ADD COLUMN platform_order_id TEXT'); } catch {}          // order ID for event creation payment
+
+// Platform settings — single-row config table
+db.exec(`CREATE TABLE IF NOT EXISTS platform_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);`);
+// Seed defaults
+const settingDefaults = {
+  'platform_fee_percent': '0',        // % cut on ticket sales via Connect (0-100)
+  'event_creation_fee_cents': '4900', // cents charged to create a live event ($49)
+  'currency': 'usd',
+};
+for (const [key, value] of Object.entries(settingDefaults)) {
+  try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(key, value); } catch {}
+}
+
+// Pricing plans — shown at event creation paywall
+db.exec(`CREATE TABLE IF NOT EXISTS pricing_plans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  price_cents INTEGER NOT NULL,
+  features TEXT,       -- JSON array of feature strings
+  is_active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+// Seed a default plan if none exist
+if (!db.prepare('SELECT id FROM pricing_plans LIMIT 1').get()) {
+  try {
+    db.prepare(`INSERT INTO pricing_plans (id,name,description,price_cents,features,sort_order)
+      VALUES (?,?,?,?,?,0)`).run(
+      'plan_default', 'Single Event', 'Everything you need to run one live event',
+      4900,
+      JSON.stringify(['Online ticket sales','Email delivery with PDF tickets','Door scanner PINs','Attendee management','Staff tickets','Promo codes'])
+    );
+  } catch {}
+}
+// attendees: add staff as a valid source value (already stored in source field, no migration needed)
+
+// Verify columns exist (log on startup)
+const eventCols = db.prepare("PRAGMA table_info(events)").all().map(c=>c.name);
+const attendeeCols = db.prepare("PRAGMA table_info(attendees)").all().map(c=>c.name);
+console.log('[DB] events cols with capacity:', eventCols.filter(c=>c.includes('capacity')||c.includes('max_ticket')));
+console.log('[DB] attendees has source:', attendeeCols.includes('source'));
+// Fix source values on startup — preserve 'staff', only reset truly invalid values
+try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR (source NOT IN ('online','offline','staff'))"); } catch {}
+// Backfill: any attendee with a staff level should have source='staff'
+try { db.exec("UPDATE attendees SET source='staff' WHERE deleted_at IS NULL AND source!='staff' AND level_id IN (SELECT id FROM ticket_levels WHERE is_staff=1)"); } catch {}
+
+// ── SMS/IVR — per-event phone numbers (platform Stripe only) ─
+// Each event gets its own Twilio number — customers call/text that number for that event
+try { db.exec("ALTER TABLE events ADD COLUMN phone_number TEXT"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN phone_number_expires TEXT"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}
+try { db.exec("ALTER TABLE events ADD COLUMN sms_ivr_enabled INTEGER NOT NULL DEFAULT 0"); } catch {}
+
+// Online orders table for Stripe checkout sessions
+db.exec(`CREATE TABLE IF NOT EXISTS online_orders (
+  id TEXT PRIMARY KEY,
+  event_id TEXT NOT NULL,
+  account_id TEXT,
+  stripe_payment_intent_id TEXT,
+  stripe_session_id TEXT,
+  amount_cents INTEGER,
+  status TEXT DEFAULT 'pending',
+  email TEXT,
+  name TEXT,
+  level_id TEXT,
+  quantity INTEGER DEFAULT 1,
+  promo_code TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+)`);
+try { db.exec("ALTER TABLE online_orders ADD COLUMN metadata TEXT"); } catch {}
+try { db.exec("ALTER TABLE online_orders ADD COLUMN attendee_ids TEXT"); } catch {}
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1"); } catch {}
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_events INTEGER"); } catch {}        // null = unlimited
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_attendees INTEGER"); } catch {}     // null = unlimited per event
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_levels INTEGER"); } catch {}        // null = unlimited ticket levels
+try { db.exec("ALTER TABLE accounts ADD COLUMN plan_id TEXT"); } catch {}                   // which plan they purchased
+try { db.exec("ALTER TABLE accounts ADD COLUMN plan_event_count INTEGER NOT NULL DEFAULT 0"); } catch {} // events used under current plan
+// Track account-level payments (event creation fees)
+db.exec(`CREATE TABLE IF NOT EXISTS account_transactions (
+  id TEXT PRIMARY KEY, account_id TEXT NOT NULL, event_id TEXT,
+  amount_cents INTEGER NOT NULL, currency TEXT NOT NULL DEFAULT 'usd',
+  stripe_payment_intent_id TEXT, stripe_charge_id TEXT,
+  description TEXT, status TEXT NOT NULL DEFAULT 'paid',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+
+db.exec(`CREATE TABLE IF NOT EXISTS event_sms_settings (
+  event_id TEXT PRIMARY KEY,
+  settings TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+);`);
+// Keep account-level columns for backward compat (don't remove existing data)
+try { db.exec("ALTER TABLE accounts ADD COLUMN google_id TEXT"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN avatar_url TEXT"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number TEXT"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number_expires TEXT"); } catch {}
+try { db.exec("ALTER TABLE accounts ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}
+
+db.exec(`CREATE TABLE IF NOT EXISTS phone_orders (
+  id TEXT PRIMARY KEY,
+  event_id TEXT, account_id TEXT, channel TEXT NOT NULL,
+  from_number TEXT NOT NULL, attendee_name TEXT, attendee_email TEXT,
+  level_id TEXT, quantity INTEGER NOT NULL DEFAULT 1,
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  stripe_payment_intent_id TEXT, status TEXT NOT NULL DEFAULT 'pending',
+  ticket_ids TEXT, error_message TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+
+db.exec(`CREATE TABLE IF NOT EXISTS sms_sessions (
+  phone TEXT PRIMARY KEY, account_id TEXT, event_slug TEXT,
+  step TEXT NOT NULL DEFAULT 'welcome', data TEXT,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+
+const smsDefaults = {
+  'sms.enabled':'1','ivr.enabled':'1',   // enabled by default — disable in Platform Settings if needed
+  // SAQ-D / PCI compliance info (editable in admin, reference only)
+  'pci.merchant_name':'','pci.merchant_dba':'','pci.contact_name':'','pci.contact_title':'',
+  'pci.contact_phone':'','pci.contact_email':'','pci.merchant_url':'',
+  'pci.merchant_category_code':'7922','pci.business_type':'Event Ticketing Platform',
+  'pci.processor':'Stripe','pci.acquirer_bank':'','pci.merchant_id':'',
+  'pci.annual_transactions':'','pci.saq_version':'SAQ-D v4.0',
+  'pci.last_assessment_date':'','pci.next_assessment_due':'',
+  'pci.asv_vendor':'','pci.last_scan_date':'','pci.next_scan_due':'','pci.notes':'',
+  'sms.welcome':'Welcome to Mamudem! Text an event code to buy tickets, or HELP for help.',
+  'sms.help':'Mamudem: Text an event code to buy. Text CANCEL to start over.',
+  'sms.invalid_code':'Sorry, that event code was not found. Please check and try again.',
+  'sms.no_levels':'Sorry, no tickets are available for this event.',
+  'sms.select_level':'{{event_name}}\n{{event_date}}\n\nSelect a ticket level:\n{{levels}}\n\nReply with a number or CANCEL.',
+  'sms.select_quantity':'{{level_name}} - ${{price}} each.\nHow many tickets? (1-10)\nReply with a number or CANCEL.',
+  'sms.get_name':'{{quantity}} x {{level_name}} = ${{total}}\nYour full name? (First and Last)',
+  'sms.get_email':'Thanks {{first_name}}! Email address for your tickets?',
+  'sms.confirm':'Order Summary:\n{{quantity}} x {{level_name}}\nTotal: ${{total}}\nEmail: {{email}}\n\nText YES to confirm and pay, or CANCEL to stop.',
+  'sms.get_card':'To pay, enter your card number (digits only, no spaces). This is a secure MOTO transaction.',
+  'sms.get_expiry':'Card ending {{last4}} received.\nEnter expiry in MMYY format (e.g. 1228 for Dec 2028):',
+  'sms.get_cvv':'Enter the 3 or 4 digit security code from the back of your card:',
+  'sms.processing':'Processing your payment...',
+  'sms.success':'Payment confirmed! ${{total}} charged. {{quantity}} ticket(s) for {{event_name}}. Tickets sent to {{email}}. Thank you!',
+  'sms.declined':'Payment declined. Please check your card and try again, or text CANCEL.',
+  'sms.cancelled':'Order cancelled. Text an event code anytime to start again.',
+  'sms.session_expired':'Your session timed out. Text an event code to start a new order.',
+  'sms.error':'Something went wrong. Please try again or text HELP.',
+  'ivr.tts_voice':'Polly.Matthew',
+  'ivr.welcome':'Welcome to Mamudem. Press 1 to buy tickets. Press 9 to repeat.',
+  'ivr.welcome_recording':'',
+  'ivr.select_event':'Select your event. {{event_list}} Press 0 to go back.',
+  'ivr.select_event_recording':'',
+  'ivr.select_level':'{{event_name}} ticket options. {{level_list}} Press 0 to go back.',
+  'ivr.select_level_recording':'',
+  'ivr.select_quantity':'{{level_name}} at {{price}} dollars each. How many tickets? Press 1 through 10 then pound.',
+  'ivr.select_quantity_recording':'',
+  'ivr.confirm':'Your order: {{quantity}} ticket at {{total}} dollars total. Press 1 to confirm and pay. Press 2 to cancel.',
+  'ivr.confirm_recording':'',
+  'ivr.get_card':'Please enter your 16 digit card number followed by the pound key.',
+  'ivr.get_card_recording':'',
+  'ivr.get_expiry':'Card ending {{last4}} received. Enter your 4 digit expiration date, month then year, followed by pound.',
+  'ivr.get_expiry_recording':'',
+  'ivr.get_cvv':'Enter your 3 or 4 digit security code from the back of your card, followed by pound.',
+  'ivr.get_cvv_recording':'',
+  'ivr.processing':'Processing your payment. Please hold.',
+  'ivr.processing_recording':'',
+  'ivr.success':'Payment confirmed. {{quantity}} ticket for {{event_name}}. Your tickets will be emailed shortly. Thank you, goodbye.',
+  'ivr.success_recording':'',
+  'ivr.declined':'Your payment was declined. Please call back to try again. Goodbye.',
+  'ivr.declined_recording':'',
+  'ivr.invalid':'I did not receive your input. Please try again.',
+  'ivr.error':'An error occurred. Please call back. Goodbye.',
+  'ivr.no_available':'No events are available for phone ordering. Please try again later. Goodbye.',
+};
+for (const [k,v] of Object.entries(smsDefaults)) {
+  try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
+}
+// Force SMS and IVR enabled (overwrite whatever is there — they default to ON)
+try { db.prepare("INSERT OR REPLACE INTO platform_settings (key,value) VALUES ('sms.enabled','1')").run(); } catch {}
+try { db.prepare("INSERT OR REPLACE INTO platform_settings (key,value) VALUES ('ivr.enabled','1')").run(); } catch {}
+// Always ensure voice default is male (update existing)
+try { db.prepare("UPDATE platform_settings SET value='Polly.Matthew' WHERE key='ivr.tts_voice' AND value='Polly.Joanna'").run(); } catch {}
+
+// ── Feature locks — admin can lock/unlock any feature per event ─
+try { db.exec("ALTER TABLE events ADD COLUMN features_locked TEXT"); } catch {}   // JSON: {feature:0|1} override map
+try { db.exec("ALTER TABLE accounts ADD COLUMN features_locked TEXT"); } catch {} // JSON: per-account feature overrides
+
+// Platform-level feature defaults (admin can disable globally)
+const featureDefaults = {
+  'feature.google_login': '1',        // 0 = disable Google login globally
+  'feature.signup': '1',              // 0 = disable new signups
+  'feature.phone_ordering': '1',      // 0 = disable phone/SMS ordering globally
+  'feature.promo_codes': '1',         // 0 = disable promo codes globally
+  'feature.staff_tickets': '1',       // 0 = disable staff tickets globally
+  'feature.activation': '1',          // 0 = disable activation globally
+  'feature.seating': '1',             // 0 = disable seating globally
+};
+for (const [k,v] of Object.entries(featureDefaults)) {
+  try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
+}
+
+export default db;

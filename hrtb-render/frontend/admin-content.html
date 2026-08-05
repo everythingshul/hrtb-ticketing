@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Site Content</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb16">
+      <div class="ph-left"><h1>Site Content</h1></div>
+      <div class="ph-actions">
+        <button class="btn btn-sm btn-gold" onclick="saveAll()">Save All Changes</button>
+      </div>
+    </div>
+
+    <!-- Sub-tabs -->
+    <div class="row mb20" style="gap:6px;border-bottom:2px solid var(--border);padding-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-gold" id="stab-pages" onclick="subTab('pages')">Public Pages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-sms" onclick="subTab('sms')">SMS Messages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-ivr" onclick="subTab('ivr')">IVR Messages</button>
+      <button class="btn btn-sm btn-ghost" id="stab-pricing" onclick="subTab('pricing')">Pricing Plans</button>
+      <button class="btn btn-sm btn-ghost" id="stab-platform" onclick="subTab('platform')">Platform Settings</button>
+      <button class="btn btn-sm btn-ghost" id="stab-pci" onclick="subTab('pci')">PCI Compliance</button>
+      <button class="btn btn-sm btn-ghost" id="stab-features" onclick="subTab('features')">Feature Locks</button>
+    </div>
+
+    <div id="content-area"><div class="text2">Loading…</div></div>
+
+  </div></main>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+if (!Auth.requireAdmin()) throw 0;
+renderSidebar();
+
+let siteContent = {}, currentSubTab = 'pages';
+let allKeys = [];
+
+async function load() {
+  try {
+    const [cData, psData] = await Promise.all([
+      api.admin.getSiteContent(),
+      api.connect.getSettings()
+    ]);
+    siteContent = { ...cData.content, ...psData.settings };
+    subTab('pages');
+  } catch(e) {
+    document.getElementById('content-area').innerHTML = `<div class="info-box warn">Error loading: ${esc(e.message)}</div>`;
+  }
+}
+
+async function subTab(tab) {
+  currentSubTab = tab;
+  ['pages','sms','ivr','pricing','platform','pci','features'].forEach(t => {
+    document.getElementById('stab-'+t).className = 'btn btn-sm ' + (t===tab?'btn-gold':'btn-ghost');
+  });
+  renderSubTab(tab);
+}
+
+function field(key, label, hint='', tall=false) {
+  const val = siteContent[key] || '';
+  const id = 'sc-' + key.replace(/[^a-z0-9]/gi,'-');
+  allKeys.push({ key, id });
+  return `<div class="fg"><label style="font-size:12px">${esc(label)} ${hint?`<span class="tip-icon" data-tip="${esc(hint)}">i</span>`:''}
+    </label>${tall
+      ? `<textarea id="${id}" style="min-height:${tall===true?70:tall}px;font-size:12px">${esc(val)}</textarea>`
+      : `<input id="${id}" value="${esc(val)}" style="font-size:12px">`
+    }</div>`;
+}
+
+function sectionTitle(t) { return `<div class="section-title mt20 mb10">${t}</div>`; }
+
+async function renderSubTab(tab) {
+  allKeys = [];
+  const area = document.getElementById('content-area');
+
+  if (tab === 'pages') {
+    area.innerHTML = `
+      ${sectionTitle('Hero')}
+      ${field('home.hero_title','Hero Title')}
+      ${field('home.hero_subtitle','Hero Subtitle','')}
+      ${field('home.cta_primary','Primary Button')}
+      ${field('home.cta_secondary','Secondary Button')}
+
+      ${sectionTitle('Channels Section (4 ways to sell)')}
+      ${field('home.channels_eyebrow','Eyebrow label')}
+      ${field('home.channels_title','Section Title')}
+      ${field('home.channels_sub','Section Subtitle','')}
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch1_title','Card 1 Title')}</div><div class="fg" style="margin:0">${field('home.ch1_desc','Card 1 Desc','')}</div></div>
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch2_title','Card 2 Title')}</div><div class="fg" style="margin:0">${field('home.ch2_desc','Card 2 Desc','')}</div></div>
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch3_title','Card 3 Title')}</div><div class="fg" style="margin:0">${field('home.ch3_desc','Card 3 Desc','')}</div></div>
+      <div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.ch4_title','Card 4 Title')}</div><div class="fg" style="margin:0">${field('home.ch4_desc','Card 4 Desc','')}</div></div>
+
+      ${sectionTitle('Features Section (8 features)')}
+      ${field('home.features_eyebrow','Eyebrow')}
+      ${field('home.features_title','Section Title')}
+      ${[1,2,3,4,5,6,7,8].map(i=>`<div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.f'+i+'_title','Feature '+i+' Title')}</div><div class="fg" style="margin:0">${field('home.f'+i+'_desc','Feature '+i+' Desc','')}</div></div>`).join('')}
+
+      ${sectionTitle('Steps Section (How it works)')}
+      ${field('home.how_eyebrow','Eyebrow')}
+      ${field('home.how_title','Section Title')}
+      ${[1,2,3,4].map(i=>`<div class="form-row" style="gap:10px"><div class="fg" style="margin:0">${field('home.step'+i+'_title','Step '+i+' Title')}</div><div class="fg" style="margin:0">${field('home.step'+i+'_desc','Step '+i+' Desc','')}</div></div>`).join('')}
+
+      ${sectionTitle('Bottom CTA Band')}
+      ${field('home.cta_band_title','CTA Title')}
+      ${field('home.cta_band_sub','CTA Subtitle','')}
+      ${field('home.cta_band_btn','CTA Button Text')}
+
+      ${sectionTitle('Customer Logos Strip')}
+      ${field('home.logos_eyebrow','Section Eyebrow (small text above title)')}
+      ${field('home.logos_title','Section Title')}
+      ${field('home.logos_sub','Section Subtitle','')}
+      <div class="row-between mb12" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:600">Show logos on homepage</div>
+          <div class="xs text2">When off, logos are saved but hidden. Toggle on to show the scrolling strip.</div>
+        </div>
+        <label class="toggle-pill">
+          <input type="checkbox" id="sc-show-logos" ${siteContent['home.show_customer_logos']==='1'?'checked':''} onchange="saveLogoToggle(this.checked)">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+      <div id="logo-list" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;min-height:60px;padding:8px;background:var(--bg3);border-radius:var(--r);border:1px dashed var(--border)"></div>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+        <label class="btn btn-sm btn-primary" style="cursor:pointer">
+          Upload Logo <input type="file" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+        </label>
+        <span class="xs text2">PNG, JPG, SVG · max 2 MB · drag to reorder</span>
+      </div>
+
+      ${sectionTitle('Pricing Page')}
+      ${field('pricing.title','Page Title')} ${field('pricing.subtitle','Subtitle','')}
+      <div class="form-row" style="gap:12px">
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 1 (Demo/Free)</div>
+          ${field('pricing.tier1_name','Name')}${field('pricing.tier1_price','Price')}${field('pricing.tier1_period','Period','e.g. per event, per month')}${field('pricing.tier1_desc','Description','')}${field('pricing.tier1_features','Features (one per line)','',80)}</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 2</div>
+          ${field('pricing.tier2_name','Name')}${field('pricing.tier2_price','Price')}${field('pricing.tier2_period','Period')}${field('pricing.tier2_desc','Description','')}${field('pricing.tier2_features','Features','',80)}</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--navy)">Tier 3</div>
+          ${field('pricing.tier3_name','Name')}${field('pricing.tier3_price','Price')}${field('pricing.tier3_period','Period')}${field('pricing.tier3_desc','Description','')}${field('pricing.tier3_features','Features','',80)}</div>
+      </div>
+      ${sectionTitle('FAQ')}
+      ${field('faq.title','FAQ Page Title')}
+      <div class="fg"><label style="font-size:12px">FAQ Items (JSON array)</label>
+        <textarea id="sc-faq-items" style="min-height:200px;font-family:monospace;font-size:11px">${esc(siteContent['faq.items']||'[]')}</textarea></div>
+      ${sectionTitle('Terms &amp; Conditions')}
+      ${field('terms.title','Page Title')}${field('terms.last_updated','Last Updated Date')}
+      <div class="fg"><label style="font-size:12px">Content (HTML supported)</label>
+        <textarea id="sc-terms-content" style="min-height:250px;font-family:monospace;font-size:12px">${esc(siteContent['terms.content']||'')}</textarea></div>
+      <div class="row mt12" style="gap:8px;flex-wrap:wrap">
+        <a href="/index.html" target="_blank" class="btn btn-sm">Preview Home ↗</a>
+        <a href="/pricing.html" target="_blank" class="btn btn-sm">Preview Pricing ↗</a>
+        <a href="/faq.html" target="_blank" class="btn btn-sm">Preview FAQ ↗</a>
+        <a href="/terms.html" target="_blank" class="btn btn-sm">Preview Terms ↗</a>
+      </div>`;
+    setTimeout(initLogoList, 0);
+    allKeys.push({ key:'faq.items', id:'sc-faq-items' });
+    allKeys.push({ key:'terms.content', id:'sc-terms-content' });
+  }
+
+  else if (tab === 'sms') {
+    const msgs = [
+      ['sms.welcome','Welcome Message'],['sms.help','Help Message'],
+      ['sms.invalid_code','Invalid Event Code'],['sms.no_levels','No Levels Available'],
+      ['sms.select_level','Select Level Prompt','{{event_name}} {{event_date}} {{levels}}'],
+      ['sms.select_quantity','Select Quantity Prompt','{{level_name}} {{price}}'],
+      ['sms.get_name','Ask for Name','{{quantity}} {{level_name}} {{total}}'],
+      ['sms.get_email','Ask for Email','{{first_name}}'],
+      ['sms.confirm','Order Confirmation (await YES/NO)','{{quantity}} {{level_name}} {{total}} {{email}}'],
+      ['sms.get_card','Ask for Card Number'],['sms.get_expiry','Ask for Expiry','{{last4}}'],
+      ['sms.get_cvv','Ask for CVV'],['sms.processing','Processing Message'],
+      ['sms.success','Payment Success','{{total}} {{quantity}} {{event_name}} {{email}}'],
+      ['sms.declined','Payment Declined'],['sms.cancelled','Order Cancelled'],
+      ['sms.session_expired','Session Expired'],['sms.error','Error Message'],
+    ];
+    area.innerHTML = `<p class="text2 sm mb16">Variables: <code>{{event_name}} {{event_date}} {{levels}} {{level_name}} {{price}} {{quantity}} {{total}} {{email}} {{first_name}} {{last4}}</code></p>
+      ${msgs.map(([key,label,hint]) => field(key,label,hint||'',55)).join('')}`;
+  }
+
+  else if (tab === 'ivr') {
+    const voice = siteContent['ivr.tts_voice'] || 'Polly.Matthew';
+    const voiceId = 'sc-ivr-tts-voice';
+    allKeys.push({ key:'ivr.tts_voice', id:voiceId });
+    const msgs = [
+      ['ivr.welcome','Welcome Menu'],['ivr.select_event','Select Event Prompt'],
+      ['ivr.select_level','Select Level Prompt'],['ivr.select_quantity','Select Quantity Prompt'],
+      ['ivr.confirm','Order Confirmation (Press 1/2)'],['ivr.get_card','Enter Card Number'],
+      ['ivr.get_expiry','Enter Expiry'],['ivr.get_cvv','Enter CVV'],
+      ['ivr.processing','Processing Hold Message'],['ivr.success','Payment Success'],
+      ['ivr.declined','Payment Declined'],['ivr.invalid','Invalid Input'],
+      ['ivr.error','General Error'],['ivr.no_available','No Events Available'],
+    ];
+    area.innerHTML = `
+      <div class="fg mb12">
+        <label style="font-size:12px">Global TTS Voice <span class="tip-icon" data-tip="Used when no recording URL is set. Can be overridden per event in Admin Events.">i</span></label>
+        <div class="row" style="gap:8px">
+          <select id="${voiceId}" style="flex:1">
+            <option value="Polly.Joanna" ${voice==='Polly.Joanna'?'selected':''}>Joanna (Female, US)</option>
+            <option value="Polly.Matthew" ${voice==='Polly.Matthew'?'selected':''}>Matthew (Male, US)</option>
+            <option value="Polly.Amy" ${voice==='Polly.Amy'?'selected':''}>Amy (Female, UK)</option>
+            <option value="Polly.Brian" ${voice==='Polly.Brian'?'selected':''}>Brian (Male, UK)</option>
+          </select>
+          <button class="btn btn-sm" onclick="previewGlobalVoice()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Preview Voice
+          </button>
+        </div>
+      </div>
+      <p class="text2 sm mb12">For each step: enter TTS text OR paste a recording URL (.mp3/.wav). Recording overrides TTS. Per-event overrides can be set in Admin → All Events → phone button.</p>
+      ${msgs.map(([key,label]) => {
+        const recKey = key+'_recording';
+        const textId = 'sc-'+key.replace(/[^a-z0-9]/gi,'-');
+        const recId  = 'sc-'+recKey.replace(/[^a-z0-9]/gi,'-');
+        allKeys.push({ key, id:textId });
+        allKeys.push({ key:recKey, id:recId });
+        return `<div style="background:var(--bg3);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">
+          <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:6px">${label}</div>
+          <div class="form-row" style="gap:8px;margin:0">
+            <div class="fg" style="margin:0">
+              <div class="row" style="gap:6px;align-items:center;margin-bottom:3px">
+                <label style="font-size:11px;margin:0">TTS Text</label>
+                <button class="btn btn-sm btn-ghost" style="font-size:10px;padding:2px 7px" onclick="previewTTSGlobal('${textId}')">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  Preview
+                </button>
+              </div>
+              <textarea id="${textId}" style="min-height:45px;font-size:11px">${esc(siteContent[key]||'')}</textarea>
+            </div>
+            <div class="fg" style="margin:0">
+              <label style="font-size:11px">Recording <span style="font-weight:400;color:var(--text3)">(overrides TTS)</span></label>
+              <div class="row" style="gap:4px">
+                <input id="${recId}" placeholder="https://... .mp3 or upload →" value="${esc(siteContent[recKey]||'')}" style="font-size:11px;flex:1">
+                <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:10px;white-space:nowrap">
+                  Upload <input type="file" accept="audio/*" style="display:none" onchange="uploadGlobalAudio(this,'${recId}')">
+                </label>
+                ${siteContent[recKey] ? `<a href="${esc(siteContent[recKey].replace('/file/','/download/'))}" class="btn btn-sm btn-ghost" style="font-size:10px" download>↓</a>` : ''}
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }
+
+  else if (tab === 'pricing') {
+    area.innerHTML = `
+      <div class="row-between mb16">
+        <div>
+          <div style="font-size:13px;font-weight:600">Pricing Plans</div>
+          <div class="xs text2">Plans marked "Show on page" appear on the public /pricing.html page.</div>
+        </div>
+        <button class="btn btn-sm btn-gold" onclick="openPlanModal()">+ New Plan</button>
+      </div>
+      <div id="plans-wrap"><div class="text2 sm">Loading…</div></div>
+
+      <!-- Plan modal -->
+      <div id="modal-plan" class="backdrop" style="display:none" onclick="if(event.target===this)closePlanModal()">
+        <div class="modal" style="max-width:520px">
+          <div class="modal-hd">
+            <h2 id="plan-modal-title">New Plan</h2>
+            <button class="modal-x" onclick="closePlanModal()">&#x2715;</button>
+          </div>
+          <input type="hidden" id="plan-edit-id">
+          <div class="form-row mb4">
+            <div class="fg" style="margin:0"><label>Plan Name *</label><input id="plan-name" placeholder="Single Event"></div>
+            <div class="fg" style="margin:0"><label>Price (USD) *</label><input id="plan-price" type="number" min="0" step="0.01" placeholder="49.00"></div>
+          </div>
+          <div class="fg"><label>Tagline <span style="font-size:11px;font-weight:400;color:var(--text2)">shown under price on pricing page</span></label>
+            <input id="plan-desc" placeholder="Everything you need for one event"></div>
+          <div class="fg"><label>Sort Order <span style="font-size:11px;font-weight:400;color:var(--text2)">lower = shown first</span></label>
+            <input id="plan-sort" type="number" min="0" placeholder="0"></div>
+          <div class="section-title mt12 mb8" style="font-size:12px;color:var(--navy)">Limits <span style="font-weight:400;color:var(--text2)">(blank = unlimited)</span></div>
+          <div class="form-row mb4">
+            <div class="fg" style="margin:0"><label style="font-size:12px">Max Events</label><input id="plan-max-events" type="number" min="1" placeholder="Unlimited"></div>
+            <div class="fg" style="margin:0"><label style="font-size:12px">Max Attendees/Event</label><input id="plan-max-attendees" type="number" min="1" placeholder="Unlimited"></div>
+            <div class="fg" style="margin:0"><label style="font-size:12px">Max Ticket Levels</label><input id="plan-max-levels" type="number" min="1" placeholder="Unlimited"></div>
+          </div>
+          <div class="fg">
+            <label>Features <span style="font-size:11px;font-weight:400;color:var(--text2)">one per line — shown as bullet points on pricing page</span></label>
+            <textarea id="plan-features" style="min-height:130px;font-size:12px" placeholder="Online ticket sales&#10;Email ticket delivery&#10;QR code door scanner&#10;Promo codes&#10;Up to 500 attendees"></textarea>
+          </div>
+          <div class="row mb12" style="gap:10px;align-items:center">
+            <label class="toggle-pill">
+              <input type="checkbox" id="plan-public" checked>
+              <div class="toggle-track"></div>
+            </label>
+            <span class="sm">Show on public pricing page</span>
+          </div>
+          <div class="row mb12" style="gap:10px;align-items:center">
+            <label class="toggle-pill">
+              <input type="checkbox" id="plan-active" checked>
+              <div class="toggle-track"></div>
+            </label>
+            <span class="sm">Active (inactive plans are hidden everywhere)</span>
+          </div>
+          <div id="plan-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+          <div class="modal-ft">
+            <button class="btn" onclick="closePlanModal()">Cancel</button>
+            <button class="btn btn-gold" id="plan-save-btn" onclick="savePlan()">Save Plan</button>
+          </div>
+        </div>
+      </div>`;
+    loadPlans();
+  }
+
+  else if (tab === 'platform') {
+    const s = siteContent;
+    const selField = (key,label,options) => {
+      const id = 'sc-'+key.replace(/[^a-z0-9]/gi,'-');
+      allKeys.push({ key, id });
+      return `<div class="fg"><label style="font-size:12px">${label}</label><select id="${id}">${options.map(([v,l])=>`<option value="${v}" ${s[key]===v?'selected':''}>${l}</option>`).join('')}</select></div>`;
+    };
+    area.innerHTML = `
+      ${sectionTitle('Billing')}
+      <div class="form-row">
+        ${field('platform_fee_percent','Platform Fee %','Percentage of each ticket sale you keep via Connect (0 = no fee)')}
+        ${selField('currency','Currency',[['usd','USD ($)'],['ils','ILS (₪)'],['eur','EUR (€)'],['gbp','GBP (£)']])}
+      </div>
+      ${sectionTitle('SMS/IVR')}
+      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a> → .</p>
+      <div class="form-row">
+        ${selField('sms.enabled','SMS Ordering',[['0','Disabled'],['1','Enabled']])}
+        ${selField('ivr.enabled','IVR Phone Ordering',[['0','Disabled'],['1','Enabled']])}
+      </div>`;
+  }
+
+  else if (tab === 'features') {
+    area.innerHTML = `
+      <p class="text2 sm mb16">Control which features are available platform-wide. These are global defaults — admins can also override per event or per account.</p>
+      <div id="features-loading" class="text2 sm">Loading…</div>`;
+    try {
+      const { features } = await fetch('/api/admin/features',{headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
+      const rows = [
+        ['feature.google_login','Google Sign-In','Allow users to sign in and sign up with Google'],
+        ['feature.signup','New Account Signups','Allow new accounts to register via the signup page'],
+        ['feature.phone_ordering','Phone & SMS Ordering','Enable IVR and SMS ticket purchasing globally'],
+        ['feature.promo_codes','Promo Codes','Allow promo codes to be created and used'],
+        ['feature.staff_tickets','Staff Tickets','Allow staff-level tickets to be created'],
+        ['feature.activation','Ticket Activation','Allow events to use the ticket activation feature'],
+        ['feature.seating','Seat Assignments','Allow events to use table/seat assignment'],
+      ];
+      document.getElementById('features-loading').style.display = 'none';
+      area.innerHTML += rows.map(([key,label,desc]) => {
+        const isOn = features[key] !== false;
+        return `<div class="row-between" style="padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border);margin-bottom:8px">
+          <div>
+            <div style="font-size:13px;font-weight:600">${esc(label)}</div>
+            <div class="xs text2">${esc(desc)}</div>
+          </div>
+          <label class="toggle-pill">
+            <input type="checkbox" data-feature="${key}" ${isOn?'checked':''} onchange="saveFeature(this)">
+            <div class="toggle-track"></div>
+          </label>
+        </div>`;
+      }).join('') + `<p class="text2 sm mt12">Per-event and per-account feature overrides can be set in <a href="/admin-events.html" style="color:var(--navy)">All Events</a> and <a href="/admin-accounts.html" style="color:var(--navy)">Accounts</a>.</p>`;
+    } catch(e) { document.getElementById('features-loading').textContent = 'Error: ' + e.message; }
+  }
+
+  else if (tab === 'pci') {
+    const pciFields = [
+      ['pci.merchant_name','Merchant / Business Name','As on your Stripe account'],
+      ['pci.dba','DBA (if different)','Leave blank if same'],
+      ['pci.contact_name','Primary Contact Name','Responsible for PCI compliance'],
+      ['pci.contact_title','Contact Title','e.g. Owner, CTO'],
+      ['pci.contact_phone','Contact Phone',''],
+      ['pci.contact_email','Contact Email',''],
+      ['pci.business_address','Business Address','Street, City, State, ZIP'],
+      ['pci.business_url','Website URL','e.g. https://mamudem.com'],
+      ['pci.acquirer_name','Payment Processor','e.g. Stripe'],
+      ['pci.merchant_id','Stripe Merchant ID','Stripe Dashboard → Settings → Account'],
+      ['pci.transaction_volume','Annual Card Transactions','e.g. under 1,000'],
+      ['pci.asv_vendor','ASV Scan Vendor','e.g. SecurityMetrics, Qualys'],
+      ['pci.asv_last_scan','Last ASV Scan Date','YYYY-MM-DD'],
+      ['pci.saq_last_filed','Last SAQ-D Filed','YYYY-MM-DD'],
+      ['pci.saq_next_due','Next SAQ-D Due','YYYY-MM-DD — 12 months from last'],
+      ['pci.ip_ranges','Server IP Address','Find in Render Dashboard'],
+      ['pci.hosting_provider','Hosting Provider','Render.com'],
+      ['pci.cde_description','Cardholder Data Environment','Describe how card data flows',true],
+      ['pci.notes','Notes / Remediation Items','',true],
+    ];
+    area.innerHTML = `
+      <div class="info-box tip mb16" style="font-size:13px;line-height:1.8">
+        <strong>SAQ Required: SAQ-D Merchant</strong> (MOTO transactions) &nbsp;·&nbsp; Annual self-assessment &nbsp;·&nbsp; Quarterly ASV scans<br>
+        Card data flow: Customer → Twilio → server RAM → Stripe API → tokenized. Never stored.<br>
+        <a href="https://listings.pcisecuritystandards.org/documents/PCI-DSS-v4-0-SAQ-D-Merchant.pdf" target="_blank" style="color:var(--navy);font-weight:600">Download SAQ-D Form ↗</a> &nbsp;·&nbsp;
+        <a href="https://stripe.com/docs/payments/payment-intents/moto" target="_blank" style="color:var(--navy);font-weight:600">Stripe MOTO Docs ↗</a>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${pciFields.map(([key,label,hint,tall]) => {
+          const id = 'sc-pci-'+key.replace(/[^a-z0-9]/gi,'-');
+          allKeys.push({ key, id });
+          const val = siteContent[key]||'';
+          return `<div class="fg" style="margin:0;${tall?'grid-column:1/-1':''}">
+            <label style="font-size:12px">${esc(label)} ${hint?`<span class="tip-icon" data-tip="${esc(hint)}">i</span>`:''}
+            </label>${tall
+              ? `<textarea id="${id}" style="min-height:65px;font-size:12px">${esc(val)}</textarea>`
+              : `<input id="${id}" value="${esc(val)}" style="font-size:12px">`
+            }</div>`;
+        }).join('')}
+      </div>
+      <div class="row mt16" style="gap:8px;flex-wrap:wrap">
+        <a href="https://www.pcisecuritystandards.org/document_library/" target="_blank" class="btn btn-sm">PCI Document Library ↗</a>
+        <a href="https://www.pcisecuritystandards.org/assessors_and_solutions/approved_scanning_vendors" target="_blank" class="btn btn-sm">Find ASV Vendor ↗</a>
+        <button class="btn btn-sm btn-primary" onclick="checkPhoneExpiry()">Check Number Expiries Now</button>
+      </div>`;
+  }
+}
+
+async function saveAll() {
+  // Save current tab's visible fields
+  const updates = {};
+  for (const { key, id } of allKeys) {
+    const el = document.getElementById(id);
+    if (el) updates[key] = el.value;
+  }
+  const siteKeys = Object.keys(updates).filter(k =>
+    !k.startsWith('platform_fee') && !k.startsWith('currency') &&
+    !k.startsWith('sms.enabled') && !k.startsWith('ivr.enabled') && !k.startsWith('pci.')
+  );
+  const platformKeys = Object.keys(updates).filter(k =>
+    k.startsWith('platform_fee') || k.startsWith('currency') ||
+    k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.')
+  );
+  const promises = [];
+  if (siteKeys.length) promises.push(api.admin.updateSiteContent(Object.fromEntries(siteKeys.map(k=>[k,updates[k]]))));
+  if (platformKeys.length) promises.push(api.connect.updateSettings(Object.fromEntries(platformKeys.map(k=>[k,updates[k]]))));
+  try {
+    await Promise.all(promises);
+    // Refresh cached content
+    const [cData, psData] = await Promise.all([api.admin.getSiteContent(), api.connect.getSettings()]);
+    siteContent = { ...cData.content, ...psData.settings };
+    toast('Saved!');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// Pricing plans
+async function loadPlans() {
+  const wrap = document.getElementById('plans-wrap');
+  if (!wrap) return;
+  try {
+    const { plans } = await api.connect.pricingPlansAdmin();
+    window._plans = plans;
+    if (!plans.length) {
+      wrap.innerHTML = '<div class="empty"><div class="ico"></div><h3>No plans yet</h3><p class="text2">Click \"+ New Plan\" to create your first pricing plan.</p></div>';
+      return;
+    }
+    wrap.innerHTML = plans.map(p => {
+      const feats = Array.isArray(p.features) ? p.features : (p.features ? (() => { try { return JSON.parse(p.features); } catch { return []; } })() : []);
+      const price = p.price_cents === 0 ? 'Free' : '$' + (p.price_cents / 100).toFixed(2);
+      return `<div style="background:var(--bg3);border:1.5px solid ${p.is_active?'var(--border)':'#e5e7eb'};border-radius:var(--r);padding:16px;margin-bottom:10px;opacity:${p.is_active?1:0.6}">
+        <div class="row-between mb8" style="flex-wrap:wrap;gap:8px">
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:700;color:var(--navy)">${esc(p.name)}</span>
+            <span style="font-size:18px;font-weight:800;color:var(--navy)">${price}</span>
+            ${p.description ? `<span class="text2 sm">${esc(p.description)}</span>` : ''}
+            ${p.is_active ? '' : '<span class="badge badge-deactivated" style="font-size:10px">INACTIVE</span>'}
+          </div>
+          <div class="row" style="gap:6px;flex-shrink:0;align-items:center">
+            <label class="toggle-pill" title="Show on public pricing page">
+              <input type="checkbox" ${p.show_on_pricing!==0?'checked':''} onchange="togglePlanPublic('${p.id}',this.checked)">
+              <div class="toggle-track"></div>
+            </label>
+            <span class="xs text2" style="white-space:nowrap">${p.show_on_pricing!==0?'On page':'Hidden'}</span>
+            <button class="btn btn-sm" onclick="openPlanModal('${p.id}')">Edit</button>
+            <button class="btn btn-sm" onclick="copyPlan('${p.id}')">Copy</button>
+            <button class="btn btn-sm btn-danger" onclick="deletePlan('${p.id}')">Delete</button>
+          </div>
+        </div>
+        ${feats.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">${feats.map(f=>`<span class="badge" style="font-size:10px;background:var(--bg)">${esc(f)}</span>`).join('')}</div>` : '<span class="xs text2">No features listed</span>'}
+        <div class="xs text2 mt4" style="display:flex;gap:12px">
+          <span>Sort: ${p.sort_order||0}</span>
+          ${p.max_events ? `<span style="color:var(--navy);font-weight:600">Max ${p.max_events} event${p.max_events!==1?'s':''}</span>` : '<span>Unlimited events</span>'}
+          ${p.max_attendees ? `<span>Max ${p.max_attendees} attendees/event</span>` : ''}
+          ${p.max_levels ? `<span>Max ${p.max_levels} ticket levels</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { if (wrap) wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+function openPlanModal(id) {
+  const p = id ? (window._plans||[]).find(x => x.id === id) : null;
+  document.getElementById('plan-modal-title').textContent = p ? 'Edit Plan' : 'New Plan';
+  document.getElementById('plan-edit-id').value = id || '';
+  document.getElementById('plan-name').value    = p ? p.name : '';
+  document.getElementById('plan-price').value   = p ? (p.price_cents/100).toFixed(2) : '';
+  document.getElementById('plan-desc').value    = p ? (p.description||'') : '';
+  document.getElementById('plan-sort').value    = p ? (p.sort_order||0) : '0';
+  const feats = p ? (Array.isArray(p.features)?p.features:(p.features?(() => { try{return JSON.parse(p.features);}catch{return [];} })():[]) ) : [];
+  document.getElementById('plan-features').value = feats.join('\n');
+  document.getElementById('plan-public').checked = p ? (p.show_on_pricing !== 0) : true;
+  document.getElementById('plan-active').checked = p ? !!p.is_active : true;
+  document.getElementById('plan-max-events').value    = p?.max_events    || '';
+  document.getElementById('plan-max-attendees').value = p?.max_attendees || '';
+  document.getElementById('plan-max-levels').value    = p?.max_levels    || '';
+  document.getElementById('plan-err').style.display = 'none';
+  const btn = document.getElementById('plan-save-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Save Plan'; }
+  document.getElementById('modal-plan').style.display = 'flex';
+}
+
+function closePlanModal() {
+  document.getElementById('modal-plan').style.display = 'none';
+}
+
+async function savePlan() {
+  const btn  = document.getElementById('plan-save-btn');
+  const err  = document.getElementById('plan-err');
+  const id   = document.getElementById('plan-edit-id').value;
+  const name = document.getElementById('plan-name').value.trim();
+  const priceRaw = parseFloat(document.getElementById('plan-price').value || '0');
+  if (!name) { err.textContent = 'Plan name is required'; err.style.display='block'; return; }
+  if (isNaN(priceRaw) || priceRaw < 0) { err.textContent = 'Enter a valid price (0 for free)'; err.style.display='block'; return; }
+  const payload = {
+    name,
+    price_cents:     Math.round(priceRaw * 100),
+    description:     document.getElementById('plan-desc').value.trim() || null,
+    sort_order:      parseInt(document.getElementById('plan-sort').value) || 0,
+    features:        document.getElementById('plan-features').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    show_on_pricing: document.getElementById('plan-public').checked ? 1 : 0,
+    is_active:       document.getElementById('plan-active').checked ? 1 : 0,
+    max_events:      parseInt(document.getElementById('plan-max-events').value)    || null,
+    max_attendees:   parseInt(document.getElementById('plan-max-attendees').value) || null,
+    max_levels:      parseInt(document.getElementById('plan-max-levels').value)    || null,
+  };
+  btn.disabled = true; btn.textContent = 'Saving…'; err.style.display = 'none';
+  try {
+    if (id) { await api.connect.updatePlan(id, payload); toast('Plan updated'); }
+    else    { await api.connect.createPlan(payload);     toast('Plan created'); }
+    closePlanModal(); loadPlans();
+  } catch(e) { err.textContent = e.message; err.style.display='block'; }
+  finally { btn.disabled=false; btn.textContent='Save Plan'; }
+}
+
+async function copyPlan(id) {
+  const p = (window._plans||[]).find(x=>x.id===id);
+  if (!p) return;
+  try {
+    const feats = Array.isArray(p.features)?p.features:(p.features?(() => { try{return JSON.parse(p.features);}catch{return[];} })():[]);
+    await api.connect.createPlan({ name:p.name+' (copy)', price_cents:p.price_cents, description:p.description, features:feats, sort_order:p.sort_order, show_on_pricing:0, is_active:0 });
+    toast('Plan copied — edit and enable when ready'); loadPlans();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function togglePlanPublic(id, show) {
+  try { await api.connect.updatePlan(id, { show_on_pricing: show?1:0 }); toast(show?'Visible on pricing page':'Hidden from pricing page'); loadPlans(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function deletePlan(id) {
+  const p = (window._plans||[]).find(x=>x.id===id);
+  if (!confirm('Delete plan "' + (p?.name||id) + '"? Cannot be undone.')) return;
+  try { await api.connect.deletePlan(id); toast('Plan deleted'); loadPlans(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+// ── Customer logos ────────────────────────────────────────
+let _logos = []; // { name, url } array, persisted to site content
+
+function renderLogoList() {
+  const list = document.getElementById('logo-list');
+  if (!list) return;
+  if (!_logos.length) {
+    list.innerHTML = '<span class="xs text2" style="padding:8px;color:var(--text3)">No logos yet — upload one above</span>';
+    return;
+  }
+  list.innerHTML = _logos.map((l, i) => `
+    <div draggable="true" data-idx="${i}"
+      ondragstart="logoDragStart(event,${i})"
+      ondragover="logoDragOver(event)"
+      ondrop="logoDrop(event,${i})"
+      style="position:relative;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px;cursor:grab;text-align:center;width:110px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <img src="${l.url}" alt="${esc(l.name)}"
+        style="height:44px;width:auto;max-width:90px;object-fit:contain;display:block;margin:0 auto 4px"
+        onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22><rect width=%2240%22 height=%2240%22 fill=%22%23eee%22/><text x=%2250%%22 y=%2255%%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%228%22>error</text></svg>'">
+      <div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:94px">${esc(l.name||'')}</div>
+      <button onclick="removeLogo(${i})"
+        style="position:absolute;top:2px;right:4px;background:none;border:none;font-size:14px;cursor:pointer;color:#aaa;line-height:1"
+        title="Remove">&#x2715;</button>
+    </div>`).join('');
+}
+
+let _dragSrc = null;
+function logoDragStart(e, idx) { _dragSrc = idx; e.dataTransfer.effectAllowed = 'move'; }
+function logoDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function logoDrop(e, idx) {
+  e.preventDefault();
+  if (_dragSrc === null || _dragSrc === idx) return;
+  const moved = _logos.splice(_dragSrc, 1)[0];
+  _logos.splice(idx, 0, moved);
+  _dragSrc = null;
+  renderLogoList();
+  saveLogoOrder();
+}
+
+function removeLogo(idx) {
+  _logos.splice(idx, 1);
+  renderLogoList();
+  saveLogoOrder();
+}
+
+async function saveLogoOrder() {
+  try {
+    await api.admin.updateSiteContent({ 'home.customer_logos': JSON.stringify(_logos) });
+    siteContent['home.customer_logos'] = JSON.stringify(_logos);
+  } catch(e) { toast('Error saving logo order: '+e.message, 'error'); }
+}
+
+async function saveLogoToggle(on) {
+  try {
+    await api.admin.updateSiteContent({ 'home.show_customer_logos': on ? '1' : '0' });
+    siteContent['home.show_customer_logos'] = on ? '1' : '0';
+    toast(on ? 'Logos visible on homepage' : 'Logos hidden (saved)');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const formData = new FormData();
+  formData.append('logo', file);
+  formData.append('name', file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+  toast('Uploading…');
+  try {
+    const d = await fetch('/api/admin/logos/upload', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.token() },
+      body: formData
+    }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    _logos.push({ name: d.name, url: d.url });
+    renderLogoList();
+    await saveLogoOrder();
+    toast('Logo added — visible on homepage when toggle is on');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+}
+
+function initLogoList() {
+  try { _logos = JSON.parse(siteContent['home.customer_logos'] || '[]'); } catch { _logos = []; }
+  renderLogoList();
+}
+
+async function uploadGlobalAudio(input, targetFieldId) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const formData = new FormData();
+  formData.append('audio', file);
+  toast('Uploading…');
+  try {
+    const d = await fetch('/api/admin/ivr-audio/upload', {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + Auth.token() }, body: formData
+    }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    const field = document.getElementById(targetFieldId);
+    if (field) field.value = d.url;
+    toast('Audio uploaded — click Save to apply');
+  } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
+}
+
+async function saveFeature(checkbox) {
+  const key = checkbox.dataset.feature;
+  const val = checkbox.checked;
+  try {
+    await fetch('/api/admin/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({updates:{[key]:val}})});
+    toast(val ? 'Feature enabled' : 'Feature disabled');
+  } catch(e) { toast(e.message,'error'); checkbox.checked = !val; }
+}
+
+async function checkPhoneExpiry() {
+  try {
+    const r = await fetch('/api/phone/check-expiry',{method:'POST',headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
+    toast(`Expired: ${r.expired}, Notified: ${r.notified}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+function speakText(text, voiceKey) {
+  const synth = window.speechSynthesis;
+  if (!synth) { toast('Speech not supported in this browser', 'error'); return; }
+
+  synth.cancel();
+
+  const voiceCfg = {
+    'Polly.Matthew': { lang:'en-US', gender:'male',   pref:['Alex','Fred','Google US English','Microsoft David','Daniel'] },
+    'Polly.Justin':  { lang:'en-US', gender:'male',   pref:['Fred','Alex','Google US English','Microsoft David'] },
+    'Polly.Brian':   { lang:'en-GB', gender:'male',   pref:['Google UK English Male','Microsoft George','Daniel'] },
+    'Polly.Joanna':  { lang:'en-US', gender:'female', pref:['Samantha','Google US English Female','Microsoft Zira','Allison'] },
+    'Polly.Kendra':  { lang:'en-US', gender:'female', pref:['Karen','Google US English Female','Microsoft Zira'] },
+    'Polly.Amy':     { lang:'en-GB', gender:'female', pref:['Google UK English Female','Kate','Microsoft Susan'] },
+  };
+  const cfg = voiceCfg[voiceKey] || voiceCfg['Polly.Matthew'];
+
+  function doIt() {
+    const all = synth.getVoices();
+    // Hard filter: English only
+    const eng = all.filter(v => /^en/i.test(v.lang));
+    const pool = eng.length ? eng : all;
+
+    let pick = null;
+    for (const name of cfg.pref) {
+      pick = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
+      if (pick) break;
+    }
+    if (!pick) pick = pool.find(v => v.lang === cfg.lang);
+    if (!pick) pick = pool[0];
+
+    const clean = text.replace(/\{\{[^}]+\}\}/g, 'example');
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang   = cfg.lang;
+    utt.pitch  = cfg.gender === 'male' ? 0.9 : 1.1;
+    utt.rate   = 0.88;
+    utt.volume = 1;
+    if (pick) utt.voice = pick;
+    utt.onerror = e => { if (e.error !== 'interrupted') console.warn('[TTS]', e.error); };
+    synth.speak(utt);
+
+    const el = document.getElementById('preview-status');
+    if (el) el.textContent = pick ? pick.name : 'default';
+    toast('Playing: ' + (pick ? pick.name : 'default'));
+  }
+
+  // Always wait 150ms after cancel before speaking — Chrome requirement
+  setTimeout(() => {
+    if (synth.getVoices().length > 0) {
+      doIt();
+    } else {
+      synth.onvoiceschanged = () => { synth.onvoiceschanged = null; doIt(); };
+    }
+  }, 150);
+}
+
+  // Wait for synth to actually stop before starting new utterance
+  // Chrome needs this or it ignores the new speak() call
+  let waited = 0;
+
+
+function previewGlobalVoice() {
+  const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
+  speakText('Hello, welcome to Mamudem. Press 1 to buy tickets.', voice);
+}
+
+function previewTTSGlobal(textareaId) {
+  const voice = document.getElementById('sc-ivr-tts-voice')?.value || 'Polly.Joanna';
+  const text = document.getElementById(textareaId)?.value?.trim();
+  if (!text) { toast('Enter TTS text first','error'); return; }
+  speakText(text, voice);
+}
+
+window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined
+  ? (window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices())
+  : window.speechSynthesis?.getVoices();
+
+load();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
+

@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-
+Disallow: /event-detail
+Disallow: /event-sales
+Disallow: /event-staff
+Disallow: /event-stats
+Disallow: /event-levels
+Disallow: /dashboard
+Disallow: /scanner
+Sitemap: https://mamudem.com/sitemap.xml

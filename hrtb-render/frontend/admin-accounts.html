@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Accounts</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+
+    <div class="ph mb16">
+      <div class="ph-left"><h1>Accounts</h1></div>
+      <div class="ph-actions">
+        <input id="search" placeholder="Search name or email…" style="width:200px" oninput="renderAccounts()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <button class="btn btn-sm btn-primary" onclick="openCreateModal()">+ New Account</button>
+      </div>
+    </div>
+
+    <div id="stats" class="stat-pills mb16"></div>
+    <div id="accounts-wrap"></div>
+
+  </div></main>
+</div>
+
+<!-- Create account modal -->
+<div id="modal-create" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-create')">
+  <div class="modal">
+    <div class="modal-hd"><h2>Create Account</h2><button class="modal-x" onclick="hideModal('modal-create')">&#x2715;</button></div>
+    <div class="fg"><label>Name *</label><input id="ca-name" placeholder="Organization name"></div>
+    <div class="fg"><label>Email *</label><input id="ca-email" type="email" placeholder="admin@example.com"></div>
+    <div class="fg"><label>Password *</label><input id="ca-pass" type="password" placeholder="Temporary password"></div>
+    <div class="fg"><label>Role</label>
+      <select id="ca-role">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div id="ca-admin-warn" class="info-box warn" style="display:none">! Admin accounts have full system access.</div>
+    <div id="create-err" class="info-box warn" style="display:none"></div>
+    <div class="modal-ft">
+      <button class="btn" onclick="hideModal('modal-create')">Cancel</button>
+      <button class="btn btn-gold" onclick="createAccount()">Create Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage account modal -->
+<div id="modal-manage" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-manage')">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><h2 id="manage-title">Manage Account</h2><button class="modal-x" onclick="hideModal('modal-manage')">&#x2715;</button></div>
+    <div id="manage-body"></div>
+  </div>
+</div>
+
+<!-- Phone number modal -->
+<div id="modal-phone-assign" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-phone-assign')">
+  <div class="modal modal-lg">
+    <div class="modal-hd"><h2> SMS/IVR Phone Number</h2><button class="modal-x" onclick="hideModal('modal-phone-assign')">&#x2715;</button></div>
+    <p class="text2 sm mb8" id="phone-assign-acct"></p>
+    <div id="pa-current" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-size:14px;font-weight:700;font-family:monospace" id="pa-current-number"></div><div class="xs text2" id="pa-current-expiry"></div></div>
+        <span id="pa-status-badge"></span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-sm" id="pa-toggle-btn" onclick="toggleSmsEnabled()"></button>
+          <button class="btn btn-sm btn-danger" onclick="releaseNumber()">Release Number</button>
+        </div>
+      </div>
+    </div>
+    <div class="row mb12" style="gap:6px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <button class="btn btn-sm btn-gold" id="tab-ph-search" onclick="phoneTab('search')">🔍 Search &amp; Buy</button>
+      <button class="btn btn-sm btn-ghost" id="tab-ph-owned" onclick="phoneTab('owned')"> Your Numbers</button>
+      <button class="btn btn-sm btn-ghost" id="tab-ph-manual" onclick="phoneTab('manual')"> Manual Entry</button>
+    </div>
+    <div id="ph-tab-search">
+      <div class="form-row mb10" style="gap:8px">
+        <div class="fg" style="margin:0"><label style="font-size:12px">Area Code</label><input id="ph-area" placeholder="212" maxlength="3"></div>
+        <div class="fg" style="margin:0"><label style="font-size:12px">Country</label><select id="ph-country"><option value="US">United States</option><option value="CA">Canada</option><option value="GB">United Kingdom</option><option value="IL">Israel</option></select></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn btn-sm btn-primary" onclick="searchNumbers()">Search</button></div>
+      </div>
+      <div id="ph-results"></div>
+    </div>
+    <div id="ph-tab-owned" style="display:none">
+      <button class="btn btn-sm mb10" onclick="loadOwnedNumbers()">↺ Refresh</button>
+      <div id="ph-owned-list" class="text2 sm">Click Refresh to load.</div>
+    </div>
+    <div id="ph-tab-manual" style="display:none">
+      <div class="fg"><label>Phone Number</label><input id="pa-number" placeholder="+12125551234"></div>
+      <div class="fg"><label>Expires On</label><input id="pa-expires" type="date"></div>
+      <button class="btn btn-gold" onclick="savePhoneNumber()">Save</button>
+    </div>
+    <div id="ph-buy-section" style="display:none;margin-top:14px;padding:12px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Buying: <span id="ph-buying-number" style="font-family:monospace"></span> — ~$1.15/month</div>
+      <div class="fg mb8"><label style="font-size:12px">Expiry Date</label><input id="ph-buy-expires" type="date"></div>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-gold" onclick="confirmPurchase()">Buy &amp; Assign →</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('ph-buy-section').style.display='none'">Cancel</button>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn" onclick="hideModal('modal-phone-assign')">Close</button></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+if (!Auth.requireAdmin()) throw 0;
+renderSidebar();
+
+let accounts = [], stats = {};
+
+async function load() {
+  try {
+    const [aData, sData] = await Promise.all([api.admin.accounts(), api.admin.stats()]);
+    accounts = aData.accounts || [];
+    stats = sData.stats || {};
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="stat-label">Total Accounts</div><div class="stat-val">${accounts.length}</div></div>
+      <div class="stat"><div class="stat-label">Active</div><div class="stat-val green">${accounts.filter(a=>a.is_active).length}</div></div>
+      <div class="stat"><div class="stat-label">Demo</div><div class="stat-val">${accounts.filter(a=>a.demo_mode).length}</div></div>`;
+    renderAccounts();
+  } catch(e) {
+    document.getElementById('accounts-wrap').innerHTML = `<div class="info-box warn">Error loading: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderAccounts() {
+  const q = (document.getElementById('search').value || '').toLowerCase();
+  const filtered = accounts.filter(a =>
+    !q || a.name?.toLowerCase().includes(q) || a.email?.toLowerCase().includes(q)
+  );
+  if (!filtered.length) {
+    document.getElementById('accounts-wrap').innerHTML = '<div class="empty"><div class="ico"></div><h3>No accounts found</h3></div>';
+    return;
+  }
+  document.getElementById('accounts-wrap').innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Events</th><th>Actions</th></tr></thead>
+    <tbody>${filtered.map(a => `<tr>
+      <td><strong>${esc(a.name)}</strong>${a.demo_mode?'<span class="badge" style="background:#e8f4fb;color:#1a6b9a;border:1px solid #b3d4f2;font-size:10px;margin-left:6px">DEMO</span>':''}</td>
+      <td class="text2">${esc(a.email)}</td>
+      <td><span class="badge badge-${a.role==='admin'?'warn':'checked'}" style="font-size:10px">${a.role}</span></td>
+      <td>${a.is_active?'<span class="badge badge-checked" style="font-size:10px">Active</span>':'<span class="badge badge-deactivated" style="font-size:10px">Disabled</span>'}</td>
+      <td class="text2">${a.eventCount||a.event_count||0}</td>
+      <td><div class="row" style="gap:4px">
+        <button class="btn btn-sm" onclick="openManage('${a.id}')">Manage</button>
+      </div></td>
+    </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function openCreateModal() {
+  ['ca-name','ca-email','ca-pass'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('ca-role').value = 'user';
+  document.getElementById('ca-admin-warn').style.display = 'none';
+  document.getElementById('create-err').style.display = 'none';
+  showModal('modal-create');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('ca-role').addEventListener('change', e => {
+    document.getElementById('ca-admin-warn').style.display = e.target.value === 'admin' ? 'flex' : 'none';
+  });
+});
+
+async function createAccount() {
+  const name = document.getElementById('ca-name').value.trim();
+  const email = document.getElementById('ca-email').value.trim();
+  const pass = document.getElementById('ca-pass').value;
+  const role = document.getElementById('ca-role').value;
+  const errEl = document.getElementById('create-err');
+  errEl.style.display = 'none';
+  if (!name || !email || !pass) { errEl.textContent = 'All fields required'; errEl.style.display = 'block'; return; }
+  try {
+    await api.admin.createAccount({ name, email, password: pass, role });
+    hideModal('modal-create');
+    toast('Account created');
+    await load();
+  } catch(e) { errEl.textContent = e.message; errEl.style.display = 'block'; }
+}
+
+function openManage(id) {
+  const a = accounts.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('manage-title').textContent = a.name;
+  document.getElementById('manage-body').innerHTML = `
+    <div class="form-row mb12">
+      <div><span class="xs text2">Email</span><div style="font-size:13px">${esc(a.email)}</div></div>
+      <div><span class="xs text2">Role</span><div style="font-size:13px">${a.role}</div></div>
+      <div><span class="xs text2">Status</span><div>${a.is_active?'<span class="badge badge-checked">Active</span>':'<span class="badge badge-deactivated">Disabled</span>'}</div></div>
+      <div><span class="xs text2">Demo Mode</span><div>${a.demo_mode?'<span class="badge badge-warn">Demo</span>':'<span class="badge badge-checked">Live</span>'}</div></div>
+    </div>
+    <div class="section-title mb8">Permissions</div>
+    <div class="row-between mb8" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div><strong>Online Ticket Sales</strong><div class="xs text2">Can sell tickets online via Stripe</div></div>
+      <button class="btn btn-sm ${a.can_sell_online?'btn-success':'btn-ghost'}" onclick="toggleOnlineSales('${a.id}',${a.can_sell_online?0:1})">${a.can_sell_online?'✓ Enabled':'Enable'}</button>
+    </div>
+    <div class="row-between mb8" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div><strong>Email Sending</strong><div class="xs text2">Can send ticket emails to attendees</div></div>
+      <button class="btn btn-sm ${a.can_send_email?'btn-success':'btn-ghost'}" onclick="toggleEmail('${a.id}',${a.can_send_email?0:1})">${a.can_send_email?'✓ Enabled':'Enable'}</button>
+    </div>
+    <div class="row-between mb16" style="padding:10px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div><strong>Max Events</strong><div class="xs text2">How many live events this account can create</div></div>
+      <div class="row" style="gap:6px;align-items:center">
+        <input id="max-events-input" type="number" min="1" max="100" value="${a.max_events||1}" style="width:60px;text-align:center">
+        <button class="btn btn-sm btn-primary" onclick="saveMaxEvents('${a.id}')">Save</button>
+      </div>
+    </div>
+    <div class="section-title mb8">Account Actions</div>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm ${a.is_active?'btn-danger':'btn-success'}" onclick="toggleAccount('${a.id}')">
+        ${a.is_active ? 'Disable Account' : 'Enable Account'}
+      </button>
+      <button class="btn btn-sm btn-danger" onclick="deleteAccount('${a.id}','${esc(a.name)}')">Delete Account</button>
+      <button class="btn btn-sm" onclick="resetPassword('${a.id}')">Reset Password</button>
+      <button class="btn btn-sm btn-primary" onclick="openAccountFeatures('${a.id}','${esc(a.name)}')">Feature Overrides</button>
+    </div>
+    <div id="acc-features-${a.id}" style="display:none;margin-top:16px;padding:14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+      <div class="section-title mb8" style="font-size:12px">Feature Overrides for ${esc(a.name)}</div>
+      <p class="xs text2 mb10">Override platform defaults for this account only. Toggle = force on/off regardless of global setting.</p>
+      <div id="acc-features-body-${a.id}"><div class="text2 sm">Loading…</div></div>
+    </div>`;
+  showModal('modal-manage');
+}
+
+async function toggleAccount(id) {
+  try { await api.admin.toggleAccount(id); toast('Updated'); hideModal('modal-manage'); await load(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function deleteAccount(id, name) {
+  if (!confirm(`Delete account "${name}"? This cannot be undone.`)) return;
+  try { await api.admin.deleteAccount(id); toast('Deleted'); hideModal('modal-manage'); await load(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function toggleOnlineSales(id, val) {
+  try {
+    await fetch(`/api/admin/accounts/${id}/online-sales`, { method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`}, body:JSON.stringify({enabled:val}) });
+    toast(val?'Online sales enabled':'Online sales disabled');
+    await load(); openManage(id);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function toggleEmail(id, val) {
+  try {
+    await fetch(`/api/admin/accounts/${id}/email`, { method:'PATCH', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`}, body:JSON.stringify({enabled:val}) });
+    toast(val?'Email sending enabled':'Email sending disabled');
+    await load(); openManage(id);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function saveMaxEvents(id) {
+  const val = parseInt(document.getElementById('max-events-input').value);
+  if (isNaN(val)||val<1) { toast('Enter a valid number','error'); return; }
+  try { await api.admin.setMaxEvents(id, val); toast('Saved'); await load(); openManage(id); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function resetPassword(id) {
+  const newPass = prompt('Enter new password (min 8 characters):');
+  if (!newPass || newPass.length < 8) { toast('Password too short','error'); return; }
+  try { await api.auth.resetPassword(id, newPass); toast('Password reset'); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+const FEATURE_LABELS = [
+  ['feature.google_login','Google Sign-In','Allow this account to sign in/up with Google'],
+  ['feature.signup','Account Signups','Whether new signups are allowed (platform-wide when set here)'],
+  ['feature.phone_ordering','Phone & SMS Ordering','Allow this account to use phone and SMS ticket ordering'],
+  ['feature.promo_codes','Promo Codes','Allow this account to create and use promo codes for events'],
+  ['feature.staff_tickets','Staff Tickets','Allow this account to issue staff-type badge tickets'],
+  ['feature.activation','Ticket Activation','Allow this account to enable ticket activation on their events'],
+  ['feature.seating','Seat Assignments','Allow this account to assign table/seat numbers to attendees'],
+];
+
+async function openAccountFeatures(accountId, name) {
+  const panel = document.getElementById('acc-features-'+accountId);
+  if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const body = document.getElementById('acc-features-body-'+accountId);
+  try {
+    const d = await fetch('/api/admin/accounts/'+accountId+'/features',{headers:{'Authorization':`Bearer ${Auth.token()}`}}).then(r=>r.json());
+    const overrides = d.features || {};
+    body.innerHTML = FEATURE_LABELS.map(([key,label,desc]) => {
+      const val = overrides[key];
+      const isOverridden = val !== undefined && val !== null;
+      return `<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;padding:8px 10px;background:var(--bg3);border-radius:var(--r);border:1px solid ${isOverridden?'#f59e0b':'var(--border)'}">
+        <label class="toggle-pill" style="margin-top:2px" title="${isOverridden?'Override set':'Using platform default'}">
+          <input type="checkbox" data-acct="${accountId}" data-feature="${key}"
+            ${val===1?'checked':''} ${!isOverridden?'style="opacity:.5"':''}
+            onchange="saveAccountFeature(this)">
+          <div class="toggle-track" style="${!isOverridden?'opacity:.5':''}"></div>
+        </label>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${esc(label)}
+            ${isOverridden?`<span class="badge badge-warn" style="font-size:9px;margin-left:4px">${val===1?'FORCED ON':'FORCED OFF'}</span>`:`<span class="xs text2" style="font-weight:400"> — platform default</span>`}
+          </div>
+          <div class="xs text2">${esc(desc)}</div>
+          ${isOverridden?`<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:1px 6px;margin-top:4px" onclick="clearAccountFeature('${accountId}','${key}')">Clear override</button>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { body.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function saveAccountFeature(cb) {
+  const accountId = cb.dataset.acct;
+  const key = cb.dataset.feature;
+  const val = cb.checked ? 1 : 0;
+  try {
+    await fetch('/api/admin/accounts/'+accountId+'/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({updates:{[key]:val}})});
+    toast('Feature override saved'); openAccountFeatures(accountId, ''); openAccountFeatures(accountId, '');
+  } catch(e) { toast(e.message,'error'); cb.checked = !cb.checked; }
+}
+
+async function clearAccountFeature(accountId, key) {
+  try {
+    await fetch('/api/admin/accounts/'+accountId+'/features',{method:'PATCH',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({updates:{[key]:null}})});
+    toast('Override cleared'); openAccountFeatures(accountId, ''); openAccountFeatures(accountId, '');
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── Phone number management ───────────────────────────────
+let _phoneEventId = null, _phoneSmsEnabled = false, _pendingBuyNumber = null;
+
+function openPhoneAssign(eventId, name, currentNumber, currentExpiry, smsEnabled) {
+  _phoneEventId = eventId;
+  _phoneSmsEnabled = smsEnabled == '1' || smsEnabled === true;
+  document.getElementById('phone-assign-acct').textContent = 'Event: ' + name;
+  const hasCurrent = !!currentNumber;
+  document.getElementById('pa-current').style.display = hasCurrent ? 'block' : 'none';
+  if (hasCurrent) {
+    document.getElementById('pa-current-number').textContent = currentNumber;
+    document.getElementById('pa-current-expiry').textContent = currentExpiry ? 'Expires: ' + new Date(currentExpiry).toLocaleDateString() : 'No expiry';
+    document.getElementById('pa-status-badge').innerHTML = _phoneSmsEnabled ? '<span class="badge badge-checked">Active</span>' : '<span class="badge badge-deactivated">Disabled</span>';
+    document.getElementById('pa-toggle-btn').textContent = _phoneSmsEnabled ? 'Disable' : 'Enable';
+  }
+  document.getElementById('pa-number').value = currentNumber || '';
+  document.getElementById('pa-expires').value = currentExpiry ? currentExpiry.slice(0,10) : '';
+  document.getElementById('ph-results').innerHTML = '';
+  document.getElementById('ph-buy-section').style.display = 'none';
+  phoneTab('search');
+  showModal('modal-phone-assign');
+}
+
+function phoneTab(tab) {
+  ['search','owned','manual'].forEach(t => {
+    document.getElementById('ph-tab-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('tab-ph-'+t).className = 'btn btn-sm '+(t===tab?'btn-gold':'btn-ghost');
+  });
+  if (tab==='owned') loadOwnedNumbers();
+}
+
+async function searchNumbers() {
+  const area = document.getElementById('ph-area').value.trim();
+  const country = document.getElementById('ph-country').value;
+  const res = document.getElementById('ph-results');
+  res.innerHTML = '<div class="text2 sm">Searching…</div>';
+  try {
+    const params = new URLSearchParams({ country });
+    if (area) params.set('areaCode', area);
+    const data = await fetch(`/api/phone/numbers/search?${params}`, { headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    if (!data.numbers?.length) { res.innerHTML = '<div class="text2 sm">No numbers found. Try a different area code.</div>'; return; }
+    res.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Number</th><th>Location</th><th>Cost</th><th></th></tr></thead><tbody>
+      ${data.numbers.map(n=>`<tr>
+        <td style="font-family:monospace;font-weight:700">${esc(n.phoneNumber)}</td>
+        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+        <td class="text2 sm">${esc(n.monthly_cost)}/mo</td>
+        <td><button class="btn btn-sm btn-primary" onclick="selectNumberToBuy('${esc(n.phoneNumber)}')">Buy →</button></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) { res.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+function selectNumberToBuy(num) {
+  _pendingBuyNumber = num;
+  document.getElementById('ph-buying-number').textContent = num;
+  document.getElementById('ph-buy-section').style.display = 'block';
+  document.getElementById('ph-buy-section').scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+async function confirmPurchase() {
+  if (!_pendingBuyNumber) return;
+  const expiresAt = document.getElementById('ph-buy-expires').value || null;
+  const btn = document.querySelector('#ph-buy-section .btn-gold');
+  btn.disabled = true; btn.textContent = 'Purchasing…';
+  try {
+    const data = await fetch('/api/phone/numbers/purchase', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},
+      body: JSON.stringify({ phoneNumber:_pendingBuyNumber, eventId:_phoneEventId, expiresAt })
+    }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast(`✓ ${data.phoneNumber} purchased and assigned!`);
+    hideModal('modal-phone-assign'); _pendingBuyNumber = null; await load();
+  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Buy & Assign →'; }
+}
+
+async function loadOwnedNumbers() {
+  const wrap = document.getElementById('ph-owned-list');
+  wrap.innerHTML = '<div class="text2 sm">Loading…</div>';
+  try {
+    const data = await fetch('/api/phone/numbers/owned', { headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    if (!data.numbers?.length) { wrap.innerHTML = '<div class="text2 sm">No numbers yet.</div>'; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Number</th><th>Status</th><th>Assigned To</th><th></th></tr></thead><tbody>
+      ${data.numbers.map(n=>`<tr>
+        <td style="font-family:monospace">${esc(n.phoneNumber)}</td>
+        <td>${n.configured?'<span class="badge badge-checked" style="font-size:10px">✓</span>':'<span class="badge badge-warn" style="font-size:10px">!</span>'}</td>
+        <td class="text2 sm">${n.assignedEvent?esc(n.assignedEvent.name):'—'}</td>
+        <td>${!n.assignedEvent?`<button class="btn btn-sm" onclick="assignOwnedNumber('${esc(n.phoneNumber)}')">Assign</button>`:''}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function assignOwnedNumber(num) {
+  const expiresAt = prompt('Expiry date? (YYYY-MM-DD or blank)');
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/assign-number`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`}, body:JSON.stringify({ phoneNumber:num, expiresAt:expiresAt||null }) });
+    toast(`${num} assigned`); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function toggleSmsEnabled() {
+  const newVal = !_phoneSmsEnabled;
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/toggle-sms`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`}, body:JSON.stringify({ enabled:newVal }) });
+    _phoneSmsEnabled = newVal;
+    document.getElementById('pa-status-badge').innerHTML = newVal?'<span class="badge badge-checked">Active</span>':'<span class="badge badge-deactivated">Disabled</span>';
+    document.getElementById('pa-toggle-btn').textContent = newVal?'Disable':'Enable';
+    toast(newVal?'Enabled':'Disabled'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function releaseNumber() {
+  if (!confirm('Release this number back to Twilio? Billing stops permanently.')) return;
+  try {
+    const data = await fetch('/api/phone/numbers/release', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`}, body:JSON.stringify({ eventId:_phoneEventId }) }).then(r=>r.json());
+    if (data.error) throw new Error(data.error);
+    toast('Number released'); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function savePhoneNumber() {
+  const number = document.getElementById('pa-number').value.trim();
+  const expires = document.getElementById('pa-expires').value;
+  if (!number.startsWith('+')) { toast('Number must start with +','error'); return; }
+  try {
+    await fetch(`/api/phone/event/${_phoneEventId}/assign-number`, { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`}, body:JSON.stringify({ phoneNumber:number, expiresAt:expires||null }) });
+    toast('Saved'); hideModal('modal-phone-assign'); await load();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function checkPhoneExpiry() {
+  try {
+    const r = await fetch('/api/phone/check-expiry', { method:'POST', headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
+    toast(`Expired: ${r.expired}, Notified: ${r.notified}`);
+  } catch(e) { toast(e.message,'error'); }
+}
+
+load();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mamudem Tickets — My Profile</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main class="main"><div class="page">
+    <div class="ph">
+      <div class="ph-left"><h1>My Profile</h1><p>Manage your account information and password</p></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start" class="two-col">
+      <!-- Profile info -->
+      <div class="card">
+        <div class="section-title mb16">Personal Information</div>
+        <div id="profile-err" style="display:none" class="info-box warn mb12"></div>
+        <div id="profile-ok" style="display:none" class="info-box ok mb12"></div>
+        <div class="form-row">
+          <div class="fg"><label>First name</label><input id="p-fname" placeholder="Jane"></div>
+          <div class="fg"><label>Last name</label><input id="p-lname" placeholder="Doe"></div>
+        </div>
+        <div class="fg"><label>Display name</label><input id="p-name" placeholder="How your name appears in the system"></div>
+        <div class="fg"><label>Email</label><input id="p-email" type="email" disabled style="opacity:.6" title="Contact admin to change email"></div>
+        <div class="fg"><label>Phone</label><input id="p-phone" placeholder="+1 555 000 0000"></div>
+        <div class="fg"><label>Company (optional)</label><input id="p-company" placeholder="ABC Events"></div>
+        <div class="fg"><label>Role</label><input id="p-role" disabled style="opacity:.6"></div>
+        <button class="btn btn-gold" onclick="saveProfile()">Save Changes</button>
+      </div>
+
+      <!-- Change password -->
+      <div class="card">
+        <div class="section-title mb16">Change Password</div>
+        <div id="pw-err" style="display:none" class="info-box warn mb12"></div>
+        <div id="pw-ok" style="display:none" class="info-box ok mb12"></div>
+        <div class="fg"><label>Current password</label><input id="pw-curr" type="password" placeholder="Your current password"></div>
+        <div class="fg"><label>New password</label><input id="pw-new" type="password" placeholder="At least 8 characters"></div>
+        <div class="fg"><label>Confirm new password</label><input id="pw-confirm" type="password" placeholder="Repeat new password"></div>
+        <button class="btn btn-gold" onclick="changePassword()">Change Password</button>
+      </div>
+    </div>
+
+    <!-- Stripe Connect -->
+    <div class="card mt22" id="stripe-connect-card">
+      <div class="section-title mb4">Payment Processing <span class="tip-icon" data-tip="Connect your Stripe account to accept ticket payments. All funds go directly to your Stripe account.">i</span></div>
+      <p class="text2 sm mb16">Connect your Stripe account to enable online ticket sales. Buyers pay directly into your Stripe account.</p>
+      <div id="stripe-status-wrap">
+        <div class="text2 sm">Checking connection…</div>
+      </div>
+    </div>
+  </div></main>
+</div>
+<script src="/js/app.js"></script>
+<script>
+if (!Auth.require()) throw 0;
+renderSidebar();
+
+async function load() {
+  try {
+    const { user } = await api.auth.getProfile();
+    document.getElementById('p-fname').value = user.first_name || '';
+    document.getElementById('p-lname').value = user.last_name || '';
+    document.getElementById('p-name').value = user.name || '';
+    document.getElementById('p-email').value = user.email || '';
+    document.getElementById('p-phone').value = user.phone || '';
+    document.getElementById('p-company').value = user.company || '';
+    document.getElementById('p-role').value = user.role === 'admin' ? 'System Admin' : 'User';
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveProfile() {
+  const err = document.getElementById('profile-err');
+  const ok = document.getElementById('profile-ok');
+  err.style.display = ok.style.display = 'none';
+  try {
+    const { user } = await api.auth.updateProfile({
+      first_name: document.getElementById('p-fname').value.trim(),
+      last_name: document.getElementById('p-lname').value.trim(),
+      name: document.getElementById('p-name').value.trim(),
+      phone: document.getElementById('p-phone').value.trim(),
+      company: document.getElementById('p-company').value.trim(),
+    });
+    // Update local user cache
+    Auth.set(localStorage.getItem('hrtb_token'), user);
+    ok.textContent = 'Profile saved successfully';
+    ok.style.display = 'block';
+    toast('Profile updated');
+  } catch(e) { err.textContent = e.message; err.style.display = 'block'; }
+}
+
+async function changePassword() {
+  const err = document.getElementById('pw-err');
+  const ok = document.getElementById('pw-ok');
+  err.style.display = ok.style.display = 'none';
+  const curr = document.getElementById('pw-curr').value;
+  const nw = document.getElementById('pw-new').value;
+  const conf = document.getElementById('pw-confirm').value;
+  if (!curr || !nw || !conf) { err.textContent = 'All fields required'; err.style.display = 'block'; return; }
+  if (nw !== conf) { err.textContent = 'New passwords do not match'; err.style.display = 'block'; return; }
+  if (nw.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.style.display = 'block'; return; }
+  try {
+    await api.auth.changePassword({ currentPassword: curr, newPassword: nw });
+    ok.textContent = 'Password changed successfully';
+    ok.style.display = 'block';
+    document.getElementById('pw-curr').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+    toast('Password changed');
+  } catch(e) { err.textContent = e.message; err.style.display = 'block'; }
+}
+
+async function loadConnectStatus() {
+  try {
+    const data = await api.connect.status();
+    const wrap = document.getElementById('stripe-status-wrap');
+    if (data.connected) {
+      wrap.innerHTML = `<div class="info-box ok mb12">✅ Stripe account connected${data.livemode ? ' <strong>(Live mode)</strong>' : ' (Test mode)'}<br><span class="xs text2 mt4" style="display:block">Account: ${esc(data.accountId)}</span></div><button class="btn btn-sm btn-danger" onclick="disconnectStripe()">Disconnect Stripe</button>`;
+    } else {
+      wrap.innerHTML = `<div class="info-box tip mb12">No Stripe account connected. Connect your own Stripe to collect ticket payments directly.</div><button class="btn btn-sm btn-primary" onclick="connectStripe()">Connect Stripe Account →</button>`;
+    }
+    const params = new URLSearchParams(location.search);
+    if (params.get('connect_success')) { toast('Stripe connected!'); history.replaceState({},''  ,'/profile.html'); loadConnectStatus(); }
+    if (params.get('connect_error'))   { toast('Stripe error: '+params.get('connect_error'),'error'); history.replaceState({},'','/profile.html'); }
+  } catch { document.getElementById('stripe-status-wrap').innerHTML = '<div class="text2 sm">Could not check status.</div>'; }
+}
+
+async function connectStripe() {
+  try { const { url } = await api.connect.startOAuth(); window.location = url; }
+  catch(e) { toast(e.message,'error'); }
+}
+
+async function disconnectStripe() {
+  if (!confirm('Disconnect Stripe? Ticket sales will stop until you reconnect.')) return;
+  try { await api.connect.disconnect(); toast('Disconnected'); loadConnectStatus(); }
+  catch(e) { toast(e.message,'error'); }
+}
+
+load();
+loadConnectStatus();
+</script>
+</body>
+</html>

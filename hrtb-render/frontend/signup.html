@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1a3a6b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="EShul Tickets">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign Up Free — Mamudem</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+
+:root{--navy:#1a3a6b;--navy2:#0d2454;--gold:#c8960c;--gold2:#e8ad14;--bg:#f8fafc;--white:#fff;--text:#1a1a2e;--text2:#4a5568;--border:#e2e8f0}
+nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.nav-brand{display:flex;align-items:center;gap:12px}.nav-brand img{height:36px;filter:brightness(0) invert(1)}
+.nav-links{display:flex;align-items:center;gap:4px}
+.nav-links a{color:rgba(255,255,255,.8);font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;transition:all .15s;text-decoration:none}
+.nav-links a:hover,.nav-links a.active{background:rgba(255,255,255,.12);color:#fff}
+.nav-links a.active{font-weight:700}
+.btn-nav-cta{background:var(--gold)!important;color:#000!important;font-weight:700!important}
+.btn-nav-cta:hover{background:var(--gold2)!important}
+.btn-nav-login{border:1.5px solid rgba(255,255,255,.35)!important}
+footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;max-width:1060px;margin:0 auto 40px}
+.footer-brand img{height:38px;filter:brightness(0) invert(1);margin-bottom:12px;display:block}
+.footer-brand p{font-size:13px;line-height:1.75;color:rgba(255,255,255,.5)}
+.footer-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.35);margin-bottom:12px}
+.footer-col a{display:block;font-size:13px;color:rgba(255,255,255,.6);margin-bottom:8px;text-decoration:none;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;max-width:1060px;margin:0 auto;font-size:12px}
+.footer-bottom a{color:rgba(255,255,255,.4);margin-left:14px;text-decoration:none}
+.footer-bottom a:hover{color:rgba(255,255,255,.8)}
+@media(max-width:700px){nav{padding:0 16px}.nav-links a:not(.btn-nav-cta):not(.btn-nav-login){display:none}.footer-grid{grid-template-columns:1fr 1fr}.footer-brand{grid-column:1/-1}}
+
+.demo-badge{background:#e8f4fb;border:1.5px solid #b3ddf2;border-radius:10px;padding:12px 16px;font-size:13px;color:#1a3a6b;margin-bottom:18px;line-height:1.6}
+.demo-badge strong{display:block;font-size:14px;margin-bottom:3px}
+</style>
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo" style="margin-bottom:24px">
+      <img src="/logo.png" alt="Mamudem" style="width:220px;height:auto;display:block;margin:0 auto 14px;filter:drop-shadow(0 2px 8px rgba(255,255,255,0.9)) drop-shadow(0 0 16px rgba(255,255,255,0.7))">
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--text3)">Mamudem</p>
+    </div>
+
+    <div class="auth-card">
+      <h2>Create Your Free Account</h2>
+      <p class="sub" style="margin-bottom:16px">No credit card required</p>
+
+      <div class="demo-badge">
+        <strong>🎮 You'll start in Demo Mode</strong>
+        Your account comes with a full demo event loaded with sample attendees, tickets, and a scanner PIN — so you can explore every feature right away. Upgrade anytime to go live.
+      </div>
+
+      <div id="err" class="info-box warn mb16" style="display:none"></div>
+
+      <div class="form-row">
+        <div class="fg"><label>First Name *</label><input id="fname" placeholder="Jane" autocomplete="given-name"></div>
+        <div class="fg"><label>Last Name *</label><input id="lname" placeholder="Doe" autocomplete="family-name"></div>
+      </div>
+      <div class="fg"><label>Business or Organization Name *</label><input id="orgname" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
+      <div class="fg"><label>Email *</label><input id="email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="fg"><label>Phone * <span style="font-weight:400;color:var(--text2);font-size:12px">Include country code (e.g. +1 for US)</span></label><input id="phone" type="tel" placeholder="+1 555 000 0000" autocomplete="tel" pattern="\+[1-9][0-9]{6,14}" oninput="validatePhone(this)"><div id="phone-hint" class="xs text2" style="margin-top:4px"></div></div>
+      <div class="fg"><label>Password * <span style="font-weight:400;color:var(--text2);font-size:12px">(at least 8 characters)</span></label><input id="pass" type="password" autocomplete="new-password"></div>
+      <div class="fg"><label>Confirm Password *</label><input id="pass2" type="password" autocomplete="new-password"></div>
+
+      <div style="display:flex;align-items:flex-start;gap:10px;margin:14px 0;padding:12px 14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
+        <input type="checkbox" id="agree-terms" style="width:17px;height:17px;margin-top:2px;flex-shrink:0;accent-color:var(--navy);cursor:pointer">
+        <label for="agree-terms" style="font-size:13px;color:var(--text2);cursor:pointer;line-height:1.55">
+          I have read and agree to the <a href="/terms.html" target="_blank" style="color:var(--navy);font-weight:600;text-decoration:underline">Terms and Conditions</a>. I understand that my account starts in Demo Mode and real events require a paid plan.
+        </label>
+      </div>
+
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;margin-top:4px" id="btn-submit" onclick="signup()">Create Free Account →</button>
+      <div id="google-section" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or sign up with</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+        <div id="google-btn-signup" style="display:flex;justify-content:center;min-height:44px"></div>
+      </div>
+    </div>
+
+    <div class="auth-foot">Already have an account? <a href="/index.html">Sign in</a></div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+if (Auth.token()) window.location = '/dashboard.html';
+document.addEventListener('keydown', e => { if (e.key === 'Enter') signup(); });
+
+function validatePhone(input) {
+  const val = input.value.trim();
+  const hint = document.getElementById('phone-hint');
+  if (!val) { hint.textContent = ''; return; }
+  if (!val.startsWith('+')) { hint.textContent = 'Must start with country code, e.g. +1 (US), +44 (UK), +972 (Israel)'; hint.style.color='var(--warn)'; return; }
+  const digits = val.replace(/[^0-9]/g,'').length;
+  if (digits < 7 || digits > 15) { hint.textContent = 'Invalid length — most numbers are 10–15 digits including country code'; hint.style.color='var(--warn)'; return; }
+  hint.textContent = 'Looks good!'; hint.style.color='var(--green)';
+}
+
+async function signup() {
+  const fname  = document.getElementById('fname').value.trim();
+  const lname  = document.getElementById('lname').value.trim();
+  const org    = document.getElementById('orgname').value.trim();
+  const email  = document.getElementById('email').value.trim();
+  const phone  = document.getElementById('phone').value.trim();
+  const pass   = document.getElementById('pass').value;
+  const pass2  = document.getElementById('pass2').value;
+  const err    = document.getElementById('err');
+  const btn    = document.getElementById('btn-submit');
+  err.style.display = 'none';
+
+  if (!fname || !lname) { err.textContent = 'First and last name required'; err.style.display='block'; return; }
+  if (!org)   { err.textContent = 'Organization/name required'; err.style.display='block'; return; }
+  if (!email || !email.includes('@')) { err.textContent = 'Valid email required'; err.style.display='block'; return; }
+  if (!pass)  { err.textContent = 'Choose a password'; err.style.display='block'; return; }
+  if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.style.display='block'; return; }
+  if (pass !== pass2) { err.textContent = 'Passwords do not match'; err.style.display='block'; return; }
+  if (!document.getElementById('agree-terms').checked) { err.textContent = 'You must agree to the Terms and Conditions to continue'; err.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    const data = await api.auth.signup({ name: org, email, password: pass, first_name: fname, last_name: lname, phone });
+    Auth.set(data.token, data.user);
+    window.location = '/dashboard.html';
+  } catch(e) {
+    let msg = e.message;
+    if (msg.includes('already exists') || msg === 'ACCOUNT_EXISTS') {
+      msg = 'An account with this email already exists. <a href="/login.html" style="color:var(--navy);font-weight:600">Sign in instead →</a>';
+    }
+    err.innerHTML = msg; err.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Create Free Account →';
+  }
+}
+</script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script>
+let _gsAttempts = 0;
+function initGoogleSignup(clientId) {
+  if (!clientId) return;
+  _gsAttempts++;
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    if (_gsAttempts < 50) setTimeout(() => initGoogleSignup(clientId), 200);
+    return;
+  }
+  try {
+    google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleSignup, auto_select: false });
+    const section = document.getElementById('google-section');
+    const btn = document.getElementById('google-btn-signup');
+    if (section) section.style.display = 'block';
+    if (btn) google.accounts.id.renderButton(btn, { theme:'outline', size:'large', width: 300, text:'signup_with', shape:'rectangular' });
+  } catch(e) { console.warn('[google-signup]', e); }
+}
+
+fetch('/api/auth/google-client-id').then(r=>r.json()).then(d=>{ if(d.clientId) initGoogleSignup(d.clientId); }).catch(()=>{});
+
+async function handleGoogleSignup(response) {
+  const errEl = document.getElementById('err');
+  try {
+    const r = await fetch('/api/auth/google', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ credential: response.credential })
+    });
+    const d = await r.json();
+    if (d.error) { errEl.textContent = d.error; errEl.style.display='block'; return; }
+    // New account with no org info yet → ask for it
+    if (d.new_account && !d.user.company) {
+      window._pendingGoogleToken = d.token;
+      window._pendingGoogleUser = d.user;
+      showGoogleOrgForm(d.user);
+    } else {
+      // Existing account or already has org info → just log in
+      Auth.set(d.token, d.user);
+      window.location = d.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
+    }
+  } catch(e) { errEl.textContent = 'Google sign-up failed. Please try again.'; errEl.style.display='block'; }
+}
+
+function showGoogleOrgForm(user) {
+  // Hide the main form, show org info collection
+  document.querySelector('.card').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      ${user.avatar_url ? `<img src="${user.avatar_url}" style="width:52px;height:52px;border-radius:50%;margin-bottom:10px">` : ''}
+      <div style="font-weight:700">${user.name||user.email}</div>
+      <div class="text2 xs">${user.email}</div>
+    </div>
+    <p class="text2 sm mb16">One more step — tell us about your organization:</p>
+    <div class="fg"><label>Business or Organization Name *</label>
+      <input id="gg-org" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
+    <div class="fg"><label>Phone * <span style="font-size:11px;color:var(--text2)">(include country code)</span></label>
+      <input id="gg-phone" type="tel" placeholder="+1 555 000 0000"></div>
+    <div id="gg-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
+    <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px" onclick="finishGoogleSignup()">Complete Setup →</button>`;
+}
+
+async function finishGoogleSignup() {
+  const org   = document.getElementById('gg-org')?.value?.trim();
+  const phone = document.getElementById('gg-phone')?.value?.trim();
+  const errEl = document.getElementById('gg-err');
+  if (!org) { errEl.textContent = 'Organization name is required'; errEl.style.display='block'; return; }
+  try {
+    await fetch('/api/auth/update-profile', {
+      method:'PATCH', headers:{'Content-Type':'application/json','Authorization':'Bearer '+window._pendingGoogleToken},
+      body: JSON.stringify({ company: org, phone: phone || null })
+    }).then(r=>r.json());
+    Auth.set(window._pendingGoogleToken, { ...window._pendingGoogleUser, company: org });
+    window.location = '/dashboard.html';
+  } catch(e) { errEl.textContent = 'Error saving: '+e.message; errEl.style.display='block'; }
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+// Show install prompt if not already installed/dismissed
+(function(){
+  if(localStorage.getItem('pwa-dismissed')) return;
+  if(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) return;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  let _p=null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); _p=e;
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='flex';
+  });
+  if(isIos && isSafari && document.getElementById('pwa-mini')) {
+    document.getElementById('pwa-mini').style.display='flex';
+  }
+  window.pwaInstallMini = async function(){
+    if(_p){_p.prompt();const{outcome}=await _p.userChoice;_p=null;if(outcome==='accepted')localStorage.setItem('pwa-dismissed','1');}
+    if(document.getElementById('pwa-mini')) document.getElementById('pwa-mini').style.display='none';
+  };
+})();
+</script>
+</body>
+</html>
