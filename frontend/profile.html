@@ -118,7 +118,7 @@ async function loadConnectStatus() {
     const data = await api.connect.status();
     const wrap = document.getElementById('stripe-status-wrap');
     if (data.connected) {
-      wrap.innerHTML = `<div class="info-box ok mb12">✅ Stripe account connected${data.livemode ? ' <strong>(Live mode)</strong>' : ' (Test mode)'}<br><span class="xs text2 mt4" style="display:block">Account: ${esc(data.accountId)}</span></div><button class="btn btn-sm btn-danger" onclick="disconnectStripe()">Disconnect Stripe</button>`;
+      wrap.innerHTML = `<div class="info-box ok mb12">Stripe account connected${data.livemode ? ' <strong>(Live mode)</strong>' : ' (Test mode)'}<br><span class="xs text2 mt4" style="display:block">Account: ${esc(data.accountId)}</span></div><button class="btn btn-sm btn-danger" onclick="disconnectStripe()">Disconnect Stripe</button>`;
     } else {
       wrap.innerHTML = `<div class="info-box tip mb12">No Stripe account connected. Connect your own Stripe to collect ticket payments directly.</div><button class="btn btn-sm btn-primary" onclick="connectStripe()">Connect Stripe Account →</button>`;
     }

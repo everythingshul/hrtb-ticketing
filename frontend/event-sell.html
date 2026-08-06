@@ -154,7 +154,7 @@ async function load() {
     if (data.eventOverLimit) {
       const w = document.getElementById('cap-warning');
       w.style.display = 'block';
-      w.innerHTML = `⚠️ This event is over its capacity limit (${data.totalSold}/${data.event.max_tickets}). You can still sell tickets here — they will bypass the online limit.`;
+      w.innerHTML = `⚠ This event is over its capacity limit (${data.totalSold}/${data.event.max_tickets}). You can still sell tickets here — they will bypass the online limit.`;
     }
 
     // Build level rows
@@ -173,7 +173,7 @@ async function load() {
         <div class="li">
           <div style="font-weight:700;font-size:14px"><span class="badge" style="background:${esc(l.color)}22;color:${esc(l.color)};border:1px solid ${esc(l.color)}44">${esc(l.name)}</span>${l.price > 0 ? '' : ' <span class="xs text2">Free</span>'}</div>
           ${l.description ? `<div class="xs text2 mt4">${esc(l.description)}</div>` : ''}
-          ${overLimit ? `<div class="xs" style="color:#d97706;margin-top:3px">⚠️ At limit (${l.sold}/${l.max_tickets}) — will bypass</div>` : l.available !== null ? `<div class="xs text2 mt4">${l.available} available</div>` : ''}
+          ${overLimit ? `<div class="xs" style="color:#d97706;margin-top:3px">⚠ At limit (${l.sold}/${l.max_tickets}) — will bypass</div>` : l.available !== null ? `<div class="xs text2 mt4">${l.available} available</div>` : ''}
         </div>
         <div class="lp">${l.price > 0 ? fmt(l.price) : 'Free'}</div>
         <div class="qw">
@@ -274,7 +274,7 @@ async function loadPaymentElement() {
     // Capacity warning — ask to bypass
     if (res.status === 409 && res.data.error === 'CAPACITY_WARNING') {
       const msg = res.data.warnings.join('\n');
-      if (confirm(`⚠️ Capacity Warning\n\n${msg}\n\nSell anyway and bypass the limit?`)) {
+      if (confirm(`⚠ Capacity Warning\n\n${msg}\n\nSell anyway and bypass the limit?`)) {
         bypassCapacity = true;
         loadPaymentElement();
       } else {

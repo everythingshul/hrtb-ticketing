@@ -176,7 +176,7 @@
     </div>
 
     <div class="upload-zone" onclick="document.getElementById('file-input').click()" style="padding:22px">
-      <div style="font-size:20px;margin-bottom:6px">📄</div>
+      <div style="margin-bottom:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
       <h3 style="font-size:14px;margin-bottom:4px">Click to select your attendee list</h3>
       <p style="font-size:12px">.csv, .xlsx or .xls file</p>
     </div>
@@ -220,7 +220,7 @@
     </div>
 
     <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
-      <div style="font-size:20px;margin-bottom:6px">📋</div>
+      <div style="margin-bottom:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
       <h3 style="font-size:14px;margin-bottom:4px">Click to select your confirmed list</h3>
       <p style="font-size:12px">.csv or .txt file — one ticket ID per row</p>
     </div>
@@ -355,7 +355,7 @@
 <!-- Conflict modal -->
 <div id="modal-conflict" class="backdrop" style="display:none">
   <div class="modal modal-lg">
-    <div class="modal-hd"><h2>⚠️ Duplicate Attendees Found</h2></div>
+    <div class="modal-hd"><h2>⚠ Duplicate Attendees Found</h2></div>
     <div class="info-box tip mb12" style="font-size:13px;line-height:1.6">
       <strong>What this means:</strong> The file you're uploading contains people whose phone number or email already exists in your attendee list.<br><br>
       For each duplicate, choose one of three options:<br>
@@ -734,10 +734,10 @@ async function addAttendee(forceBypass) {
       if (!cap.ok) {
         // Show warning popup — allow bypass
         const msg = cap.warnings.join('\n') + '\n\nThis ticket will exceed the limit. Add anyway as a bypass?';
-        if (!confirm('⚠️ Capacity Warning\n\n' + msg)) return;
+        if (!confirm('⚠ Capacity Warning\n\n' + msg)) return;
         // User confirmed bypass — proceed
       } else if (cap.warnings.length) {
-        toast('⚠️ ' + cap.warnings[0], 'info');
+        toast('⚠ ' + cap.warnings[0], 'info');
       }
     } catch {}
   }

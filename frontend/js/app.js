@@ -185,6 +185,11 @@ const api = {
     updateSettings:   u  => req('/connect/settings', { method:'PATCH', body:JSON.stringify({ updates:u }) }),
     createPaymentIntent: b => req('/connect/event-payment/intent', { method:'POST', body:JSON.stringify(b) }),
     confirmPayment:   b  => req('/connect/event-payment/confirm', { method:'POST', body:JSON.stringify(b) }),
+    validateAccountPromo: b => req('/connect/account-promos/validate', { method:'POST', body:JSON.stringify(b) }),
+    accountPromosAdmin:   () => req('/connect/account-promos'),
+    createAccountPromo:   b  => req('/connect/account-promos', { method:'POST', body:JSON.stringify(b) }),
+    updateAccountPromo:   (id,b) => req(`/connect/account-promos/${id}`, { method:'PATCH', body:JSON.stringify(b) }),
+    deleteAccountPromo:   id => req(`/connect/account-promos/${id}`, { method:'DELETE' }),
   },
 };
 

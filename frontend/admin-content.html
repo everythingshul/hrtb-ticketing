@@ -265,6 +265,34 @@ async function renderSubTab(tab) {
       </div>
       <div id="plans-wrap"><div class="text2 sm">Loading…</div></div>
 
+      <div class="row-between mb16 mt24">
+        <div>
+          <div style="font-size:13px;font-weight:600">Account Promo Codes</div>
+          <div class="xs text2">Discount codes buyers can apply when purchasing a plan to create a live event.</div>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--r);padding:16px;border:1px solid var(--border);margin-bottom:16px">
+        <div class="section-title mb12" style="font-size:12px">Create New Promo Code</div>
+        <div class="form-row mb8">
+          <div class="fg" style="margin:0"><label>Code *</label><input id="apc-code" placeholder="LAUNCH25" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')"></div>
+          <div class="fg" style="margin:0">
+            <label>Type *</label>
+            <select id="apc-type" onchange="renderAccountPromoValueLabel()">
+              <option value="percent">Percent off (%)</option>
+              <option value="fixed">Fixed amount off ($)</option>
+            </select>
+          </div>
+          <div class="fg" style="margin:0"><label id="apc-value-label">Value (%) *</label><input type="number" id="apc-value" min="0" placeholder="25"></div>
+        </div>
+        <div class="form-row mb8">
+          <div class="fg" style="margin:0"><label>Expires At <span class="xs text2">(optional)</span></label><input type="datetime-local" id="apc-expires" style="color-scheme:light"></div>
+          <div class="fg" style="margin:0"><label>Max Uses <span class="xs text2">(optional)</span></label><input type="number" id="apc-max-uses" min="1" placeholder="e.g. 50"></div>
+          <div class="fg" style="margin:0"><label>Max $ Discount <span class="xs text2">(optional)</span></label><input type="number" id="apc-max-money" min="1" placeholder="e.g. 500" step="0.01"></div>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="createAccountPromo()">+ Create Promo Code</button>
+      </div>
+      <div id="account-promos-list"><div class="text2 sm">No promo codes yet.</div></div>
+
       <!-- Plan modal -->
       <div id="modal-plan" class="backdrop" style="display:none" onclick="if(event.target===this)closePlanModal()">
         <div class="modal" style="max-width:520px">
@@ -313,6 +341,7 @@ async function renderSubTab(tab) {
         </div>
       </div>`;
     loadPlans();
+    loadAccountPromos();
   }
 
   else if (tab === 'platform') {
@@ -564,6 +593,79 @@ async function deletePlan(id) {
   if (!confirm('Delete plan "' + (p?.name||id) + '"? Cannot be undone.')) return;
   try { await api.connect.deletePlan(id); toast('Plan deleted'); loadPlans(); }
   catch(e) { toast(e.message,'error'); }
+}
+
+// Account promo codes (applied to plan purchases)
+function renderAccountPromoValueLabel() {
+  const type = document.getElementById('apc-type').value;
+  document.getElementById('apc-value-label').textContent = type === 'percent' ? 'Value (%) *' : 'Value ($) *';
+}
+
+async function loadAccountPromos() {
+  const wrap = document.getElementById('account-promos-list');
+  if (!wrap) return;
+  try {
+    const { promos } = await api.connect.accountPromosAdmin();
+    window._accountPromos = promos;
+    if (!promos.length) { wrap.innerHTML = '<div class="text2 sm">No promo codes yet.</div>'; return; }
+    wrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Code</th><th>Discount</th><th>Expires</th><th>Uses</th><th>Status</th><th></th></tr></thead>
+      <tbody>${promos.map(p => {
+        const discLabel = p.type === 'percent' ? `${p.value}%` : `$${(p.value/100).toFixed(2)}`;
+        const expires = p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '—';
+        const isExpired = p.expires_at && new Date(p.expires_at) < new Date();
+        const usesLabel = `${p.uses}${p.max_uses ? '/'+p.max_uses : ''}`;
+        const moneyLabel = p.max_money ? ` · $${(p.money_given/100).toFixed(2)}/$${(p.max_money/100).toFixed(2)} off` : '';
+        return `<tr style="opacity:${p.active?1:.5}">
+          <td><strong style="font-family:monospace;font-size:14px;color:var(--navy)">${esc(p.code)}</strong></td>
+          <td>${discLabel}${moneyLabel}</td>
+          <td>${isExpired?'<span style="color:var(--warn)">'+expires+' (expired)</span>':expires}</td>
+          <td>${usesLabel}</td>
+          <td>${p.active ? '<span class="badge" style="background:#f0fff4;color:var(--green);border:1px solid #b2f5ca">Active</span>' : '<span class="badge badge-deactivated">Disabled</span>'}</td>
+          <td class="row" style="gap:6px">
+            <button class="btn btn-sm" onclick="toggleAccountPromo('${p.id}',${p.active?0:1})">${p.active?'Disable':'Enable'}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteAccountPromo('${p.id}')">Delete</button>
+          </td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
+  } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
+}
+
+async function createAccountPromo() {
+  const code = document.getElementById('apc-code').value.trim().toUpperCase();
+  const type = document.getElementById('apc-type').value;
+  const rawVal = parseFloat(document.getElementById('apc-value').value);
+  if (!code) { toast('Enter a promo code', 'error'); return; }
+  if (isNaN(rawVal) || rawVal <= 0) { toast('Enter a discount value', 'error'); return; }
+  if (type === 'percent' && rawVal > 100) { toast('Percent cannot exceed 100', 'error'); return; }
+
+  const value = type === 'percent' ? rawVal : Math.round(rawVal * 100);
+  const expires_at = document.getElementById('apc-expires').value || null;
+  const max_uses = parseInt(document.getElementById('apc-max-uses').value) || null;
+  const max_money = Math.round(parseFloat(document.getElementById('apc-max-money').value || 0) * 100) || null;
+
+  try {
+    await api.connect.createAccountPromo({ code, type, value, expires_at, max_uses, max_money });
+    toast(`Promo code "${code}" created`);
+    document.getElementById('apc-code').value = '';
+    document.getElementById('apc-value').value = '';
+    document.getElementById('apc-expires').value = '';
+    document.getElementById('apc-max-uses').value = '';
+    document.getElementById('apc-max-money').value = '';
+    await loadAccountPromos();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function toggleAccountPromo(id, active) {
+  try { await api.connect.updateAccountPromo(id, { active }); await loadAccountPromos(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteAccountPromo(id) {
+  if (!confirm('Delete this promo code?')) return;
+  try { await api.connect.deleteAccountPromo(id); toast('Deleted'); await loadAccountPromos(); }
+  catch(e) { toast(e.message, 'error'); }
 }
 
 // ── Customer logos ────────────────────────────────────────

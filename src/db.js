@@ -270,6 +270,7 @@ try { db.exec('ALTER TABLE attendees ADD COLUMN confirmed INTEGER NOT NULL DEFAU
 try { db.exec('ALTER TABLE attendees ADD COLUMN level_id TEXT'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN allow_unconfirmed_checkin INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN can_sell_online INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE accounts ADD COLUMN can_send_email INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE ticket_levels ADD COLUMN price INTEGER NOT NULL DEFAULT 0'); } catch {} // price in cents
 try { db.exec('ALTER TABLE ticket_levels ADD COLUMN online_sale INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN slug TEXT'); } catch {}
@@ -328,6 +329,11 @@ db.exec(`
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
   );
 `);
+// Re-run (idempotent): on a fresh DB the table didn't exist yet when these ran above
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN description TEXT'); } catch {}
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN price INTEGER NOT NULL DEFAULT 0'); } catch {} // price in cents
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN online_sale INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE ticket_levels ADD COLUMN is_staff INTEGER NOT NULL DEFAULT 0'); } catch {}
 
 // Safe migrations for capacity columns
 try { db.exec("ALTER TABLE events ADD COLUMN max_tickets INTEGER"); } catch {}
@@ -429,6 +435,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS online_orders (
 try { db.exec("ALTER TABLE online_orders ADD COLUMN metadata TEXT"); } catch {}
 try { db.exec("ALTER TABLE online_orders ADD COLUMN attendee_ids TEXT"); } catch {}
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN is_public INTEGER NOT NULL DEFAULT 1"); } catch {}
+try { db.exec("ALTER TABLE pricing_plans ADD COLUMN show_on_pricing INTEGER NOT NULL DEFAULT 1"); } catch {}
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_events INTEGER"); } catch {}        // null = unlimited
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_attendees INTEGER"); } catch {}     // null = unlimited per event
 try { db.exec("ALTER TABLE pricing_plans ADD COLUMN max_levels INTEGER"); } catch {}        // null = unlimited ticket levels
@@ -555,5 +562,24 @@ const featureDefaults = {
 for (const [k,v] of Object.entries(featureDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
+
+// ── Account-level promo codes — applied to plan purchases (not ticket sales) ─
+db.exec(`CREATE TABLE IF NOT EXISTS account_promo_codes (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  type TEXT NOT NULL DEFAULT 'percent', -- 'percent' or 'fixed'
+  value INTEGER NOT NULL,               -- percent (0-100) or cents
+  expires_at TEXT,
+  max_uses INTEGER,                     -- null = unlimited total uses
+  max_money INTEGER,                    -- max total cents discounted
+  uses INTEGER NOT NULL DEFAULT 0,
+  money_given INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+// account_transactions predates plan_id/promo tracking — backfill columns
+try { db.exec('ALTER TABLE account_transactions ADD COLUMN plan_id TEXT'); } catch {}
+try { db.exec('ALTER TABLE account_transactions ADD COLUMN promo_code TEXT'); } catch {}
+try { db.exec('ALTER TABLE account_transactions ADD COLUMN discount_cents INTEGER NOT NULL DEFAULT 0'); } catch {}
 
 export default db;

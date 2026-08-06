@@ -134,7 +134,13 @@
     <div id="payment-section" style="display:none">
       <div style="background:var(--bg3);border-radius:var(--r);padding:14px;margin-bottom:14px">
         <div class="section-title mb8">Selected: <span id="selected-plan-name"></span> — <span id="selected-plan-price"></span></div>
+        <div id="promo-applied-row" style="display:none;font-size:12px;color:var(--green);font-weight:600"></div>
       </div>
+      <div id="promo-row" style="display:flex;align-items:flex-end;gap:10px;margin-bottom:10px">
+        <div class="fg" style="margin:0;flex:1"><label>Promo Code <span class="xs text2">(optional)</span></label><input id="promo-code-input" placeholder="SAVE20" style="text-transform:uppercase;margin:0" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')"></div>
+        <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);flex-shrink:0" onclick="applyAccountPromo()">Apply</button>
+      </div>
+      <div id="promo-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
       <label>Billing Email</label>
       <input type="email" id="billing-email-plan" placeholder="you@example.com" style="margin-bottom:10px">
       <div id="plan-payment-element" style="margin-bottom:12px"></div>
@@ -289,6 +295,7 @@ RealtimeSync.register(load, 30000);
 let pendingEventData = null;
 let selectedPlan = null;
 let stripeInstance = null, stripeElements = null, paymentElement = null;
+let appliedPromo = null; // { code, discountCents }
 
 async function showPricingModal() {
   // Capture current form data
@@ -336,27 +343,70 @@ async function selectPlan(planId) {
   if (!selectedPlan) return;
 
   document.getElementById('selected-plan-name').textContent = selectedPlan.name;
-  document.getElementById('selected-plan-price').textContent = selectedPlan.price_cents === 0 ? 'Free' : '$' + (selectedPlan.price_cents/100).toFixed(2).replace(/\.00$/, '');
+  appliedPromo = null;
+  document.getElementById('promo-code-input').value = '';
+  document.getElementById('promo-applied-row').style.display = 'none';
+  document.getElementById('promo-err').style.display = 'none';
+  document.getElementById('promo-row').style.display = selectedPlan.price_cents === 0 ? 'none' : 'flex';
 
-  if (selectedPlan.price_cents === 0) {
-    document.getElementById('plan-payment-element').innerHTML = '<div class="info-box ok">This plan is free — no payment required.</div>';
+  document.getElementById('payment-section').style.display = 'block';
+  document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  await renderPlanPrice();
+}
+
+function renderPlanPrice() {
+  const fmt = c => '$' + (c/100).toFixed(2).replace(/\.00$/, '');
+  const finalCents = Math.max(0, selectedPlan.price_cents - (appliedPromo?.discountCents || 0));
+  document.getElementById('selected-plan-price').textContent = selectedPlan.price_cents === 0 ? 'Free' : fmt(selectedPlan.price_cents);
+
+  const promoRow = document.getElementById('promo-applied-row');
+  if (appliedPromo) {
+    promoRow.style.display = 'block';
+    promoRow.textContent = `Code ${appliedPromo.code} applied — ${fmt(appliedPromo.discountCents)} off, total ${fmt(finalCents)}`;
+  } else {
+    promoRow.style.display = 'none';
+  }
+
+  return mountPlanPayment(finalCents);
+}
+
+async function mountPlanPayment(finalCents) {
+  if (finalCents === 0) {
+    document.getElementById('plan-payment-element').innerHTML = '<div class="info-box ok">No payment required — total covered.</div>';
     document.getElementById('btn-pay-plan').textContent = 'Create Event →';
-    document.getElementById('payment-section').style.display = 'block';
-    document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
 
   document.getElementById('plan-payment-element').innerHTML = '<div class="text2 sm">Loading payment form…</div>';
   document.getElementById('btn-pay-plan').textContent = 'Pay & Create Event →';
-  document.getElementById('payment-section').style.display = 'block';
-  document.getElementById('payment-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-  const { clientSecret, publishableKey } = await api.connect.createPaymentIntent({ planId });
-  stripeInstance = Stripe(publishableKey);
-  stripeElements = stripeInstance.elements({ clientSecret, appearance: { theme:'stripe', variables:{ colorPrimary:'#1a3a6b' } } });
-  paymentElement = stripeElements.create('payment');
-  document.getElementById('plan-payment-element').innerHTML = '';
-  paymentElement.mount('#plan-payment-element');
+  try {
+    const { clientSecret, publishableKey } = await api.connect.createPaymentIntent({ planId: selectedPlan.id, promoCode: appliedPromo?.code || undefined });
+    stripeInstance = Stripe(publishableKey);
+    stripeElements = stripeInstance.elements({ clientSecret, appearance: { theme:'stripe', variables:{ colorPrimary:'#1a3a6b' } } });
+    paymentElement = stripeElements.create('payment');
+    document.getElementById('plan-payment-element').innerHTML = '';
+    paymentElement.mount('#plan-payment-element');
+  } catch(e) {
+    document.getElementById('plan-payment-element').innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`;
+  }
+}
+
+async function applyAccountPromo() {
+  const code = document.getElementById('promo-code-input').value.trim();
+  const errEl = document.getElementById('promo-err');
+  errEl.style.display = 'none';
+  if (!code || !selectedPlan) return;
+  try {
+    const result = await api.connect.validateAccountPromo({ code, planId: selectedPlan.id });
+    appliedPromo = { code: result.code, discountCents: result.discountCents };
+    toast('Promo code applied');
+    await renderPlanPrice();
+  } catch(e) {
+    appliedPromo = null;
+    errEl.textContent = e.message; errEl.style.display = 'block';
+    await renderPlanPrice();
+  }
 }
 
 async function submitPlanPayment() {
@@ -369,8 +419,9 @@ async function submitPlanPayment() {
 
   try {
     let paymentIntentId = null;
+    const finalCents = Math.max(0, selectedPlan.price_cents - (appliedPromo?.discountCents || 0));
 
-    if (selectedPlan.price_cents > 0) {
+    if (finalCents > 0) {
       const email = document.getElementById('billing-email-plan').value.trim();
       if (!email) { errEl.textContent = 'Enter billing email'; errEl.style.display='block'; btn.disabled=false; btn.textContent='Pay & Create Event →'; return; }
       const { error, paymentIntent } = await stripeInstance.confirmPayment({
@@ -383,7 +434,7 @@ async function submitPlanPayment() {
       paymentIntentId = paymentIntent.id;
     }
 
-    const { event } = await api.connect.confirmPayment({ paymentIntentId, planId: selectedPlan.id, eventData: pendingEventData });
+    const { event } = await api.connect.confirmPayment({ paymentIntentId, planId: selectedPlan.id, eventData: pendingEventData, promoCode: appliedPromo?.code || undefined });
     toast('Event created!');
     hideModal('modal-pricing');
     window.location = '/event-detail.html?id=' + event.id;

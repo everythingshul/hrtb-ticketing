@@ -7,6 +7,104 @@ import { auth, adminOnly } from '../middleware/auth.js';
 import { sendMail, inviteEmail } from '../services/mail.js';
 
 const r = Router();
+
+// Public: homepage/FAQ/terms/pricing content is read by anonymous visitors
+// (landing, pricing, faq, terms pages) — must stay ahead of the auth gate below.
+r.get('/site-content', (req, res) => {
+  const content = readSiteContent();
+
+  // ── Homepage defaults (shown when admin hasn't customized yet) ──
+  const homeDefaults = {
+    'home.hero_title':        'Event Ticketing That *Works the Way You Do*',
+    'home.hero_subtitle':     'Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.',
+    'home.cta_primary':       'Get Started Free',
+    'home.cta_secondary':     'View Pricing',
+    'home.channels_eyebrow':  'Multiple ways to sell',
+    'home.channels_title':    'Meet your guests where they are',
+    'home.channels_sub':      'Not everyone buys tickets online. Mamudem lets guests purchase the way they prefer.',
+    'home.ch1_title':         'Online Sales Page',
+    'home.ch1_desc':          'A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.',
+    'home.ch2_title':         'IVR Phone Ordering',
+    'home.ch2_desc':          'Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.',
+    'home.ch3_title':         'SMS Ordering',
+    'home.ch3_desc':          'Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.',
+    'home.ch4_title':         'Staff Portal Sale',
+    'home.ch4_desc':          'Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.',
+    'home.features_eyebrow':  'Everything included',
+    'home.features_title':    'All the tools you need',
+    'home.f1_title': 'Attendee Management', 'home.f1_desc': 'Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.',
+    'home.f2_title': 'Door Scanner',         'home.f2_desc': 'Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.',
+    'home.f3_title': 'Staff Tickets',        'home.f3_desc': 'Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.',
+    'home.f4_title': 'Promo Codes',          'home.f4_desc': 'Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.',
+    'home.f5_title': 'Your Own Stripe',      'home.f5_desc': 'Connect your Stripe account. All funds go directly to you — we never touch your money.',
+    'home.f6_title': 'Reports & Stats',      'home.f6_desc': 'Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.',
+    'home.f7_title': 'Demo Mode',            'home.f7_desc': 'Every account starts with a full demo event loaded with sample data — explore everything before going live.',
+    'home.f8_title': 'Capacity Control',     'home.f8_desc': 'Set max tickets per event or per level, with automatic alerts when getting close.',
+    'home.how_eyebrow':  'Simple setup',
+    'home.how_title':    'Up and running in minutes',
+    'home.step1_title':  'Create your account', 'home.step1_desc': 'Sign up free. Your demo event is ready instantly with sample data to explore.',
+    'home.step2_title':  'Connect Stripe',       'home.step2_desc': 'Link your own Stripe account. All ticket revenue goes directly to you.',
+    'home.step3_title':  'Create your event',    'home.step3_desc': 'Add details, set ticket levels, enable online sales, phone ordering, or both.',
+    'home.step4_title':  'Sell & scan',          'home.step4_desc': 'Share your ticket link, scan QR codes at the door, track everything in real time.',
+    'home.cta_band_title': 'Ready to run a better event?',
+    'home.cta_band_sub':   'Start free with a full demo — no credit card required.',
+    'home.cta_band_btn':   'Create Your Free Account',
+    'home.logos_eyebrow':  'Our customers',
+    'home.logos_title':    'Organizations that trust us',
+    'home.logos_sub':      'Contact us to have your organization featured here.',
+  };
+  for (const [k, v] of Object.entries(homeDefaults)) {
+    if (!content[k]) content[k] = v;
+  }
+  // Always inject default FAQ and terms if not set (handles fresh deploys)
+  if (!content['faq.items'] || content['faq.items'] === '[]') {
+    content['faq.items'] = JSON.stringify([
+      { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
+      { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
+      { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
+      { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
+      { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
+      { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always scan through.' },
+      { q: 'What is a staff ticket?', a: 'Staff tickets are completely separate from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward capacity, and always scan as Access Granted.' },
+      { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional email alerts when you are getting close to selling out. Online sales stop automatically when capacity is reached.' },
+      { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
+      { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event has its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
+      { q: 'What are promo codes?', a: 'Promo codes let you offer discounts — percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific emails. Buyers enter the code at checkout.' },
+      { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data — we never store card numbers. For phone and SMS orders, card digits go directly from Twilio to Stripe in memory and are never written anywhere.' },
+    ]);
+  }
+  if (!content['terms.content'] || content['terms.content'].length < 200) {
+    content['terms.content'] = `<h2>1. Acceptance of Terms</h2>
+<p>By creating an account and using the Mamudem, you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
+<h2>2. Description of Service</h2>
+<p>Mamudem is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider — we do not organize events or sell tickets on behalf of users.</p>
+<h2>3. Account Registration</h2>
+<p>You must provide accurate information when registering. You are responsible for all activity under your account. Notify us of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
+<h2>4. Demo Accounts</h2>
+<p>New accounts start in Demo Mode with a free demo event. Demo accounts cannot process real payments. Purchase a plan to run live events. Your demo event remains free indefinitely.</p>
+<h2>5. Payments and Billing</h2>
+<p>Creating live events requires a one-time fee per event. Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service.</p>
+<h2>6. Ticket Sales and Payment Processing</h2>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to you — we never hold your funds. You are responsible for refunds, disputes, and compliance with consumer protection laws.</p>
+<p>Phone and SMS orders are processed through our platform Stripe account under MOTO approval. You are responsible for compliance with card network rules when enabling phone ordering.</p>
+<h2>7. Your Data and Attendee Information</h2>
+<p>You own your event data and attendee information. We process it only to provide the Service. We do not sell or share your data. You are responsible for obtaining consent from attendees as required by applicable privacy laws.</p>
+<h2>8. Acceptable Use</h2>
+<p>You agree not to use the Service for unlawful purposes including fraud, phishing, or spam. We may suspend accounts that violate these terms without notice.</p>
+<h2>9. Service Availability</h2>
+<p>We aim for maximum uptime but do not guarantee uninterrupted availability. We recommend exporting your attendee list before major events as a precaution.</p>
+<h2>10. Limitation of Liability</h2>
+<p>The Service is provided "as is" without warranty. To the maximum extent permitted by law, Mamudem is not liable for indirect, incidental, or consequential damages from your use of the platform.</p>
+<h2>11. Changes to These Terms</h2>
+<p>We may update these Terms at any time. Continued use constitutes acceptance. Check this page periodically.</p>
+<h2>12. Contact Us</h2>
+<p>For questions about these Terms, use the <a href="/index.html#contact">Contact Us</a> form on our website.</p>`;
+  }
+  if (!content['terms.title']) content['terms.title'] = 'Terms and Conditions';
+  if (!content['faq.title']) content['faq.title'] = 'Frequently Asked Questions';
+  res.json({ content });
+});
+
 r.use(auth, adminOnly);
 
 // ── FULL EXCEL EXPORT ─────────────────────────────────────
@@ -881,101 +979,6 @@ function readSiteContent() {
   return {};
 }
 function writeSiteContent(c) { try { wfs(getSiteContentPath(), JSON.stringify(c, null, 2)); } catch(e) { console.error('site-content write error:', e.message); } }
-
-r.get('/site-content', (req, res) => {
-  const content = readSiteContent();
-
-  // ── Homepage defaults (shown when admin hasn't customized yet) ──
-  const homeDefaults = {
-    'home.hero_title':        'Event Ticketing That *Works the Way You Do*',
-    'home.hero_subtitle':     'Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.',
-    'home.cta_primary':       'Get Started Free',
-    'home.cta_secondary':     'View Pricing',
-    'home.channels_eyebrow':  'Multiple ways to sell',
-    'home.channels_title':    'Meet your guests where they are',
-    'home.channels_sub':      'Not everyone buys tickets online. Mamudem lets guests purchase the way they prefer.',
-    'home.ch1_title':         'Online Sales Page',
-    'home.ch1_desc':          'A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.',
-    'home.ch2_title':         'IVR Phone Ordering',
-    'home.ch2_desc':          'Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.',
-    'home.ch3_title':         'SMS Ordering',
-    'home.ch3_desc':          'Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.',
-    'home.ch4_title':         'Staff Portal Sale',
-    'home.ch4_desc':          'Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.',
-    'home.features_eyebrow':  'Everything included',
-    'home.features_title':    'All the tools you need',
-    'home.f1_title': 'Attendee Management', 'home.f1_desc': 'Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.',
-    'home.f2_title': 'Door Scanner',         'home.f2_desc': 'Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.',
-    'home.f3_title': 'Staff Tickets',        'home.f3_desc': 'Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.',
-    'home.f4_title': 'Promo Codes',          'home.f4_desc': 'Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.',
-    'home.f5_title': 'Your Own Stripe',      'home.f5_desc': 'Connect your Stripe account. All funds go directly to you — we never touch your money.',
-    'home.f6_title': 'Reports & Stats',      'home.f6_desc': 'Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.',
-    'home.f7_title': 'Demo Mode',            'home.f7_desc': 'Every account starts with a full demo event loaded with sample data — explore everything before going live.',
-    'home.f8_title': 'Capacity Control',     'home.f8_desc': 'Set max tickets per event or per level, with automatic alerts when getting close.',
-    'home.how_eyebrow':  'Simple setup',
-    'home.how_title':    'Up and running in minutes',
-    'home.step1_title':  'Create your account', 'home.step1_desc': 'Sign up free. Your demo event is ready instantly with sample data to explore.',
-    'home.step2_title':  'Connect Stripe',       'home.step2_desc': 'Link your own Stripe account. All ticket revenue goes directly to you.',
-    'home.step3_title':  'Create your event',    'home.step3_desc': 'Add details, set ticket levels, enable online sales, phone ordering, or both.',
-    'home.step4_title':  'Sell & scan',          'home.step4_desc': 'Share your ticket link, scan QR codes at the door, track everything in real time.',
-    'home.cta_band_title': 'Ready to run a better event?',
-    'home.cta_band_sub':   'Start free with a full demo — no credit card required.',
-    'home.cta_band_btn':   'Create Your Free Account',
-    'home.logos_eyebrow':  'Our customers',
-    'home.logos_title':    'Organizations that trust us',
-    'home.logos_sub':      'Contact us to have your organization featured here.',
-  };
-  for (const [k, v] of Object.entries(homeDefaults)) {
-    if (!content[k]) content[k] = v;
-  }
-  // Always inject default FAQ and terms if not set (handles fresh deploys)
-  if (!content['faq.items'] || content['faq.items'] === '[]') {
-    content['faq.items'] = JSON.stringify([
-      { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
-      { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
-      { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
-      { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
-      { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
-      { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always scan through.' },
-      { q: 'What is a staff ticket?', a: 'Staff tickets are completely separate from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward capacity, and always scan as Access Granted.' },
-      { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional email alerts when you are getting close to selling out. Online sales stop automatically when capacity is reached.' },
-      { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
-      { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event has its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
-      { q: 'What are promo codes?', a: 'Promo codes let you offer discounts — percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific emails. Buyers enter the code at checkout.' },
-      { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data — we never store card numbers. For phone and SMS orders, card digits go directly from Twilio to Stripe in memory and are never written anywhere.' },
-    ]);
-  }
-  if (!content['terms.content'] || content['terms.content'].length < 200) {
-    content['terms.content'] = `<h2>1. Acceptance of Terms</h2>
-<p>By creating an account and using the Mamudem, you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
-<h2>2. Description of Service</h2>
-<p>Mamudem is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider — we do not organize events or sell tickets on behalf of users.</p>
-<h2>3. Account Registration</h2>
-<p>You must provide accurate information when registering. You are responsible for all activity under your account. Notify us of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
-<h2>4. Demo Accounts</h2>
-<p>New accounts start in Demo Mode with a free demo event. Demo accounts cannot process real payments. Purchase a plan to run live events. Your demo event remains free indefinitely.</p>
-<h2>5. Payments and Billing</h2>
-<p>Creating live events requires a one-time fee per event. Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service.</p>
-<h2>6. Ticket Sales and Payment Processing</h2>
-<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to you — we never hold your funds. You are responsible for refunds, disputes, and compliance with consumer protection laws.</p>
-<p>Phone and SMS orders are processed through our platform Stripe account under MOTO approval. You are responsible for compliance with card network rules when enabling phone ordering.</p>
-<h2>7. Your Data and Attendee Information</h2>
-<p>You own your event data and attendee information. We process it only to provide the Service. We do not sell or share your data. You are responsible for obtaining consent from attendees as required by applicable privacy laws.</p>
-<h2>8. Acceptable Use</h2>
-<p>You agree not to use the Service for unlawful purposes including fraud, phishing, or spam. We may suspend accounts that violate these terms without notice.</p>
-<h2>9. Service Availability</h2>
-<p>We aim for maximum uptime but do not guarantee uninterrupted availability. We recommend exporting your attendee list before major events as a precaution.</p>
-<h2>10. Limitation of Liability</h2>
-<p>The Service is provided "as is" without warranty. To the maximum extent permitted by law, Mamudem is not liable for indirect, incidental, or consequential damages from your use of the platform.</p>
-<h2>11. Changes to These Terms</h2>
-<p>We may update these Terms at any time. Continued use constitutes acceptance. Check this page periodically.</p>
-<h2>12. Contact Us</h2>
-<p>For questions about these Terms, use the <a href="/index.html#contact">Contact Us</a> form on our website.</p>`;
-  }
-  if (!content['terms.title']) content['terms.title'] = 'Terms and Conditions';
-  if (!content['faq.title']) content['faq.title'] = 'Frequently Asked Questions';
-  res.json({ content });
-});
 
 r.patch('/site-content', auth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });

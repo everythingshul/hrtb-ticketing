@@ -19,6 +19,20 @@ function getSetting(key, fallback = '') {
   return row?.value ?? fallback;
 }
 
+// Validate an account-level promo code against a price and compute the discount.
+// Throws with a user-facing message on any invalid/expired/exhausted code.
+function applyAccountPromo(code, priceCents) {
+  const promo = db.prepare('SELECT * FROM account_promo_codes WHERE code=? AND active=1').get(code.trim().toUpperCase());
+  if (!promo) throw new Error('Invalid promo code');
+  if (promo.expires_at && new Date(promo.expires_at) < new Date()) throw new Error('This promo code has expired');
+  if (promo.max_uses && promo.uses >= promo.max_uses) throw new Error('This promo code has reached its usage limit');
+  if (promo.max_money && promo.money_given >= promo.max_money) throw new Error('This promo code has reached its discount limit');
+  let discountCents = promo.type === 'percent' ? Math.round(priceCents * promo.value / 100) : promo.value;
+  if (promo.max_money) discountCents = Math.min(discountCents, promo.max_money - promo.money_given);
+  discountCents = Math.max(0, Math.min(discountCents, priceCents));
+  return { promo, discountCents };
+}
+
 // ── Stripe Connect OAuth ──────────────────────────────────
 
 // Step 1: redirect to Stripe OAuth
@@ -137,39 +151,118 @@ r.delete('/pricing-plans/:id', auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Account-level promo codes (plan purchases, not ticket sales) ──
+
+// Check a code against a plan before payment (auth — buyer must be signed in)
+r.post('/account-promos/validate', auth, (req, res) => {
+  try {
+    const { code, planId } = req.body;
+    if (!code) return res.status(400).json({ error: 'code required' });
+    const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=? AND is_active=1').get(planId);
+    if (!plan) return res.status(404).json({ error: 'Plan not found' });
+    const { promo, discountCents } = applyAccountPromo(code, plan.price_cents);
+    res.json({ valid: true, code: promo.code, type: promo.type, value: promo.value, discountCents, finalCents: plan.price_cents - discountCents });
+  } catch(e) { res.status(400).json({ error: e.message }); }
+});
+
+// Admin: list/create/update/delete account promo codes
+r.get('/account-promos', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const promos = db.prepare('SELECT * FROM account_promo_codes ORDER BY created_at DESC').all();
+  res.json({ promos });
+});
+
+r.post('/account-promos', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { code, type, value, expires_at, max_uses, max_money } = req.body;
+  if (!code || !type || value === undefined) return res.status(400).json({ error: 'code, type, and value required' });
+  const normalized = code.trim().toUpperCase();
+  const existing = db.prepare('SELECT id FROM account_promo_codes WHERE code=?').get(normalized);
+  if (existing) return res.status(400).json({ error: 'Promo code already exists' });
+  const id = uuid();
+  db.prepare(`INSERT INTO account_promo_codes (id,code,type,value,expires_at,max_uses,max_money)
+    VALUES (?,?,?,?,?,?,?)`).run(
+    id, normalized, type === 'fixed' ? 'fixed' : 'percent', Math.round(parseFloat(value)),
+    expires_at || null, max_uses || null, max_money || null
+  );
+  res.json({ ok: true, id });
+});
+
+r.patch('/account-promos/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const { active, expires_at, max_uses, max_money } = req.body;
+  const promo = db.prepare('SELECT * FROM account_promo_codes WHERE id=?').get(req.params.id);
+  if (!promo) return res.status(404).json({ error: 'Promo not found' });
+  if (active !== undefined) db.prepare('UPDATE account_promo_codes SET active=? WHERE id=?').run(active?1:0, promo.id);
+  if (expires_at !== undefined) db.prepare('UPDATE account_promo_codes SET expires_at=? WHERE id=?').run(expires_at||null, promo.id);
+  if (max_uses !== undefined) db.prepare('UPDATE account_promo_codes SET max_uses=? WHERE id=?').run(max_uses||null, promo.id);
+  if (max_money !== undefined) db.prepare('UPDATE account_promo_codes SET max_money=? WHERE id=?').run(max_money||null, promo.id);
+  res.json({ ok: true });
+});
+
+r.delete('/account-promos/:id', auth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  db.prepare('DELETE FROM account_promo_codes WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 // ── Event creation payment ────────────────────────────────
 
 // Step 1: Create a PaymentIntent for the event creation fee
 r.post('/event-payment/intent', auth, async (req, res) => {
   try {
-    const { planId } = req.body;
+    const { planId, promoCode } = req.body;
     if (!planId) return res.status(400).json({ error: 'planId required' });
     const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=? AND is_active=1').get(planId);
     if (!plan) return res.status(404).json({ error: 'Plan not found' });
-    if (plan.price_cents === 0) return res.json({ free: true, planId, plan: { ...plan, features: JSON.parse(plan.features||'[]') } });
+
+    let discountCents = 0, appliedCode = null;
+    if (promoCode) {
+      try {
+        const result = applyAccountPromo(promoCode, plan.price_cents);
+        discountCents = result.discountCents;
+        appliedCode = result.promo.code;
+      } catch(e) { return res.status(400).json({ error: e.message }); }
+    }
+    const finalCents = Math.max(0, plan.price_cents - discountCents);
+    const planOut = { ...plan, features: JSON.parse(plan.features||'[]') };
+
+    if (finalCents === 0) return res.json({ free: true, planId, plan: planOut, promoCode: appliedCode, discountCents });
+
     const stripe = getPlatformStripe();
     const acct = db.prepare('SELECT name,email FROM accounts WHERE id=?').get(req.user.id);
     const orderId = uuid();
     const intent = await stripe.paymentIntents.create({
-      amount: plan.price_cents,
+      amount: finalCents,
       currency: getSetting('currency', 'usd'),
       receipt_email: acct.email,
       description: `Mamudem — ${plan.name} — ${acct.name}`,
-      metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, type: 'event_creation' }
+      metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, type: 'event_creation', promo_code: appliedCode||'' }
     });
-    res.json({ clientSecret: intent.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY, orderId, plan: { ...plan, features: JSON.parse(plan.features||'[]') } });
+    res.json({ clientSecret: intent.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY, orderId, plan: planOut, promoCode: appliedCode, discountCents, finalCents });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 // Step 2: Confirm payment succeeded and create the event
 r.post('/event-payment/confirm', auth, async (req, res) => {
   try {
-    const { paymentIntentId, planId, eventData } = req.body;
+    const { paymentIntentId, planId, eventData, promoCode } = req.body;
     if (!eventData?.name || !eventData?.date || !eventData?.venue) return res.status(400).json({ error: 'Event details required' });
     const plan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(planId);
     if (!plan) return res.status(404).json({ error: 'Plan not found' });
-    // Verify payment if not free
-    if (plan.price_cents > 0) {
+
+    let discountCents = 0, appliedPromo = null;
+    if (promoCode) {
+      try {
+        const result = applyAccountPromo(promoCode, plan.price_cents);
+        discountCents = result.discountCents;
+        appliedPromo = result.promo;
+      } catch(e) { return res.status(400).json({ error: e.message }); }
+    }
+    const finalCents = Math.max(0, plan.price_cents - discountCents);
+
+    // Verify payment if not fully covered by the promo code
+    if (finalCents > 0) {
       if (!paymentIntentId) return res.status(400).json({ error: 'paymentIntentId required for paid plans' });
       const stripe = getPlatformStripe();
       const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
@@ -185,11 +278,12 @@ r.post('/event-payment/confirm', auth, async (req, res) => {
     // Remove demo_mode, store plan info, enable features
     db.prepare("UPDATE accounts SET demo_mode=0, can_sell_online=1, can_send_email=1, plan_id=? WHERE id=?").run(planId, req.user.id);
     const newEvent = db.prepare('SELECT * FROM events WHERE id=?').get(id);
-    // Store transaction record
+    // Store transaction record + redeem the promo code
     try {
-      db.exec("CREATE TABLE IF NOT EXISTS account_transactions (id TEXT PRIMARY KEY, account_id TEXT, plan_id TEXT, event_id TEXT, stripe_payment_intent_id TEXT, amount_cents INTEGER, status TEXT, created_at TEXT DEFAULT (datetime('now')))");
-      db.prepare("INSERT INTO account_transactions (id,account_id,plan_id,event_id,stripe_payment_intent_id,amount_cents,status) VALUES (?,?,?,?,?,?,?)").run(uuid(), req.user.id, planId, id, paymentIntentId||null, plan.price_cents, 'paid');
-    } catch {}
+      db.prepare("INSERT INTO account_transactions (id,account_id,plan_id,event_id,stripe_payment_intent_id,amount_cents,status,promo_code,discount_cents) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(uuid(), req.user.id, planId, id, paymentIntentId||null, finalCents, 'paid', appliedPromo?.code||null, discountCents);
+      if (appliedPromo) db.prepare('UPDATE account_promo_codes SET uses=uses+1, money_given=money_given+? WHERE id=?').run(discountCents, appliedPromo.id);
+    } catch(e) { console.error('[connect] transaction record failed:', e.message); }
     const acct = db.prepare('SELECT * FROM accounts WHERE id=?').get(req.user.id);
     if (acct) notifyEventCreated({ account: acct, event: newEvent }).catch(() => {});
     res.json({ ok: true, event: newEvent });
@@ -199,7 +293,7 @@ r.post('/event-payment/confirm', auth, async (req, res) => {
 // ── Upgrade plan for specific event (prorate) ─────────────
 r.post('/event-payment/upgrade-intent', auth, async (req, res) => {
   try {
-    const { planId, fromPlanId } = req.body;
+    const { planId, fromPlanId, promoCode } = req.body;
     if (!planId) return res.status(400).json({ error: 'planId required' });
     const newPlan  = db.prepare('SELECT * FROM pricing_plans WHERE id=? AND is_active=1').get(planId);
     const fromPlan = fromPlanId ? db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(fromPlanId) : null;
@@ -207,19 +301,30 @@ r.post('/event-payment/upgrade-intent', auth, async (req, res) => {
     // Calculate prorate amount
     const alreadyPaid   = fromPlan?.price_cents || 0;
     const upgradeAmount = Math.max(0, newPlan.price_cents - alreadyPaid);
-    if (upgradeAmount === 0) {
+
+    let discountCents = 0, appliedCode = null;
+    if (promoCode && upgradeAmount > 0) {
+      try {
+        const result = applyAccountPromo(promoCode, upgradeAmount);
+        discountCents = result.discountCents;
+        appliedCode = result.promo.code;
+      } catch(e) { return res.status(400).json({ error: e.message }); }
+    }
+    const finalAmount = Math.max(0, upgradeAmount - discountCents);
+
+    if (finalAmount === 0) {
       // Free upgrade (downgrade not allowed this way)
-      return res.json({ free: true, planId, amount_cents: 0, already_paid: alreadyPaid, upgrade_cost: 0 });
+      return res.json({ free: true, planId, amount_cents: 0, already_paid: alreadyPaid, upgrade_cost: 0, promoCode: appliedCode, discountCents });
     }
     const stripe   = getPlatformStripe();
     const acct     = db.prepare('SELECT name,email FROM accounts WHERE id=?').get(req.user.id);
     const orderId  = uuid();
     const intent   = await stripe.paymentIntents.create({
-      amount: upgradeAmount,
+      amount: finalAmount,
       currency: getSetting('currency', 'usd'),
       receipt_email: acct.email,
       description: `Mamudem — Upgrade to ${newPlan.name} — ${acct.name}`,
-      metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, from_plan_id: fromPlanId||'', type: 'plan_upgrade' }
+      metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, from_plan_id: fromPlanId||'', type: 'plan_upgrade', promo_code: appliedCode||'' }
     });
     res.json({
       clientSecret: intent.client_secret,
@@ -227,28 +332,41 @@ r.post('/event-payment/upgrade-intent', auth, async (req, res) => {
       orderId, plan: { ...newPlan, features: JSON.parse(newPlan.features||'[]') },
       already_paid: alreadyPaid,
       upgrade_cost: upgradeAmount,
-      total_cost: newPlan.price_cents
+      total_cost: newPlan.price_cents,
+      promoCode: appliedCode,
+      discountCents
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 r.post('/event-payment/upgrade-confirm', auth, async (req, res) => {
   try {
-    const { paymentIntentId, planId, eventId } = req.body;
+    const { paymentIntentId, planId, eventId, promoCode } = req.body;
     const newPlan = db.prepare('SELECT * FROM pricing_plans WHERE id=?').get(planId);
     if (!newPlan) return res.status(404).json({ error: 'Plan not found' });
+
+    let discountCents = 0, appliedPromo = null;
+    if (promoCode) {
+      try {
+        const result = applyAccountPromo(promoCode, newPlan.price_cents);
+        discountCents = result.discountCents;
+        appliedPromo = result.promo;
+      } catch(e) { return res.status(400).json({ error: e.message }); }
+    }
     // Verify payment
-    if (newPlan.price_cents > 0 && paymentIntentId) {
+    if (newPlan.price_cents - discountCents > 0 && paymentIntentId) {
       const stripe = getPlatformStripe();
       const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
       if (intent.status !== 'succeeded') return res.status(400).json({ error: `Payment not confirmed (status: ${intent.status})` });
     }
     // Update account plan
     db.prepare("UPDATE accounts SET plan_id=? WHERE id=?").run(planId, req.user.id);
-    // Record transaction
+    // Record transaction + redeem the promo code
     try {
-      db.prepare("INSERT INTO account_transactions (id,account_id,plan_id,event_id,stripe_payment_intent_id,amount_cents,status) VALUES (?,?,?,?,?,?,?)").run(uuid(), req.user.id, planId, eventId||null, paymentIntentId||null, newPlan.price_cents, 'upgrade');
-    } catch {}
+      db.prepare("INSERT INTO account_transactions (id,account_id,plan_id,event_id,stripe_payment_intent_id,amount_cents,status,promo_code,discount_cents) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(uuid(), req.user.id, planId, eventId||null, paymentIntentId||null, Math.max(0, newPlan.price_cents - discountCents), 'upgrade', appliedPromo?.code||null, discountCents);
+      if (appliedPromo) db.prepare('UPDATE account_promo_codes SET uses=uses+1, money_given=money_given+? WHERE id=?').run(discountCents, appliedPromo.id);
+    } catch(e) { console.error('[connect] transaction record failed:', e.message); }
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

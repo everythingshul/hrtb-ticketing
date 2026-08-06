@@ -176,7 +176,7 @@
       <span class="xs text2">Mamudem-Staff-Template.csv</span>
     </div>
     <div class="upload-zone" onclick="document.getElementById('file-input').click()" style="padding:22px">
-      <div style="font-size:20px;margin-bottom:6px">📄</div>
+      <div style="margin-bottom:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
       <h3 style="font-size:14px;margin-bottom:4px">Click to select your staff list</h3>
       <p style="font-size:12px">.csv, .xlsx or .xls file</p>
     </div>
@@ -187,7 +187,7 @@
 <!-- Conflict Modal -->
 <div id="modal-conflict" class="backdrop" style="display:none">
   <div class="modal modal-lg">
-    <div class="modal-hd"><h2>⚠️ Duplicate Staff Found</h2></div>
+    <div class="modal-hd"><h2>⚠ Duplicate Staff Found</h2></div>
     <div class="info-box tip mb12" style="font-size:13px;line-height:1.6">
       The file contains people whose phone or email already exists. Choose what to do for each.
     </div>
@@ -213,7 +213,7 @@
       <button class="btn btn-sm" onclick="dlConfirmTemplate()">Download Template</button>
     </div>
     <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
-      <div style="font-size:20px;margin-bottom:6px">📋</div>
+      <div style="margin-bottom:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
       <h3 style="font-size:14px;margin-bottom:4px">Click to select your list</h3>
       <p style="font-size:12px">.csv or .txt — one ticket ID per row</p>
     </div>
@@ -571,7 +571,7 @@ async function handleUpload(ev) {
         <div style="margin-bottom:12px;padding:14px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><strong>${esc(c.existing.first_name)} ${esc(c.existing.last_name)}</strong><span class="xs text2">already in list</span></div>
           <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-sm ${c.action==='update'?'btn-gold':''}" onclick="setConflictAction(${i},'update')">✏️ Update</button>
+            <button class="btn btn-sm ${c.action==='update'?'btn-gold':''}" onclick="setConflictAction(${i},'update')">Update</button>
             <button class="btn btn-sm ${c.action==='keep'?'btn-success':''}" onclick="setConflictAction(${i},'keep')">✓ Keep</button>
             <button class="btn btn-sm ${c.action==='duplicate'?'btn-primary':''}" onclick="setConflictAction(${i},'duplicate')">＋ Add Duplicate</button>
           </div>
