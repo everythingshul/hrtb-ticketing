@@ -22,7 +22,7 @@ const DESIGNS_DIR = join(getDataDir(), 'designs');
 const r = Router();
 
 // ── Public endpoints (no auth) ────────────────────────────
-// Ticket PDF download by ticket ID — linked from email
+// Ticket PDF download by ticket ID - linked from email
 r.get('/ticket-pdf/:ticketId', async (req, res) => {
   const a = db.prepare("SELECT att.*, l.name as level_name, l.color as level_color FROM attendees att LEFT JOIN ticket_levels l ON l.id=att.level_id WHERE att.ticket_id=? AND att.deleted_at IS NULL").get(req.params.ticketId.toUpperCase());
   if (!a) return res.status(404).send('Ticket not found');
@@ -39,7 +39,7 @@ r.get('/ticket-pdf/:ticketId', async (req, res) => {
   }
 });
 
-// Public: bulk PDF — all tickets for a digest/bulk send merged into one file
+// Public: bulk PDF - all tickets for a digest/bulk send merged into one file
 // URL: /api/attendees/tickets-bulk-pdf?ids=TKT-AAA,TKT-BBB,TKT-CCC
 r.get('/tickets-bulk-pdf', async (req, res) => {
   const { createRequire } = await import('module');
@@ -103,7 +103,7 @@ r.post('/activate', (req, res) => {
 
 r.use(auth);
 const upload = multer({ dest: '/tmp/hrtb-uploads/' });
-// Use memory storage for design uploads — avoids temp dir / EXDEV issues entirely
+// Use memory storage for design uploads - avoids temp dir / EXDEV issues entirely
 const designUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
@@ -159,7 +159,7 @@ r.get('/event/:eventId', requireEvent, (req, res) => {
   res.json({ attendees, levels, event });
 });
 
-// Preview CSV/XLS upload — detect conflicts
+// Preview CSV/XLS upload - detect conflicts
 r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (req, res) => {
   try {
     const file = req.file;
@@ -203,7 +203,7 @@ r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (re
         if (Object.keys(changes).length) {
           conflicts.push({ existing: match, incoming: row, changes });
         } else {
-          skipped.push(row); // exact duplicate, no changes — silently skip
+          skipped.push(row); // exact duplicate, no changes - silently skip
         }
       } else {
         newRows.push(row);
@@ -215,7 +215,7 @@ r.post('/event/:eventId/preview', requireEvent, upload.single('file'), async (re
   }
 });
 
-// Commit upload — stores batch ID for undo
+// Commit upload - stores batch ID for undo
 r.post('/event/:eventId/commit', requireEvent, blockIfClosed, (req, res) => {
   try {
     const { newRows=[], resolved=[] } = req.body;
@@ -379,7 +379,7 @@ r.put('/:id', (req, res) => {
   res.json({ attendee: db.prepare('SELECT * FROM attendees WHERE id=?').get(a.id) });
 });
 
-// Delete attendee — saves to trash for 30 days
+// Delete attendee - saves to trash for 30 days
 r.delete('/:id', (req, res) => {
   const a = db.prepare("SELECT * FROM attendees WHERE id=? AND deleted_at IS NULL").get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Not found' });
@@ -479,7 +479,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
     .sort((a, b) => (a.last_name||'').localeCompare(b.last_name||'') || (a.first_name||'').localeCompare(b.first_name||''));
   if (!list.length) return res.status(400).json({ error: 'No tickets to send' });
 
-  // Generate PDF attachments — staff get business card PDF, others get regular ticket PDF
+  // Generate PDF attachments - staff get business card PDF, others get regular ticket PDF
   const attachments = [];
   for (const a of list) {
     try {
@@ -491,12 +491,12 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
     } catch(e) { console.error('[digest pdf]', e.message); }
   }
 
-  await sendMail({ to: toEmail, subject: subject || `${list.length} ticket(s) — ${event.name}`, html: digestEmail({ attendees: list, event }), attachments, replyTo });
+  await sendMail({ to: toEmail, subject: subject || `${list.length} ticket(s) - ${event.name}`, html: digestEmail({ attendees: list, event }), attachments, replyTo });
   db.transaction(() => list.forEach(a => db.prepare(`UPDATE attendees SET status='sent',sent_at=datetime('now') WHERE id=?`).run(a.id)))();
   res.json({ ok: true, sent: list.length });
 });
 
-// Validate / scan ticket — checks both attendees and staff tables
+// Validate / scan ticket - checks both attendees and staff tables
 r.post('/scan', (req, res) => {
   const { ticketId } = req.body;
   if (!ticketId) return res.status(400).json({ error: 'ticketId required' });
@@ -538,7 +538,7 @@ r.post('/scan', (req, res) => {
 
   if (a.status === 'deactivated') return res.json({ valid: false, reason: 'Ticket is deactivated', attendee: a });
 
-  // Staff: always grant access — never block for "already checked in"
+  // Staff: always grant access - never block for "already checked in"
   if (isStaffTicket) {
     db.prepare(`UPDATE staff SET status='checked',checked_in_at=datetime('now') WHERE id=?`).run(a.id);
     const updated = db.prepare(`SELECT s.*, l.name as level_name, l.color as level_color FROM staff s LEFT JOIN ticket_levels l ON l.id=s.level_id WHERE s.id=?`).get(a.id);
@@ -598,12 +598,12 @@ r.get('/event/:eventId/export', requireEvent, (req, res) => {
      .send(csv);
 });
 
-// Upload event ticket design image — accepts any image format, any filename
+// Upload event ticket design image - accepts any image format, any filename
 r.post('/event/:eventId/design', requireEvent, blockIfClosed, designUpload.single('design'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    // Only PNG and JPG — these are the only formats pdf-lib can embed
+    // Only PNG and JPG - these are the only formats pdf-lib can embed
     const mime = req.file.mimetype || '';
     let ext = null;
     if (mime.includes('png')) ext = 'png';

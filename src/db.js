@@ -98,7 +98,7 @@ db.exec(`
   );
 `);
 
-// ── Migrations (safe — run every time, no-op if already done) ──
+// ── Migrations (safe - run every time, no-op if already done) ──
 try { db.exec('ALTER TABLE accounts ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN closed_at TEXT'); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/New_York'"); } catch {}
@@ -117,7 +117,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS site_content (
 // Seed default site content if not present
 const defaultContent = {
   'home.hero_title': 'Effortless Event Ticketing for Your Community',
-  'home.hero_subtitle': 'Sell tickets online, manage attendees, scan at the door — all in one place. Built for synagogues, community organizations, and private events.',
+  'home.hero_subtitle': 'Sell tickets online, manage attendees, scan at the door - all in one place. Built for synagogues, community organizations, and private events.',
   'home.cta_primary': 'Get Started Free',
   'home.cta_secondary': 'See Pricing',
   'home.feature1_title': 'Sell Tickets Online',
@@ -147,31 +147,31 @@ const defaultContent = {
   'faq.title': 'Frequently Asked Questions',
   'faq.items': JSON.stringify([
     { q: 'Do I need a credit card to sign up?', a: 'No. Sign up free and explore everything with a demo event. A credit card is only needed when you create your first live event.' },
-    { q: 'How does payment processing work?', a: 'You connect your own Stripe account. All ticket revenue goes directly to your Stripe — we never touch your money. Stripe charges their standard processing fees.' },
-    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes. Each event can have its own dedicated phone number. Guests call or text that number and go through a fully automated checkout — no staff needed. They pay by card directly through the phone or text conversation.' },
+    { q: 'How does payment processing work?', a: 'You connect your own Stripe account. All ticket revenue goes directly to your Stripe - we never touch your money. Stripe charges their standard processing fees.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes. Each event can have its own dedicated phone number. Guests call or text that number and go through a fully automated checkout - no staff needed. They pay by card directly through the phone or text conversation.' },
     { q: 'Can I import my existing attendee list?', a: 'Yes. Upload a CSV or Excel file. The system imports all attendees, optionally matches duplicates, and can automatically send everyone their tickets.' },
     { q: 'How does the door scanner work?', a: 'Any smartphone or tablet can scan QR codes. Create a PIN for each entrance, open the scanner page on any device, and you\'re ready. Multiple simultaneous entrances are supported. Scanners can be restricted to specific ticket levels.' },
     { q: 'What is a staff ticket?', a: 'Staff tickets use a business card-style ID badge PDF and are tracked separately from guest attendees. They don\'t count toward capacity and always receive "Access Granted" at the scanner regardless of check-in status.' },
     { q: 'Can I set a seating chart or table assignments?', a: 'Yes. You can assign table and seat numbers to each attendee, either individually or by upload. Enable the seating feature in your event settings to show this column.' },
-    { q: 'What happens when my event is over?', a: 'Events automatically close 48 hours after the end date you set. Once closed, all data is locked — no changes can be made, but everything is preserved for records. Contact us to reopen if needed.' },
+    { q: 'What happens when my event is over?', a: 'Events automatically close 48 hours after the end date you set. Once closed, all data is locked - no changes can be made, but everything is preserved for records. Contact us to reopen if needed.' },
     { q: 'Can I run multiple events?', a: 'Yes, as many as you need. Each event has its own ticket levels, sale page, promo codes, scanner setup, staff, and phone number.' },
     { q: 'Can I use promo codes?', a: 'Yes. Create percent or fixed-dollar discount codes with optional expiry dates, usage limits, per-level limits, and email restrictions.' },
-    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all online payment data — card numbers are never stored. For phone and SMS orders, card digits go directly from the caller to Stripe and are never written to disk.' },
-    { q: 'How do I get started?', a: 'Sign up free — your account comes with a fully loaded demo event so you can explore every feature immediately. When ready to go live, connect your Stripe account and create your first real event.' },
+    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all online payment data - card numbers are never stored. For phone and SMS orders, card digits go directly from the caller to Stripe and are never written to disk.' },
+    { q: 'How do I get started?', a: 'Sign up free - your account comes with a fully loaded demo event so you can explore every feature immediately. When ready to go live, connect your Stripe account and create your first real event.' },
   ]),
   'faq.items': JSON.stringify([
     { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real, live event.' },
-    { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it. For phone and SMS orders, payments are processed through our platform Stripe account and your attendee is issued a ticket just like an online order.' },
-    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Both are available on request — contact us to get a phone number assigned to your event.' },
+    { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account - we never touch it. For phone and SMS orders, payments are processed through our platform Stripe account and your attendee is issued a ticket just like an online order.' },
+    { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Both are available on request - contact us to get a phone number assigned to your event.' },
     { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file with your attendee list and the system will import everyone, match any existing records, and optionally email tickets to everyone automatically.' },
-    { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes at the door. You create a scanner PIN for each entrance — your staff just open the scanner page on any device and scan. No app download required. Multiple entrances can run simultaneously.' },
+    { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes at the door. You create a scanner PIN for each entrance - your staff just open the scanner page on any device and scan. No app download required. Multiple entrances can run simultaneously.' },
     { q: 'Can I have VIP entrances that only admit certain ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always get through regardless.' },
     { q: 'What is a staff ticket?', a: 'Staff tickets are a completely separate system from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward your event capacity, and always scan as Access Granted at the door.' },
-    { q: 'Can I set a maximum number of tickets?', a: 'Yes. Set a capacity limit per event or per ticket level. You can also set a warning threshold — when you reach it, you get an email alert. Online sales automatically stop when capacity is reached.' },
-    { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats, attendee info, and export data, but no changes can be made. Admins can reopen a closed event at any time.' },
+    { q: 'Can I set a maximum number of tickets?', a: 'Yes. Set a capacity limit per event or per ticket level. You can also set a warning threshold - when you reach it, you get an email alert. Online sales automatically stop when capacity is reached.' },
+    { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only - you can still view all stats, attendee info, and export data, but no changes can be made. Admins can reopen a closed event at any time.' },
     { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event is completely independent with its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
     { q: 'What are promo codes?', a: 'Promo codes let you offer discounts. You can set a percentage off, a fixed dollar amount off, an expiry date, a maximum number of uses, a spending cap, and even restrict a code to specific email addresses. Codes are entered by the buyer on the checkout page.' },
-    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private deployment. Passwords are hashed with bcrypt. Stripe handles all payment card data — we never store card numbers anywhere. For phone and SMS orders, card digits travel from Twilio directly to Stripe in memory and are never written to disk or database.' },
+    { q: 'Is my data secure?', a: 'Yes. All data is stored on your private deployment. Passwords are hashed with bcrypt. Stripe handles all payment card data - we never store card numbers anywhere. For phone and SMS orders, card digits travel from Twilio directly to Stripe in memory and are never written to disk or database.' },
     { q: 'What does the demo account include?', a: 'Your demo account comes with a fully loaded demo event: 12 sample attendees with different statuses and ticket levels, 2 staff members, a promo code, and a working scanner PIN. You can explore every single feature without any real data.' },
   ]),
   'terms.title': 'Terms and Conditions',
@@ -180,7 +180,7 @@ const defaultContent = {
 <p>By creating an account and using the Mamudem ("the Service"), you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
 
 <h2>2. Description of Service</h2>
-<p>Mamudem is a software platform that allows organizations to sell event tickets, manage attendees, process check-ins at the door, and collect payments. We are a software provider — we do not organize events or sell tickets on behalf of our users.</p>
+<p>Mamudem is a software platform that allows organizations to sell event tickets, manage attendees, process check-ins at the door, and collect payments. We are a software provider - we do not organize events or sell tickets on behalf of our users.</p>
 
 <h2>3. Account Registration</h2>
 <p>You must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activity that occurs under your account. Notify us immediately of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
@@ -192,7 +192,7 @@ const defaultContent = {
 <p>Creating live events requires a one-time fee per event (or as otherwise indicated at the time of purchase). Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service in addition to these terms.</p>
 
 <h2>6. Ticket Sales and Payment Processing</h2>
-<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to your Stripe account — Mamudem does not hold or transmit your ticket sale funds. You are solely responsible for refunds, disputes, chargebacks, and compliance with consumer protection laws in your jurisdiction.</p>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to your Stripe account - Mamudem does not hold or transmit your ticket sale funds. You are solely responsible for refunds, disputes, chargebacks, and compliance with consumer protection laws in your jurisdiction.</p>
 <p>Phone and SMS ticket orders are processed through our platform Stripe account under our MOTO (Mail Order/Telephone Order) approval. You are responsible for ensuring compliance with card network rules when enabling phone ordering.</p>
 
 <h2>7. Your Data and Attendee Information</h2>
@@ -218,7 +218,7 @@ for (const [key, value] of Object.entries(defaultContent)) {
 }
 try { db.exec('ALTER TABLE scanner_pins ADD COLUMN allowed_levels TEXT'); } catch {}
 
-// Staff table — completely separate from attendees
+// Staff table - completely separate from attendees
 db.exec(`CREATE TABLE IF NOT EXISTS staff (
   id TEXT PRIMARY KEY,
   event_id TEXT NOT NULL,
@@ -278,7 +278,7 @@ try { db.exec('ALTER TABLE events ADD COLUMN sale_image TEXT'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN sale_enabled INTEGER NOT NULL DEFAULT 0'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN stripe_key TEXT'); } catch {} // per-event stripe secret key
 try { db.exec('ALTER TABLE events ADD COLUMN expires_at TEXT'); } catch {}
-// Source column — add without NOT NULL constraint first (safer for migration)
+// Source column - add without NOT NULL constraint first (safer for migration)
 try { db.exec("ALTER TABLE attendees ADD COLUMN source TEXT DEFAULT 'offline'"); } catch {}
 // Fix any bad values from previous migration attempts
 try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR source='' OR (source NOT IN ('online','offline','staff'))"); } catch {}
@@ -303,7 +303,7 @@ try { db.exec('ALTER TABLE attendees ADD COLUMN deleted_at TEXT'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN deleted_at TEXT'); } catch {}
 try { db.exec('ALTER TABLE accounts ADD COLUMN deleted_at TEXT'); } catch {}
 
-// Trash / soft-delete table — stores deleted events, attendees, accounts for 30 days
+// Trash / soft-delete table - stores deleted events, attendees, accounts for 30 days
 db.exec(`
   CREATE TABLE IF NOT EXISTS deleted_items (
     id TEXT PRIMARY KEY,
@@ -359,7 +359,7 @@ try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_pub TEXT'); } catc
 try { db.exec('ALTER TABLE accounts ADD COLUMN stripe_connect_livemode INTEGER'); } catch {}
 try { db.exec('ALTER TABLE events ADD COLUMN platform_order_id TEXT'); } catch {}          // order ID for event creation payment
 
-// Platform settings — single-row config table
+// Platform settings - single-row config table
 db.exec(`CREATE TABLE IF NOT EXISTS platform_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -374,7 +374,7 @@ for (const [key, value] of Object.entries(settingDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(key, value); } catch {}
 }
 
-// Pricing plans — shown at event creation paywall
+// Pricing plans - shown at event creation paywall
 db.exec(`CREATE TABLE IF NOT EXISTS pricing_plans (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -403,13 +403,13 @@ const eventCols = db.prepare("PRAGMA table_info(events)").all().map(c=>c.name);
 const attendeeCols = db.prepare("PRAGMA table_info(attendees)").all().map(c=>c.name);
 console.log('[DB] events cols with capacity:', eventCols.filter(c=>c.includes('capacity')||c.includes('max_ticket')));
 console.log('[DB] attendees has source:', attendeeCols.includes('source'));
-// Fix source values on startup — preserve 'staff', only reset truly invalid values
+// Fix source values on startup - preserve 'staff', only reset truly invalid values
 try { db.exec("UPDATE attendees SET source='offline' WHERE source IS NULL OR (source NOT IN ('online','offline','staff'))"); } catch {}
 // Backfill: any attendee with a staff level should have source='staff'
 try { db.exec("UPDATE attendees SET source='staff' WHERE deleted_at IS NULL AND source!='staff' AND level_id IN (SELECT id FROM ticket_levels WHERE is_staff=1)"); } catch {}
 
-// ── SMS/IVR — per-event phone numbers (platform Stripe only) ─
-// Each event gets its own Twilio number — customers call/text that number for that event
+// ── SMS/IVR - per-event phone numbers (platform Stripe only) ─
+// Each event gets its own Twilio number - customers call/text that number for that event
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number TEXT"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number_expires TEXT"); } catch {}
 try { db.exec("ALTER TABLE events ADD COLUMN phone_number_notified INTEGER DEFAULT 0"); } catch {}
@@ -482,7 +482,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS sms_sessions (
 );`);
 
 const smsDefaults = {
-  'sms.enabled':'1','ivr.enabled':'1',   // enabled by default — disable in Platform Settings if needed
+  'sms.enabled':'1','ivr.enabled':'1',   // enabled by default - disable in Platform Settings if needed
   // SAQ-D / PCI compliance info (editable in admin, reference only)
   'pci.merchant_name':'','pci.merchant_dba':'','pci.contact_name':'','pci.contact_title':'',
   'pci.contact_phone':'','pci.contact_email':'','pci.merchant_url':'',
@@ -509,8 +509,17 @@ const smsDefaults = {
   'sms.cancelled':'Order cancelled. Text an event code anytime to start again.',
   'sms.session_expired':'Your session timed out. Text an event code to start a new order.',
   'sms.error':'Something went wrong. Please try again or text HELP.',
+  'sms.activate_ask_code':'Reply with your ticket code (found on your ticket, e.g. ABC12345).',
+  'sms.activate_invalid':'Please text your ticket code, e.g. ABC12345, or CANCEL to stop.',
+  'sms.activate_success':'Ticket activated! {{name}}, you are confirmed for {{event_name}}.',
+  'sms.activate_already':'This ticket is already activated for {{event_name}}.',
+  'sms.activate_not_found':'Ticket {{code}} not found. Please check the code and try again.',
+  'sms.activate_disabled':'Online activation is not enabled for {{event_name}}. Please contact the organizer.',
   'ivr.tts_voice':'Polly.Matthew',
-  'ivr.welcome':'Welcome to Mamudem. Press 1 to buy tickets. Press 9 to repeat.',
+  'ivr.welcome':'Welcome to Mamudem. Press 1 to buy tickets. Press 2 to activate a ticket. Press 9 to repeat.',
+  'ivr.activate_prompt':'Enter your ticket code using the keypad. For each letter, press its position on the key, then the key number. For example, the letter K is 2 then 5. For each digit, press 0 then the digit. Press pound when done.',
+  'ivr.activate_result':'{{message}} Goodbye.',
+  'ivr.activate_invalid':'That code could not be read. Please call back and try again. Goodbye.',
   'ivr.welcome_recording':'',
   'ivr.select_event':'Select your event. {{event_list}} Press 0 to go back.',
   'ivr.select_event_recording':'',
@@ -539,13 +548,13 @@ const smsDefaults = {
 for (const [k,v] of Object.entries(smsDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
-// Force SMS and IVR enabled (overwrite whatever is there — they default to ON)
+// Force SMS and IVR enabled (overwrite whatever is there - they default to ON)
 try { db.prepare("INSERT OR REPLACE INTO platform_settings (key,value) VALUES ('sms.enabled','1')").run(); } catch {}
 try { db.prepare("INSERT OR REPLACE INTO platform_settings (key,value) VALUES ('ivr.enabled','1')").run(); } catch {}
 // Always ensure voice default is male (update existing)
 try { db.prepare("UPDATE platform_settings SET value='Polly.Matthew' WHERE key='ivr.tts_voice' AND value='Polly.Joanna'").run(); } catch {}
 
-// ── Feature locks — admin can lock/unlock any feature per event ─
+// ── Feature locks - admin can lock/unlock any feature per event ─
 try { db.exec("ALTER TABLE events ADD COLUMN features_locked TEXT"); } catch {}   // JSON: {feature:0|1} override map
 try { db.exec("ALTER TABLE accounts ADD COLUMN features_locked TEXT"); } catch {} // JSON: per-account feature overrides
 
@@ -563,7 +572,7 @@ for (const [k,v] of Object.entries(featureDefaults)) {
   try { db.prepare('INSERT OR IGNORE INTO platform_settings (key,value) VALUES (?,?)').run(k,v); } catch {}
 }
 
-// ── Account-level promo codes — applied to plan purchases (not ticket sales) ─
+// ── Account-level promo codes - applied to plan purchases (not ticket sales) ─
 db.exec(`CREATE TABLE IF NOT EXISTS account_promo_codes (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE,
@@ -577,7 +586,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS account_promo_codes (
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );`);
-// account_transactions predates plan_id/promo tracking — backfill columns
+// account_transactions predates plan_id/promo tracking - backfill columns
 try { db.exec('ALTER TABLE account_transactions ADD COLUMN plan_id TEXT'); } catch {}
 try { db.exec('ALTER TABLE account_transactions ADD COLUMN promo_code TEXT'); } catch {}
 try { db.exec('ALTER TABLE account_transactions ADD COLUMN discount_cents INTEGER NOT NULL DEFAULT 0'); } catch {}

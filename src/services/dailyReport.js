@@ -37,7 +37,7 @@ export async function sendDailyReports() {
           </div>
           <div style="padding:24px">
             <h2 style="color:#1a3a6b;margin-bottom:4px">Daily Event Report</h2>
-            <p style="color:#666;margin-bottom:20px">${ev.name} — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p>
+            <p style="color:#666;margin-bottom:20px">${ev.name} - ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p>
             <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
               <tr style="background:#f5f7fa"><td style="padding:10px 14px;font-weight:700">Total Attendees</td><td style="padding:10px 14px;font-weight:800;color:#1a3a6b;font-size:20px">${total}</td></tr>
               <tr><td style="padding:10px 14px">Tickets Sent</td><td style="padding:10px 14px;font-weight:700;color:#00aadd">${sent}</td></tr>
@@ -46,13 +46,13 @@ export async function sendDailyReports() {
               <tr style="background:#f5f7fa"><td style="padding:10px 14px">Confirmed</td><td style="padding:10px 14px;font-weight:700;color:#27a85f">${confirmed}</td></tr>
               <tr><td style="padding:10px 14px">Online Sales</td><td style="padding:10px 14px;font-weight:700;color:#7c5cbe">${online}</td></tr>
             </table>
-            <p style="color:#aaa;font-size:12px;text-align:center">Daily reports are sent until the day after the event. — <a href="${appUrl}" style="color:#1a3a6b">mamudem.com</a></p>
+            <p style="color:#aaa;font-size:12px;text-align:center">Daily reports are sent until the day after the event. - <a href="${appUrl}" style="color:#1a3a6b">mamudem.com</a></p>
           </div>
         </div>`;
 
       await sendMail({
         to: ev.owner_email,
-        subject: `Daily Report: ${ev.name} — ${checked}/${total} checked in`,
+        subject: `Daily Report: ${ev.name} - ${checked}/${total} checked in`,
         html,
         replyTo
       });

@@ -6,7 +6,7 @@ import { notifyEventCreated } from '../services/mail.js';
 
 const r = Router();
 
-// Auto-close events 48h after expires_at — runs on every list request (lightweight)
+// Auto-close events 48h after expires_at - runs on every list request (lightweight)
 function autoCloseEvents() {
   try {
     db.prepare(`UPDATE events SET closed_at=datetime('now')
@@ -17,13 +17,13 @@ function autoCloseEvents() {
   } catch {}
 }
 
-// Public — for scanner PIN login page (shows event names only)
+// Public - for scanner PIN login page (shows event names only)
 r.get('/public', (req, res) => {
   const events = db.prepare('SELECT id,name,date,venue FROM events ORDER BY created_at DESC LIMIT 50').all();
   res.json({ events });
 });
 
-// Public single event — for scanner URL like /scanner-login.html?event=EVENT_ID
+// Public single event - for scanner URL like /scanner-login.html?event=EVENT_ID
 r.get('/public/:id', (req, res) => {
   const event = db.prepare('SELECT id,name,date,venue FROM events WHERE id=?').get(req.params.id);
   if (!event) return res.status(404).json({ error: 'Event not found' });
@@ -61,7 +61,7 @@ r.post('/', (req, res) => {
   if (req.user.role !== 'admin') {
     const account = db.prepare('SELECT demo_mode, plan_id, max_events FROM accounts WHERE id=?').get(req.user.id);
 
-    // Demo mode — must pay for a plan first
+    // Demo mode - must pay for a plan first
     if (account?.demo_mode) {
       return res.status(403).json({ error: 'DEMO_MODE', message: 'Upgrade to create live events.' });
     }
@@ -104,7 +104,7 @@ r.post('/', (req, res) => {
   res.json({ event: newEvent });
 });
 
-// Plan usage — for stats page meters
+// Plan usage - for stats page meters
 r.get('/plan-usage', auth, (req, res) => {
   const acct = db.prepare('SELECT plan_id, max_events, role FROM accounts WHERE id=?').get(req.user.id);
   if (!acct || acct.role === 'admin') return res.json({ unlimited: true });

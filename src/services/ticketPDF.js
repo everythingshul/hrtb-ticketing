@@ -1,4 +1,4 @@
-// Use createRequire — pdf-lib CJS works correctly; ESM build has broken sub-imports
+// Use createRequire - pdf-lib CJS works correctly; ESM build has broken sub-imports
 import { createRequire } from 'module';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
@@ -193,7 +193,7 @@ export async function generateTicketPDF({ attendee, event, eventDesignPath }) {
     y: 14, size: tidSz, font, color: rgb(0,0,0)
   });
 
-  // Colored level badge — square as wide as QR, below ticket ID
+  // Colored level badge - square as wide as QR, below ticket ID
   if (attendee.level_name) {
     const badgeH = 10;
     const badgeY = 3;

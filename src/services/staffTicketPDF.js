@@ -1,4 +1,4 @@
-// Staff ticket PDF — CR80 ID badge (3.375" × 2.125" portrait = standard credit card / ID badge size)
+// Staff ticket PDF - CR80 ID badge (3.375" × 2.125" portrait = standard credit card / ID badge size)
 // At 72dpi: 243pt wide × 153pt tall  (portrait = tall card)
 // Actually portrait means taller than wide: 2.125" wide × 3.375" tall
 import { createRequire } from 'module';

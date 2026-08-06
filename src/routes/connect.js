@@ -46,7 +46,7 @@ r.get('/connect/start', auth, (req, res) => {
   res.json({ url });
 });
 
-// Step 2: OAuth callback — exchange code for tokens
+// Step 2: OAuth callback - exchange code for tokens
 r.get('/connect/callback', async (req, res) => {
   const { code, state, error } = req.query;
   const appUrl = process.env.APP_URL || 'https://mamudem.com';
@@ -79,7 +79,7 @@ r.get('/connect/status', auth, (req, res) => {
   res.json({ connected: true, accountId: acct.stripe_connect_id, livemode: !!acct.stripe_connect_livemode, publishableKey: acct.stripe_connect_pub });
 });
 
-// ── Pricing plans (public — shown at paywall) ─────────────
+// ── Pricing plans (public - shown at paywall) ─────────────
 r.get('/pricing-plans', (req, res) => {
   const plans = db.prepare('SELECT * FROM pricing_plans WHERE is_active=1 AND show_on_pricing=1 ORDER BY sort_order,price_cents').all();
   res.json({ plans: plans.map(p => ({ ...p, features: JSON.parse(p.features||'[]') })) });
@@ -153,7 +153,7 @@ r.delete('/pricing-plans/:id', auth, (req, res) => {
 
 // ── Account-level promo codes (plan purchases, not ticket sales) ──
 
-// Check a code against a plan before payment (auth — buyer must be signed in)
+// Check a code against a plan before payment (auth - buyer must be signed in)
 r.post('/account-promos/validate', auth, (req, res) => {
   try {
     const { code, planId } = req.body;
@@ -236,7 +236,7 @@ r.post('/event-payment/intent', auth, async (req, res) => {
       amount: finalCents,
       currency: getSetting('currency', 'usd'),
       receipt_email: acct.email,
-      description: `Mamudem — ${plan.name} — ${acct.name}`,
+      description: `Mamudem - ${plan.name} - ${acct.name}`,
       metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, type: 'event_creation', promo_code: appliedCode||'' }
     });
     res.json({ clientSecret: intent.client_secret, publishableKey: process.env.STRIPE_PUBLISHABLE_KEY, orderId, plan: planOut, promoCode: appliedCode, discountCents, finalCents });
@@ -323,7 +323,7 @@ r.post('/event-payment/upgrade-intent', auth, async (req, res) => {
       amount: finalAmount,
       currency: getSetting('currency', 'usd'),
       receipt_email: acct.email,
-      description: `Mamudem — Upgrade to ${newPlan.name} — ${acct.name}`,
+      description: `Mamudem - Upgrade to ${newPlan.name} - ${acct.name}`,
       metadata: { order_id: orderId, account_id: req.user.id, plan_id: planId, from_plan_id: fromPlanId||'', type: 'plan_upgrade', promo_code: appliedCode||'' }
     });
     res.json({

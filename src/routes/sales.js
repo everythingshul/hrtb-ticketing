@@ -61,7 +61,7 @@ function checkCapacity(eventId, levelId) {
     warnings.push(`${level.name} is sold out (${levelCount}/${level.max_tickets})`);
   }
 
-  console.log(`[checkCapacity] event=${eventId} level=${level?.name||'—'} total=${total}/${event.max_tickets||'∞'} levelCount=${levelCount}/${level?.max_tickets||'∞'} countAll=${countAll} blocked=${blocked}`);
+  console.log(`[checkCapacity] event=${eventId} level=${level?.name||'-'} total=${total}/${event.max_tickets||'∞'} levelCount=${levelCount}/${level?.max_tickets||'∞'} countAll=${countAll} blocked=${blocked}`);
   return { ok: !blocked, blocked, warnings };
 }
 
@@ -97,7 +97,7 @@ function tid() {
 
 // ── Public: get event sales page info ─────────────────────
 r.get('/event/:slug', (req, res) => {
-  // Load event — no sale_enabled filter so activation works even when sales closed
+  // Load event - no sale_enabled filter so activation works even when sales closed
   const event = db.prepare(`
     SELECT e.*, a.name as account_name
     FROM events e JOIN accounts a ON a.id = e.account_id
@@ -108,7 +108,7 @@ r.get('/event/:slug', (req, res) => {
   const salesOpen = event.sale_enabled &&
     (!event.expires_at || new Date(event.expires_at) >= new Date());
 
-  // If sales closed AND activation not enabled — nothing to show
+  // If sales closed AND activation not enabled - nothing to show
   if (!salesOpen && !event.allow_activation) {
     if (!event.sale_enabled) {
       return res.status(410).json({ error: 'Ticket sales are not yet open for this event.' });
@@ -125,7 +125,7 @@ r.get('/event/:slug', (req, res) => {
     FROM ticket_levels WHERE event_id=? AND online_sale=1 ORDER BY price ASC
   `).all(event.id) : [];
 
-  // Add availability data per level — respect the count_unconfirmed toggle
+  // Add availability data per level - respect the count_unconfirmed toggle
   const saleCountAll = event.capacity_count_unconfirmed !== 0;
   const saleClause = saleCountAll
     ? "deleted_at IS NULL AND status!='deactivated'"
@@ -221,7 +221,7 @@ r.post('/event/:slug/checkout', auth, async (req, res) => {
 
     const orderId = uuid();
 
-    // Free tickets — fulfill immediately without Stripe (no API key needed)
+    // Free tickets - fulfill immediately without Stripe (no API key needed)
     if (totalCents === 0) {
       db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
         .run(orderId, event.id, 'free-' + orderId, 'pending', email||null, 0, JSON.stringify(items), JSON.stringify(checkoutAttendees||[]));
@@ -230,15 +230,15 @@ r.post('/event/:slug/checkout', auth, async (req, res) => {
       return res.json({ free: true, orderId });
     }
 
-    // Paid — need Stripe
+    // Paid - need Stripe
     const stripe = getStripe(event);
 
-    // Create PaymentIntent — works with Payment Element, no iframes, no ad-blocker issues
+    // Create PaymentIntent - works with Payment Element, no iframes, no ad-blocker issues
     const paymentIntent = await stripe.paymentIntents.create({
       amount: totalCents,
       currency: 'usd',
       receipt_email: email || undefined,
-      description: `Tickets — ${event.name}`,
+      description: `Tickets - ${event.name}`,
       metadata: {
         order_id: orderId,
         event_id: event.id,
@@ -263,7 +263,7 @@ r.post('/event/:slug/checkout', auth, async (req, res) => {
   }
 });
 
-// ── Stripe webhook — fulfill order ────────────────────────
+// ── Stripe webhook - fulfill order ────────────────────────
 r.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -433,9 +433,9 @@ async function fulfillOrder(session, existingOrder) {
         }
         await sendMail({
           to: buyerEmail,
-          subject: `Your tickets for ${dbEvent.name} — all ${allTicketsForBuyer.length} ticket(s)`,
+          subject: `Your tickets for ${dbEvent.name} - all ${allTicketsForBuyer.length} ticket(s)`,
           html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-            <h2 style="color:#1a3a6b">Your Tickets — ${dbEvent.name}</h2>
+            <h2 style="color:#1a3a6b">Your Tickets - ${dbEvent.name}</h2>
             <p>Hi! Here are all ${allTicketsForBuyer.length} ticket(s) from your order. Each ticket has also been sent to the individual attendee's email.</p>
             <p style="color:#555">Event: <strong>${dbEvent.name}</strong><br>${dbEvent.date||''} ${dbEvent.venue?'· '+dbEvent.venue:''}</p>
             <p style="color:#aaa;font-size:12px">Powered by Mamudem</p>
@@ -447,7 +447,7 @@ async function fulfillOrder(session, existingOrder) {
     }
 
     db.prepare("UPDATE online_orders SET status='completed',completed_at=datetime('now') WHERE id=?").run(orderId);
-    console.log(`[sales] Order ${orderId} fulfilled — ${createdAttendees.length} tickets`);
+    console.log(`[sales] Order ${orderId} fulfilled - ${createdAttendees.length} tickets`);
   } catch(e) {
     console.error('[sales] fulfillment error:', e.message);
     db.prepare("UPDATE online_orders SET status='failed' WHERE id=?").run(orderId);
@@ -520,7 +520,7 @@ r.get('/settings/:eventId', auth, (req, res) => {
   }
 });
 
-// Update sales settings (user-facing — no Stripe key access)
+// Update sales settings (user-facing - no Stripe key access)
 r.patch('/settings/:eventId', auth, (req, res) => {
   try {
     const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
@@ -538,9 +538,9 @@ r.patch('/settings/:eventId', auth, (req, res) => {
         return res.status(403).json({ error: 'SLUG_LOCKED: Contact an Administrator to change the event URL.' });
       }
       const clean = slug.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
-      if (!clean) return res.status(400).json({ error: 'Invalid slug — use letters, numbers and hyphens only' });
+      if (!clean) return res.status(400).json({ error: 'Invalid slug - use letters, numbers and hyphens only' });
       const existing = db.prepare('SELECT id FROM events WHERE slug=? AND id!=?').get(clean, ev.id);
-      if (existing) return res.status(400).json({ error: 'This URL is already taken — choose another' });
+      if (existing) return res.status(400).json({ error: 'This URL is already taken - choose another' });
       db.prepare('UPDATE events SET slug=? WHERE id=?').run(clean, ev.id);
     }
 
@@ -680,7 +680,7 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
       if (!lvl) return res.status(400).json({ error: 'Invalid ticket level' });
       if (item.quantity < 1 || item.quantity > 100) return res.status(400).json({ error: 'Invalid quantity' });
 
-      // Check capacity — warn but don't block (portal override)
+      // Check capacity - warn but don't block (portal override)
       if (!bypassCapacity) {
         const cap = checkCapacity(ev.id, lvl.id);
         if (!cap.ok) {
@@ -692,7 +692,7 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
       totalCents += lvl.price * item.quantity;
     }
 
-    // Free order — fulfill immediately
+    // Free order - fulfill immediately
     if (totalCents === 0) {
       const orderId = uuid();
       db.prepare(`INSERT INTO online_orders (id,event_id,stripe_session_id,status,email,total_cents,line_items,checkout_data) VALUES (?,?,?,?,?,?,?,?)`)
@@ -710,7 +710,7 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
       amount: totalCents,
       currency: 'usd',
       receipt_email: email || undefined,
-      description: `[Portal Sale] Tickets — ${ev.name}`,
+      description: `[Portal Sale] Tickets - ${ev.name}`,
       metadata: { order_id: orderId, event_id: ev.id, event_name: ev.name, event_slug: ev.slug || '' }
     });
 
@@ -726,7 +726,7 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
 
 // ── Promo code routes ─────────────────────────────────────
 
-// Validate promo code (public — called from sale page)
+// Validate promo code (public - called from sale page)
 r.post('/event/:slug/promo', (req, res) => {
   const { code, items, email } = req.body;
   if (!code || !items?.length) return res.status(400).json({ error: 'Code and items required' });

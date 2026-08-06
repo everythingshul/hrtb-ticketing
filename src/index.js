@@ -26,7 +26,7 @@ if (!existsSync(siteContentPath)) {
   try {
     const defaults = {
       'home.hero_title': 'Effortless Event Ticketing for Your Community',
-      'home.hero_subtitle': 'Sell tickets online, manage attendees, scan at the door — all in one place.',
+      'home.hero_subtitle': 'Sell tickets online, manage attendees, scan at the door - all in one place.',
       'home.cta_primary': 'Get Started Free',
       'home.cta_secondary': 'See Pricing',
       'home.feature1_title': 'Sell Tickets Online',
@@ -57,7 +57,7 @@ if (!existsSync(siteContentPath)) {
       ]),
       'terms.title': 'Terms and Conditions',
       'terms.last_updated': new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }),
-      'terms.content': '<h2>1. Acceptance</h2><p>By using Mamudem you agree to these terms.</p><h2>2. Service</h2><p>We provide event ticketing software. Edit this content in Admin → Site Content.</p>'
+      'terms.content': '<h2>1. Acceptance</h2><p>By using Mamudem you agree to these terms.</p><h2>2. Service</h2><p>We provide event ticketing software. Edit this content in Admin Site Content.</p>'
     };
     writeFileSync(siteContentPath, JSON.stringify(defaults, null, 2));
     console.log('[startup] site_content.json created');
@@ -71,7 +71,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
 
 initMail();
 
-// Maintenance mode — shows message to regular users, allows admin API through
+// Maintenance mode - shows message to regular users, allows admin API through
 app.use((req, res, next) => {
   if (process.env.MAINTENANCE_MODE !== '1') return next();
   // Always allow API calls, login page, and static assets through
@@ -79,7 +79,7 @@ app.use((req, res, next) => {
   if (req.path === '/login.html' || req.path === '/login' || req.path === '/') return next();
   if (req.path.startsWith('/css/') || req.path.startsWith('/js/') || req.path.startsWith('/icons/') || req.path.endsWith('.ico') || req.path.endsWith('.png')) return next();
   // Serve a simple maintenance page to all website visitors
-  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mamudem — Maintenance</title>
+  res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mamudem - Maintenance</title>
   <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;background:#0a1628;color:#f0ede8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
   .box{text-align:center;max-width:400px}.ico{font-size:48px;margin-bottom:20px}.h1{font-size:24px;font-weight:700;margin-bottom:10px}.p{font-size:14px;color:#888;line-height:1.7}
   .note{margin-top:24px;font-size:12px;color:#444}</style></head>
@@ -103,7 +103,7 @@ app.use('/api/phone', phoneRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/sales', salesRoutes);
 
-// Public event sales page — serve HTML for /events/:slug
+// Public event sales page - serve HTML for /events/:slug
 app.get('/events/:slug', (req, res) => {
   res.sendFile('sale.html', { root: join(__dirname, '../frontend') });
 });
@@ -118,12 +118,12 @@ const DATA_DIR = process.env.DATA_DIR || '/data';
 app.use('/uploads/logos',     express.static(join(DATA_DIR, 'logos')));
 app.use('/uploads/ivr-audio', express.static(join(DATA_DIR, 'ivr-audio')));
 
-// Any unknown route → serve index.html (so page refreshes work)
+// Any unknown route serve index.html (so page refreshes work)
 app.get('*', (_, res) => res.sendFile(join(FRONTEND, 'index.html')));
 
 app.listen(PORT, () => {
   console.log(`\n🎟  HRTB Ticketing running on http://localhost:${PORT}`);
-  console.log(`   First time? Go to the URL and register — first account is auto-admin.\n`);
+  console.log(`   First time? Go to the URL and register - first account is auto-admin.\n`);
 
   // Daily report at midnight EST (America/New_York)
   function scheduleNextReport() {
@@ -139,7 +139,7 @@ app.listen(PORT, () => {
   }
   scheduleNextReport();
 
-  // Automatic phone number expiry check — runs every 6 hours
+  // Automatic phone number expiry check - runs every 6 hours
   // No manual action needed. Sends 1-day warning emails, auto-cancels expired numbers.
   async function runExpiryCheck() {
     try {
@@ -188,7 +188,7 @@ app.listen(PORT, () => {
         const expDate = new Date(ev.phone_number_expires).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
         sendMail({
           to: ev.owner_email,
-          subject: `Phone number for "${ev.name}" expires tomorrow — action required`,
+          subject: `Phone number for "${ev.name}" expires tomorrow - action required`,
           html: notifyEmailBase('Phone Number Expiring Soon', `
             <p style="font-size:14px;color:#4a5568;margin-bottom:16px">Hi ${ev.owner_name},</p>
             <p style="font-size:14px;color:#4a5568;margin-bottom:16px">The SMS/IVR phone number <strong>${ev.phone_number}</strong> for your event <strong>${ev.name}</strong> expires <strong>tomorrow (${expDate})</strong>.</p>

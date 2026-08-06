@@ -1,6 +1,6 @@
 /**
- * SMS & IVR Ticket Purchasing — Platform Stripe Only
- * PCI: Card digits never stored. Twilio → RAM → Stripe API → gone.
+ * SMS & IVR Ticket Purchasing - Platform Stripe Only
+ * PCI: Card digits never stored. Twilio RAM Stripe API gone.
  * MOTO flag required on platform Stripe (get gated via Stripe support).
  */
 import { Router } from 'express';
@@ -23,7 +23,7 @@ function getPlatformStripe() {
   return new Stripe(key, { apiVersion: '2024-06-20' });
 }
 
-// ── Settings helper — global default, optionally overridden per event ─────────────
+// ── Settings helper - global default, optionally overridden per event ─────────────
 function g(key, fallback = '', eventId = null) {
   if (eventId) {
     const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(eventId);
@@ -43,7 +43,47 @@ function tmpl(key, vars = {}, eventId = null) {
   return msg;
 }
 
-// ── Public diagnostic — hit this URL in browser to verify setup ──────────
+// ── Ticket activation - shared by SMS and IVR ─────────────
+// Keypad codec for IVR: each ticket-code character is entered as exactly two
+// DTMF digits. Digits are "0" + the digit itself (e.g. 5 -> "05"). Letters are
+// their position on the key, then the key number (e.g. K is 2nd letter on key
+// 5 -> "25"; F is 3rd letter on key 3 -> "33").
+const KEYPAD_LETTERS = { 2:'ABC', 3:'DEF', 4:'GHI', 5:'JKL', 6:'MNO', 7:'PQRS', 8:'TUV', 9:'WXYZ' };
+
+function decodeKeypadDigits(digits) {
+  if (!digits || digits.length % 2 !== 0) return null;
+  let out = '';
+  for (let i = 0; i < digits.length; i += 2) {
+    const pos = digits[i], key = digits[i+1];
+    if (pos === '0') { out += key; continue; }
+    const letters = KEYPAD_LETTERS[key];
+    const idx = parseInt(pos, 10) - 1;
+    if (!letters || idx < 0 || idx >= letters.length) return null;
+    out += letters[idx];
+  }
+  return out;
+}
+
+// Activates a ticket by code (accepts with or without the "TKT-" prefix).
+// Returns { ok, message, vars } - vars are the tmpl() substitution values for
+// the caller's channel-specific success/error message.
+function activateTicket(rawCode) {
+  const clean = (rawCode || '').toString().trim().toUpperCase().replace(/^TKT-/, '').replace(/[^A-Z0-9]/g, '');
+  if (!clean) return { ok: false, key: 'sms.activate_invalid', vars: {} };
+  const fullId = 'TKT-' + clean;
+  const a = db.prepare(`
+    SELECT att.*, e.name as event_name, e.allow_activation
+    FROM attendees att JOIN events e ON e.id = att.event_id
+    WHERE att.ticket_id=? AND att.deleted_at IS NULL AND att.status!='deactivated'
+  `).get(fullId);
+  if (!a) return { ok: false, key: 'sms.activate_not_found', vars: { code: fullId } };
+  if (a.confirmed) return { ok: false, key: 'sms.activate_already', vars: { event_name: a.event_name } };
+  if (!a.allow_activation) return { ok: false, key: 'sms.activate_disabled', vars: { event_name: a.event_name } };
+  db.prepare("UPDATE attendees SET confirmed=1, updated_at=datetime('now') WHERE id=?").run(a.id);
+  return { ok: true, key: 'sms.activate_success', vars: { name: `${a.first_name} ${a.last_name}`.trim(), event_name: a.event_name } };
+}
+
+// ── Public diagnostic - hit this URL in browser to verify setup ──────────
 r.get('/diag', (req, res) => {
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
   const events = db.prepare(`
@@ -73,7 +113,7 @@ r.get('/diag', (req, res) => {
 });
 
 // ── Route SMS/call to correct event by phone number ──────
-// Each event has its own Twilio number — callers/texters land on that specific event
+// Each event has its own Twilio number - callers/texters land on that specific event
 function normalizePhone(n) {
   if (!n) return '';
   // Strip everything except digits and leading +
@@ -127,7 +167,7 @@ async function chargeMOTO({ cardNumber, expMonth, expYear, cvc, amountCents, des
     metadata: { order_id: orderId, channel: 'sms_ivr' },
     error_on_requires_action: true,
   });
-  // Immediately null card data — never returned or stored
+  // Immediately null card data - never returned or stored
   cardNumber = null; cvc = null;
   return pi;
 }
@@ -262,6 +302,19 @@ r.post('/sms/inbound', async (req, res) => {
     clearSession(from);
   }
 
+  // Ticket activation - "ACTIVATE" alone asks for the code next message,
+  // or "ACTIVATE ABC12345" activates in one message.
+  const words = body.split(/\s+/);
+  if (words[0]?.toUpperCase() === 'ACTIVATE') {
+    clearSession(from);
+    if (words[1]) {
+      const result = activateTicket(words[1]);
+      return res.type('text/xml').send(twimlMsg(tmpl(result.key, result.vars)));
+    }
+    setSession(from, 'activate_code', {});
+    return res.type('text/xml').send(twimlMsg(tmpl('sms.activate_ask_code')));
+  }
+
   const session = getSession(from);
 
   try {
@@ -278,13 +331,20 @@ async function smsStep(from, body, upper, session, linkedEvent) {
   const step = session?.step || 'welcome';
   const data = session?.data || {};
 
+  // ── Awaiting a ticket code for activation ─────────────────
+  if (step === 'activate_code') {
+    clearSession(from);
+    const result = activateTicket(body);
+    return tmpl(result.key, result.vars);
+  }
+
   // ── No session: use the linked event directly ────────────
   if (!session || step === 'welcome') {
     const event = linkedEvent;
     if (!event) return tmpl('sms.invalid_code');
     const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND is_staff=0 AND price>0 AND (phone_enabled IS NULL OR phone_enabled=1) ORDER BY created_at").all(event.id);
     if (!levels.length) return tmpl('sms.no_levels');
-    const levelList = levels.map((l,i)=>`${i+1}. ${l.name} — $${(l.price/100).toFixed(2)}`).join('\n');
+    const levelList = levels.map((l,i)=>`${i+1}. ${l.name} - $${(l.price/100).toFixed(2)}`).join('\n');
     setSession(from, 'select_level', { eventId:event.id, levels:levels.map(l=>({id:l.id,name:l.name,price:l.price})) }, event.slug, event.account_id);
     return tmpl('sms.select_level', { event_name:event.name, event_date:event.date||'', levels:levelList });
   }
@@ -352,7 +412,7 @@ async function smsStep(from, body, upper, session, linkedEvent) {
     return tmpl('sms.get_cvv');
   }
 
-  // ── Get CVV → charge ──────────────────────────────────────
+  // ── Get CVV charge ──────────────────────────────────────
   if (step === 'get_cvv') {
     const cvv = body.replace(/\D/g,'');
     if (cvv.length < 3 || cvv.length > 4) return 'Please enter the 3 or 4 digit security code from your card.';
@@ -366,10 +426,10 @@ async function smsStep(from, body, upper, session, linkedEvent) {
       VALUES (?,?,?,'sms',?,?,?,?,?,?,'pending')`)
       .run(orderId, event.id, event.account_id, from, data.name, data.email||null, data.levelId||null, data.quantity, data.totalCents);
 
-    // Charge — card data only in this scope
+    // Charge - card data only in this scope
     let pi;
     try {
-      pi = await chargeMOTO({ cardNumber, expMonth:data.expMonth, expYear:data.expYear, cvc:cvv, amountCents:data.totalCents, description:`${event.name} — ${data.quantity}× ${data.levelName} — ${data.name}`, email:data.email, orderId });
+      pi = await chargeMOTO({ cardNumber, expMonth:data.expMonth, expYear:data.expYear, cvc:cvv, amountCents:data.totalCents, description:`${event.name} - ${data.quantity}× ${data.levelName} - ${data.name}`, email:data.email, orderId });
     } catch(e) {
       db.prepare("UPDATE phone_orders SET status='failed',error_message=? WHERE id=?").run(e.message, orderId);
       clearSession(from);
@@ -407,6 +467,10 @@ r.post('/ivr/menu', async (req, res) => {
   console.log('[IVR menu] From:', from, '| Digits:', d, '| calledNumber:', calledNumber, '| session calledNumber:', session?.data?.calledNumber);
 
   if (!d || d === '9') return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
+  if (d === '2') {
+    setSession('ivr:'+from, 'activate_code', {});
+    return res.type('text/xml').send(twimlGather({ textKey:'ivr.activate_prompt', action:'/api/phone/ivr/activate', finishOnKey:'#', timeout:60 }));
+  }
   if (d !== '1') return res.type('text/xml').send(twimlGather({ textKey:'ivr.welcome', action:'/api/phone/ivr/menu', numDigits:1 }));
 
   const linkedEvent = getEventByNumber(calledNumber);
@@ -419,6 +483,16 @@ r.post('/ivr/menu', async (req, res) => {
   }
   setSession('ivr:'+from, 'select_level', { eventId:linkedEvent.id, calledNumber }, linkedEvent.slug, linkedEvent.account_id);
   return res.type('text/xml').send(await ivrLevelMenu(from, linkedEvent.id));
+});
+
+// Ticket activation by keypad - two DTMF digits per character (see decodeKeypadDigits)
+r.post('/ivr/activate', async (req, res) => {
+  const from = req.body.From || '', d = (req.body.Digits || '').replace(/\D/g, '');
+  clearSession('ivr:'+from);
+  const code = decodeKeypadDigits(d);
+  if (!code) return res.type('text/xml').send(twimlSay('ivr.activate_invalid', {}, true));
+  const result = activateTicket(code);
+  return res.type('text/xml').send(twimlSay('ivr.activate_result', { message: tmpl(result.key, result.vars) }, true));
 });
 
 r.post('/ivr/event', async (req, res) => {
@@ -519,10 +593,10 @@ r.post('/ivr/cvv', async (req, res) => {
     VALUES (?,?,?,'ivr',?,?,?,?,'pending')`)
     .run(orderId, event.id, event.account_id, from, data.levelId||null, data.quantity, data.totalCents);
 
-  // Charge — card data goes out of scope immediately after
+  // Charge - card data goes out of scope immediately after
   setImmediate(async () => {
     try {
-      const pi = await chargeMOTO({ cardNumber:data.cardNumber, expMonth:data.expMonth, expYear:data.expYear, cvc:cvv, amountCents:data.totalCents, description:`${event.name} — ${data.quantity}× IVR`, email:null, orderId });
+      const pi = await chargeMOTO({ cardNumber:data.cardNumber, expMonth:data.expMonth, expYear:data.expYear, cvc:cvv, amountCents:data.totalCents, description:`${event.name} - ${data.quantity}× IVR`, email:null, orderId });
       await fulfillOrder(orderId, pi.id);
     } catch(e) {
       db.prepare("UPDATE phone_orders SET status='failed',error_message=? WHERE id=?").run(e.message, orderId);
@@ -574,7 +648,7 @@ r.get('/numbers/search', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Buy a number — auto-sets webhooks and optionally assigns to event
+// Buy a number - auto-sets webhooks and optionally assigns to event
 r.post('/numbers/purchase', async (req, res) => {
   try {
     const { phoneNumber, eventId, expiresAt } = req.body;
@@ -762,7 +836,7 @@ r.delete('/event/:id/settings', (req, res) => {
   res.json({ ok: true });
 });
 
-// TTS preview — browser uses Web Speech API (no Twilio cost)
+// TTS preview - browser uses Web Speech API (no Twilio cost)
 r.post('/tts-preview', (req, res) => {
   const { text, voice } = req.body;
   if (!text) return res.status(400).json({ error: 'text required' });

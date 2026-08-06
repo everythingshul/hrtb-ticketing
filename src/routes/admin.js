@@ -9,14 +9,14 @@ import { sendMail, inviteEmail } from '../services/mail.js';
 const r = Router();
 
 // Public: homepage/FAQ/terms/pricing content is read by anonymous visitors
-// (landing, pricing, faq, terms pages) — must stay ahead of the auth gate below.
+// (landing, pricing, faq, terms pages) - must stay ahead of the auth gate below.
 r.get('/site-content', (req, res) => {
   const content = readSiteContent();
 
   // ── Homepage defaults (shown when admin hasn't customized yet) ──
   const homeDefaults = {
     'home.hero_title':        'Event Ticketing That *Works the Way You Do*',
-    'home.hero_subtitle':     'Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.',
+    'home.hero_subtitle':     'Sell tickets online, manage attendees, scan at the door - and let guests buy by phone or SMS. No tech skills needed.',
     'home.cta_primary':       'Get Started Free',
     'home.cta_secondary':     'View Pricing',
     'home.channels_eyebrow':  'Multiple ways to sell',
@@ -25,20 +25,20 @@ r.get('/site-content', (req, res) => {
     'home.ch1_title':         'Online Sales Page',
     'home.ch1_desc':          'A beautiful, mobile-friendly ticket page with Stripe payments, promo codes, and real-time availability.',
     'home.ch2_title':         'IVR Phone Ordering',
-    'home.ch2_desc':          'Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.',
+    'home.ch2_desc':          'Guests call a dedicated number, navigate a menu by keypad, and pay with their card - fully automated, no staff needed.',
     'home.ch3_title':         'SMS Ordering',
-    'home.ch3_desc':          'Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.',
+    'home.ch3_desc':          'Guests text your number, get a conversational checkout experience, and pay by card - no app, no login required.',
     'home.ch4_title':         'Staff Portal Sale',
-    'home.ch4_desc':          'Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.',
+    'home.ch4_desc':          'Sell tickets manually through the admin portal - no payment required from the buyer, great for at-the-door sales.',
     'home.features_eyebrow':  'Everything included',
     'home.features_title':    'All the tools you need',
     'home.f1_title': 'Attendee Management', 'home.f1_desc': 'Upload lists, assign seating, send individual or bulk tickets with professional PDF attachments.',
     'home.f2_title': 'Door Scanner',         'home.f2_desc': 'Any phone or tablet scans QR codes. Multiple entrances, staff tickets, live check-in counts.',
     'home.f3_title': 'Staff Tickets',        'home.f3_desc': 'Separate staff system with ID badge PDFs. Restrict scanners to ticket levels per entrance.',
     'home.f4_title': 'Promo Codes',          'home.f4_desc': 'Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.',
-    'home.f5_title': 'Your Own Stripe',      'home.f5_desc': 'Connect your Stripe account. All funds go directly to you — we never touch your money.',
+    'home.f5_title': 'Your Own Stripe',      'home.f5_desc': 'Connect your Stripe account. All funds go directly to you - we never touch your money.',
     'home.f6_title': 'Reports & Stats',      'home.f6_desc': 'Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.',
-    'home.f7_title': 'Demo Mode',            'home.f7_desc': 'Every account starts with a full demo event loaded with sample data — explore everything before going live.',
+    'home.f7_title': 'Demo Mode',            'home.f7_desc': 'Every account starts with a full demo event loaded with sample data - explore everything before going live.',
     'home.f8_title': 'Capacity Control',     'home.f8_desc': 'Set max tickets per event or per level, with automatic alerts when getting close.',
     'home.how_eyebrow':  'Simple setup',
     'home.how_title':    'Up and running in minutes',
@@ -47,7 +47,7 @@ r.get('/site-content', (req, res) => {
     'home.step3_title':  'Create your event',    'home.step3_desc': 'Add details, set ticket levels, enable online sales, phone ordering, or both.',
     'home.step4_title':  'Sell & scan',          'home.step4_desc': 'Share your ticket link, scan QR codes at the door, track everything in real time.',
     'home.cta_band_title': 'Ready to run a better event?',
-    'home.cta_band_sub':   'Start free with a full demo — no credit card required.',
+    'home.cta_band_sub':   'Start free with a full demo - no credit card required.',
     'home.cta_band_btn':   'Create Your Free Account',
     'home.logos_eyebrow':  'Our customers',
     'home.logos_title':    'Organizations that trust us',
@@ -60,24 +60,24 @@ r.get('/site-content', (req, res) => {
   if (!content['faq.items'] || content['faq.items'] === '[]') {
     content['faq.items'] = JSON.stringify([
       { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
-      { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
+      { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account - we never touch it.' },
       { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
       { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
-      { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
+      { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance - staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
       { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, your general entrance admits general tickets, and staff always scan through.' },
       { q: 'What is a staff ticket?', a: 'Staff tickets are completely separate from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward capacity, and always scan as Access Granted.' },
       { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional email alerts when you are getting close to selling out. Online sales stop automatically when capacity is reached.' },
-      { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
+      { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only - you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
       { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event has its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
-      { q: 'What are promo codes?', a: 'Promo codes let you offer discounts — percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific emails. Buyers enter the code at checkout.' },
-      { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data — we never store card numbers. For phone and SMS orders, card digits go directly from Twilio to Stripe in memory and are never written anywhere.' },
+      { q: 'What are promo codes?', a: 'Promo codes let you offer discounts - percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific emails. Buyers enter the code at checkout.' },
+      { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data - we never store card numbers. For phone and SMS orders, card digits go directly from Twilio to Stripe in memory and are never written anywhere.' },
     ]);
   }
   if (!content['terms.content'] || content['terms.content'].length < 200) {
     content['terms.content'] = `<h2>1. Acceptance of Terms</h2>
 <p>By creating an account and using the Mamudem, you agree to these Terms and Conditions in full. If you do not agree, do not use the Service.</p>
 <h2>2. Description of Service</h2>
-<p>Mamudem is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider — we do not organize events or sell tickets on behalf of users.</p>
+<p>Mamudem is a software platform for selling event tickets, managing attendees, processing check-ins, and collecting payments. We are a software provider - we do not organize events or sell tickets on behalf of users.</p>
 <h2>3. Account Registration</h2>
 <p>You must provide accurate information when registering. You are responsible for all activity under your account. Notify us of any unauthorized access at <a href="mailto:mamudem@gmail.com">mamudem@gmail.com</a>.</p>
 <h2>4. Demo Accounts</h2>
@@ -85,7 +85,7 @@ r.get('/site-content', (req, res) => {
 <h2>5. Payments and Billing</h2>
 <p>Creating live events requires a one-time fee per event. Fees are non-refundable except where required by law. All payments are processed via Stripe. You agree to Stripe's Terms of Service.</p>
 <h2>6. Ticket Sales and Payment Processing</h2>
-<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to you — we never hold your funds. You are responsible for refunds, disputes, and compliance with consumer protection laws.</p>
+<p>Online ticket sales are processed through your own connected Stripe account. All ticket revenue goes directly to you - we never hold your funds. You are responsible for refunds, disputes, and compliance with consumer protection laws.</p>
 <p>Phone and SMS orders are processed through our platform Stripe account under MOTO approval. You are responsible for compliance with card network rules when enabling phone ordering.</p>
 <h2>7. Your Data and Attendee Information</h2>
 <p>You own your event data and attendee information. We process it only to provide the Service. We do not sell or share your data. You are responsible for obtaining consent from attendees as required by applicable privacy laws.</p>
@@ -123,7 +123,7 @@ r.get('/export-excel', (req, res) => {
 
     // ── SHEET 1: Master Summary ──────────────────────────
     const summaryRows = [
-      ['HRTB TICKETING SYSTEM — FULL EXPORT'],
+      ['HRTB TICKETING SYSTEM - FULL EXPORT'],
       [`Exported on: ${new Date().toLocaleString()}`],
       [''],
       ['ACCOUNT SUMMARY'],
@@ -175,7 +175,7 @@ r.get('/export-excel', (req, res) => {
         acc.role.toUpperCase(),
         acc.is_active ? 'Yes' : 'No',
         acc.role === 'admin' ? 'System Admin' : 'User',
-        memberOf || '—',
+        memberOf || '-',
         acc.created_at?.slice(0, 10) || ''
       ]);
     }
@@ -211,8 +211,8 @@ r.get('/export-excel', (req, res) => {
         const evAtt = allAttendees.filter(a => a.event_id === ev.id);
         accRows.push([
           ev.name,
-          ev.date || '—',
-          ev.venue || '—',
+          ev.date || '-',
+          ev.venue || '-',
           evAtt.length,
           evAtt.filter(a => a.status === 'pending').length,
           evAtt.filter(a => a.status === 'sent').length,
@@ -233,7 +233,7 @@ r.get('/export-excel', (req, res) => {
         const evAtt = allAttendees.filter(a => a.event_id === ev.id);
         const evRows = [
           [`EVENT: ${ev.name.toUpperCase()}`],
-          [`Account: ${acc.name}   |   Date: ${ev.date||'—'}   |   Venue: ${ev.venue||'—'}`],
+          [`Account: ${acc.name}   |   Date: ${ev.date||'-'}   |   Venue: ${ev.venue||'-'}`],
           [`Total: ${evAtt.length}   |   Checked In: ${evAtt.filter(a=>a.status==='checked').length}   |   Sent: ${evAtt.filter(a=>a.status==='sent').length}   |   Pending: ${evAtt.filter(a=>a.status==='pending').length}`],
           [''],
           ['ATTENDEES'],
@@ -243,16 +243,16 @@ r.get('/export-excel', (req, res) => {
         for (const a of evAtt) {
           evRows.push([
             a.ticket_id,
-            a.first_name || '—',
-            a.last_name || '—',
-            a.phone || '—',
-            a.email || '—',
-            a.table_number || '—',
-            a.seat_number || '—',
+            a.first_name || '-',
+            a.last_name || '-',
+            a.phone || '-',
+            a.email || '-',
+            a.table_number || '-',
+            a.seat_number || '-',
             statusLabel[a.status] || a.status,
-            a.sent_at?.slice(0,16).replace('T',' ') || '—',
-            a.checked_in_at?.slice(0,16).replace('T',' ') || '—',
-            a.created_at?.slice(0,10) || '—',
+            a.sent_at?.slice(0,16).replace('T',' ') || '-',
+            a.checked_in_at?.slice(0,16).replace('T',' ') || '-',
+            a.created_at?.slice(0,10) || '-',
           ]);
         }
         if (!evAtt.length) evRows.push(['No attendees yet']);
@@ -289,82 +289,87 @@ r.patch('/accounts/:id/max-events', (req, res) => {
   res.json({ ok: true });
 });
 
-r.get('/backup', (req, res) => {
+// ── BACKUP - full raw SQLite snapshot (every table, always complete) ─
+// Uses better-sqlite3's built-in WAL-safe backup API rather than a hand-rolled
+// table-by-table JSON export, which silently drops data whenever a new table
+// is added and someone forgets to update this route.
+r.get('/backup', async (req, res) => {
   try {
-    const backup = {
-      version: '1.0',
-      exported_at: new Date().toISOString(),
-      accounts: db.prepare('SELECT * FROM accounts').all(),
-      events: db.prepare('SELECT * FROM events').all(),
-      attendees: db.prepare('SELECT * FROM attendees').all(),
-      account_members: db.prepare('SELECT * FROM account_members').all(),
-      scanner_pins: db.prepare('SELECT * FROM scanner_pins').all(),
-      invite_tokens: db.prepare('SELECT * FROM invite_tokens WHERE used=0 AND expires_at > datetime("now")').all(),
-    };
-    const json = JSON.stringify(backup);
+    const fs = await import('fs');
+    const path = await import('path');
+    const os = await import('os');
+    const tmpPath = path.join(os.tmpdir(), `hrtb-backup-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
+    await db.backup(tmpPath);
     const date = new Date().toISOString().slice(0,10);
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="hrtb-backup-${date}.json"`);
-    res.send(json);
+    res.download(tmpPath, `hrtb-backup-${date}.db`, (err) => {
+      fs.unlink(tmpPath, () => {});
+      if (err && !res.headersSent) res.status(500).json({ error: err.message });
+    });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── RESTORE — imports a backup JSON, merges without duplicates ─
-r.post('/restore', (req, res) => {
+// ── RESTORE - replaces the live database file with an uploaded .db backup ─
+// Live connections can't be hot-swapped (every route module holds its own
+// reference to the open db object), so this writes the file and requires a
+// server restart to take effect - the response says so explicitly.
+r.post('/restore', async (req, res) => {
   try {
-    const { accounts=[], events=[], attendees=[], account_members=[], scanner_pins=[], invite_tokens=[] } = req.body;
+    const multer   = (await import('multer')).default;
+    const fs       = await import('fs');
+    const path     = await import('path');
+    const Database = (await import('better-sqlite3')).default;
+    const dataDir  = process.env.DATA_DIR || '/data';
+    const upload   = multer({ dest: dataDir, limits: { fileSize: 500 * 1024 * 1024 } });
 
-    let restored = { accounts:0, events:0, attendees:0, members:0, pins:0 };
+    upload.single('backup')(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+      const uploadedPath = req.file.path;
 
-    db.transaction(() => {
-      // Accounts — restore including password hashes (logins preserved)
-      for (const a of accounts) {
-        const exists = db.prepare('SELECT id FROM accounts WHERE id=?').get(a.id);
-        if (!exists) {
-          db.prepare('INSERT INTO accounts (id,name,email,password_hash,role,created_at,is_active) VALUES (?,?,?,?,?,?,?)').run(a.id, a.name, a.email, a.password_hash, a.role, a.created_at, a.is_active ?? 1);
-          restored.accounts++;
+      const cleanup = () => {
+        for (const p of [uploadedPath, uploadedPath + '-wal', uploadedPath + '-shm']) {
+          try { fs.unlinkSync(p); } catch {}
         }
-      }
-      // Events
-      for (const e of events) {
-        const exists = db.prepare('SELECT id FROM events WHERE id=?').get(e.id);
-        if (!exists) {
-          db.prepare('INSERT INTO events (id,account_id,name,date,venue,description,created_at) VALUES (?,?,?,?,?,?,?)').run(e.id, e.account_id, e.name, e.date||null, e.venue||null, e.description||null, e.created_at);
-          restored.events++;
-        }
-      }
-      // Attendees
-      for (const a of attendees) {
-        const exists = db.prepare('SELECT id FROM attendees WHERE id=?').get(a.id);
-        if (!exists) {
-          db.prepare(`INSERT INTO attendees (id,event_id,account_id,first_name,last_name,phone,email,table_number,seat_number,ticket_id,status,sent_at,checked_in_at,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(a.id, a.event_id, a.account_id, a.first_name||'', a.last_name||'', a.phone||null, a.email||null, a.table_number||null, a.seat_number||null, a.ticket_id, a.status||'pending', a.sent_at||null, a.checked_in_at||null, a.created_at, a.updated_at||a.created_at);
-          restored.attendees++;
-        }
-      }
-      // Members
-      for (const m of account_members) {
-        const exists = db.prepare('SELECT id FROM account_members WHERE account_id=? AND user_id=?').get(m.account_id, m.user_id);
-        if (!exists) {
-          db.prepare('INSERT INTO account_members (id,account_id,user_id,role,added_at) VALUES (?,?,?,?,?)').run(m.id, m.account_id, m.user_id, m.role, m.added_at);
-          restored.members++;
-        }
-      }
-      // Scanner pins
-      for (const p of scanner_pins) {
-        const exists = db.prepare('SELECT id FROM scanner_pins WHERE id=?').get(p.id);
-        if (!exists) {
-          db.prepare('INSERT INTO scanner_pins (id,account_id,event_id,pin,label,created_by,created_at) VALUES (?,?,?,?,?,?,?)').run(p.id, p.account_id, p.event_id, p.pin, p.label, p.created_by, p.created_at);
-          restored.pins++;
-        }
-      }
-    })();
+      };
 
-    res.json({ ok: true, restored });
+      // Validate SQLite file header
+      const header = Buffer.alloc(16);
+      const fd = fs.openSync(uploadedPath, 'r');
+      fs.readSync(fd, header, 0, 16, 0);
+      fs.closeSync(fd);
+      if (header.toString('utf8', 0, 15) !== 'SQLite format 3') {
+        cleanup();
+        return res.status(400).json({ error: 'Not a valid SQLite database file' });
+      }
+
+      // Sanity check: does it look like a Mamudem backup?
+      try {
+        const testDb = new Database(uploadedPath, { readonly: true });
+        const hasAccounts = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='accounts'").get();
+        testDb.close();
+        if (!hasAccounts) throw new Error('missing accounts table');
+      } catch(e) {
+        cleanup();
+        return res.status(400).json({ error: 'File does not look like a Mamudem backup: ' + e.message });
+      }
+
+      const liveDbPath = path.join(dataDir, 'hrtb.db');
+      const preRestoreBackup = path.join(dataDir, `hrtb-pre-restore-${Date.now()}.db`);
+      try { fs.copyFileSync(liveDbPath, preRestoreBackup); } catch {}
+      fs.copyFileSync(uploadedPath, liveDbPath);
+      // Clear any stale WAL/SHM sidecar files so the next startup reads the
+      // restored file cleanly instead of trying to replay the old session's WAL
+      for (const suffix of ['-wal', '-shm']) {
+        try { fs.unlinkSync(liveDbPath + suffix); } catch {}
+      }
+      cleanup();
+
+      res.json({ ok: true, message: 'Backup restored. Restart the server for the changes to take effect.' });
+    });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── MAINTENANCE MODE — shows "login lost" message to users ─
+// ── MAINTENANCE MODE - shows "login lost" message to users ─
 r.post('/maintenance', (req, res) => {
   process.env.MAINTENANCE_MODE = req.body.enabled ? '1' : '';
   res.json({ ok: true, maintenance: !!req.body.enabled });
@@ -372,6 +377,19 @@ r.post('/maintenance', (req, res) => {
 
 r.get('/maintenance', (req, res) => {
   res.json({ maintenance: process.env.MAINTENANCE_MODE === '1' });
+});
+
+// ── Send a test email using whichever provider is currently configured ─
+r.post('/test-email', async (req, res) => {
+  const to = req.body.to || req.user.email;
+  try {
+    await sendMail({
+      to,
+      subject: 'Mamudem test email',
+      html: `<p>This is a test email from your Mamudem admin panel.</p><p>If you received this, your email delivery is configured correctly.</p>`,
+    });
+    res.json({ ok: true, to });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 r.get('/stats', (req, res) => {
@@ -469,7 +487,7 @@ r.delete('/accounts/:id', (req, res) => {
   const a = db.prepare('SELECT * FROM accounts WHERE id=?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Not found' });
   if (a.id === req.user.id) return res.status(400).json({ error: 'Cannot delete yourself' });
-  // Soft delete — mark deleted_at, keep data for 30 days
+  // Soft delete - mark deleted_at, keep data for 30 days
   db.prepare("UPDATE accounts SET deleted_at=datetime('now'),is_active=0 WHERE id=?").run(a.id);
   db.prepare('DELETE FROM account_members WHERE user_id=? OR account_id=?').run(a.id, a.id);
   db.prepare('DELETE FROM invite_tokens WHERE account_id=?').run(a.id);
@@ -534,7 +552,7 @@ r.get('/debug-staff/:eventId', auth, (req, res) => {
   res.json({ levels, staffLevelIds, attendees: allAtt, staffAttendees: allAtt.filter(a=>a.source==='staff'), offlineWithStaffLevel: allAtt.filter(a=>a.source!=='staff'&&staffLevelIds.includes(a.level_id)) });
 });
 
-// Contact admin — sends email from SMTP to admin address, user sees a form
+// Contact admin - sends email from SMTP to admin address, user sees a form
 r.post('/contact', async (req, res) => {
   const { from_name, from_email, subject, message, event_name, event_id } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: 'Message is required' });
@@ -965,7 +983,7 @@ r.get('/debug-staff/:eventId', auth, (req, res) => {
   res.json({ levels, staffLevelIds, attendees: allAtt, staffRows });
 });
 
-// ── Site content (CMS) — stored as JSON file, not DB ───────
+// ── Site content (CMS) - stored as JSON file, not DB ───────
 import { readFileSync as rfs, writeFileSync as wfs, existsSync as efs } from 'fs';
 import { join as pjoin } from 'path';
 

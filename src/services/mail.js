@@ -1,21 +1,25 @@
 import nodemailer from 'nodemailer';
+import db from '../db.js';
 
 let transport = null;
 
-// ── 6-second email rate limiter ───────────────────────────
-// Never sends more than 1 email per 6 seconds, across all calls
+function getSetting(key, fallback = '') {
+  try { const row = db.prepare('SELECT value FROM platform_settings WHERE key=?').get(key); return row?.value || fallback; }
+  catch { return fallback; }
+}
+
+// ── Rate limiter — spacing depends on provider (Gmail throttles hard, Brevo doesn't) ─
 let lastSentAt = 0;
-async function rateLimitedSend(msg) {
+async function pace(minIntervalMs) {
   const now = Date.now();
-  const wait = Math.max(0, 6000 - (now - lastSentAt));
+  const wait = Math.max(0, minIntervalMs - (now - lastSentAt));
   if (wait > 0) await new Promise(r => setTimeout(r, wait));
   lastSentAt = Date.now();
-  return transport.sendMail(msg);
 }
 
 export function initMail() {
   const { SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_USER || !SMTP_PASS) { console.log('[mail] No SMTP config — emails logged only'); return; }
+  if (!SMTP_USER || !SMTP_PASS) { console.log('[mail] No SMTP config - Gmail fallback unavailable (Brevo can still be configured in Admin)'); return; }
   transport = nodemailer.createTransport({
     host: 'smtp.gmail.com', port: 587, secure: false,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
@@ -26,12 +30,51 @@ export function initMail() {
     .catch(e => console.error('[mail] Gmail error:', e.message));
 }
 
-export async function sendMail({ to, subject, html, attachments = [], replyTo }) {
+async function sendViaBrevo({ to, subject, html, attachments = [], replyTo }) {
+  const apiKey      = getSetting('brevo.api_key');
+  const senderEmail = getSetting('brevo.sender_email');
+  const senderName  = getSetting('brevo.sender_name', 'Mamudem Tickets');
+  if (!apiKey || !senderEmail) { console.log(`[mail] Brevo not fully configured, MOCK -> ${to} | ${subject}`); return; }
+
+  const payload = {
+    sender: { email: senderEmail, name: senderName },
+    to: [{ email: to }],
+    subject, htmlContent: html,
+  };
+  if (replyTo) payload.replyTo = { email: replyTo };
+  if (attachments.length) {
+    payload.attachment = attachments.map(a => ({
+      name: a.filename,
+      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(a.content).toString('base64'),
+    }));
+  }
+
+  await pace(300); // Brevo has no hard per-second limit, but stay well-behaved
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Brevo send failed (${res.status}): ${errText.slice(0, 300)}`);
+  }
+  return res.json();
+}
+
+async function sendViaGmail({ to, subject, html, attachments = [], replyTo }) {
   const from = `"Mamudem Tickets" <${process.env.SMTP_USER}>`;
   if (!transport) { console.log(`[mail] MOCK -> ${to} | ${subject}`); return; }
   const msg = { from, to, subject, html, attachments };
   if (replyTo) msg.replyTo = replyTo;
-  return rateLimitedSend(msg);
+  await pace(6000); // Gmail SMTP throttles aggressively - never exceed 1/6s
+  return transport.sendMail(msg);
+}
+
+export async function sendMail({ to, subject, html, attachments = [], replyTo }) {
+  const provider = getSetting('mail.provider', 'gmail');
+  if (provider === 'brevo') return sendViaBrevo({ to, subject, html, attachments, replyTo });
+  return sendViaGmail({ to, subject, html, attachments, replyTo });
 }
 
 const NAVY = '#1a3a6b';
@@ -65,7 +108,7 @@ const ticketCard = (a, ev) => `
     <div style="font-size:11px;opacity:.6;margin-top:2px">${ev.date||''} ${ev.venue ? '&nbsp;&middot;&nbsp;' + ev.venue : ''}</div>
   </div>
   <div style="padding:16px 18px">
-    <div style="font-size:17px;font-weight:700;color:${NAVY};margin-bottom:3px">${a.first_name||'—'} ${a.last_name||''}</div>
+    <div style="font-size:17px;font-weight:700;color:${NAVY};margin-bottom:3px">${a.first_name||'-'} ${a.last_name||''}</div>
     ${a.phone ? `<div style="font-size:12px;color:#666;margin-bottom:6px">${a.phone}</div>` : '<div style="margin-bottom:6px"></div>'}
     ${a.level_name ? `<div style="display:inline-block;background:${a.level_color||CYAN};color:#fff;border-radius:99px;padding:2px 12px;font-size:11px;font-weight:700;letter-spacing:.05em;margin-bottom:8px">${a.level_name}</div>` : ''}
     ${(a.table_number||a.seat_number) ? `
@@ -107,7 +150,7 @@ export function digestEmail({ attendees, event }) {
   const appUrl = process.env.APP_URL || 'https://mamudem.com';
   const ticketIds = attendees.map(a => a.ticket_id);
 
-  // Split into batches of 100 — one download button per batch
+  // Split into batches of 100 - one download button per batch
   const batchSize = 100;
   const batches = [];
   for (let i = 0; i < ticketIds.length; i += batchSize) {
@@ -117,7 +160,7 @@ export function digestEmail({ attendees, event }) {
   const batchButtons = batches.map((batch, idx) => {
     const url = `${appUrl}/api/attendees/tickets-bulk-pdf?ids=${encodeURIComponent(batch.join(','))}`;
     const label = batches.length === 1
-      ? `Download All ${batch.length} Ticket(s) — One PDF`
+      ? `Download All ${batch.length} Ticket(s) - One PDF`
       : `Download Tickets ${idx * batchSize + 1}–${idx * batchSize + batch.length} (PDF ${idx + 1} of ${batches.length})`;
     return `<a href="${url}" style="display:inline-block;background:${NAVY};color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;margin:4px 0">
       ${label}
@@ -194,7 +237,7 @@ function row(label, value) {
   return `<table width="100%" cellpadding="0" cellspacing="0" style="border-bottom:1px solid #e2e8f0">
     <tr>
       <td style="padding:9px 12px 9px 0;font-size:13px;color:#6b7280;font-weight:600;white-space:nowrap;width:40%">${label}</td>
-      <td style="padding:9px 0;font-size:13px;color:#1a1a2e;font-weight:500;text-align:right">${value||'—'}</td>
+      <td style="padding:9px 0;font-size:13px;color:#1a1a2e;font-weight:500;text-align:right">${value||'-'}</td>
     </tr>
   </table>`;
 }
@@ -206,11 +249,11 @@ export async function notifySignup({ account }) {
     <div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0;margin-bottom:16px">
       ${row('Account Name', account.name)}
       ${row('Email', account.email)}
-      ${row('Phone', account.phone||'—')}
+      ${row('Phone', account.phone||'-')}
       ${row('Account Type', 'Demo (Free)')}
     </div>
     <div style="text-align:center;margin-bottom:8px">
-      <a href="${appUrl}/dashboard.html" style="display:inline-block;background:#c8960c;color:#000;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700">Go to Your Dashboard →</a>
+      <a href="${appUrl}/dashboard.html" style="display:inline-block;background:#c8960c;color:#000;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700">Go to Your Dashboard</a>
     </div>
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:12px">To run live events with real ticket sales, contact us to upgrade your account.</p>`;
 
@@ -219,7 +262,7 @@ export async function notifySignup({ account }) {
     sendMail({ to: account.email, subject: 'Welcome to Mamudem', html }).catch(e => console.error('[notify/signup user]', e.message))
   ];
   if (ADMIN_NOTIFY) promises.push(
-    sendMail({ to: ADMIN_NOTIFY, subject: `[New Signup] ${account.name} — ${account.email}`, html: notifyEmailBase('New Account Created', `<div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0">${row('Name',account.name)}${row('Email',account.email)}${row('Phone',account.phone||'—')}${row('Company',account.company||'—')}${row('Time',new Date().toLocaleString())}</div>`) }).catch(e => console.error('[notify/signup admin]', e.message))
+    sendMail({ to: ADMIN_NOTIFY, subject: `[New Signup] ${account.name} - ${account.email}`, html: notifyEmailBase('New Account Created', `<div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0">${row('Name',account.name)}${row('Email',account.email)}${row('Phone',account.phone||'-')}${row('Company',account.company||'-')}${row('Time',new Date().toLocaleString())}</div>`) }).catch(e => console.error('[notify/signup admin]', e.message))
   );
   await Promise.all(promises);
 }
@@ -237,7 +280,7 @@ export async function notifyEventCreated({ account, event }) {
       ${row('Closes', event.expires_at ? new Date(event.expires_at).toLocaleString('en-US',{timeZone:event.timezone||'America/New_York',month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}) : 'Not set')}
     </div>
     <div style="text-align:center">
-      <a href="${detailUrl}" style="display:inline-block;background:#1a3a6b;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700">Manage Event →</a>
+      <a href="${detailUrl}" style="display:inline-block;background:#1a3a6b;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700">Manage Event</a>
     </div>`;
 
   const adminBody = `<div style="background:#f8fafc;border-radius:8px;padding:14px;border:1px solid #e2e8f0">${row('Event',event.name)}${row('Account',account.name)}${row('Email',account.email)}${row('Date',event.date)}${row('Venue',event.venue)}${row('Event ID',event.id)}${row('Time',new Date().toLocaleString())}</div>`;
@@ -246,7 +289,7 @@ export async function notifyEventCreated({ account, event }) {
     sendMail({ to: account.email, subject: `Event Created: ${event.name}`, html: notifyEmailBase('Your Event is Ready 🎉', body) }).catch(e => console.error('[notify/event user]', e.message))
   ];
   if (ADMIN_NOTIFY) promises.push(
-    sendMail({ to: ADMIN_NOTIFY, subject: `[New Event] ${event.name} — ${account.name}`, html: notifyEmailBase('New Event Created', adminBody) }).catch(e => console.error('[notify/event admin]', e.message))
+    sendMail({ to: ADMIN_NOTIFY, subject: `[New Event] ${event.name} - ${account.name}`, html: notifyEmailBase('New Event Created', adminBody) }).catch(e => console.error('[notify/event admin]', e.message))
   );
   await Promise.all(promises);
 }

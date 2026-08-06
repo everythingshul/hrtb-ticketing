@@ -33,7 +33,7 @@ export async function seedDemoEvent(accountId) {
   db.prepare(`INSERT INTO events (id,account_id,name,date,venue,description,timezone,is_demo,slug,sale_enabled)
     VALUES (?,?,?,?,?,?,?,1,?,1)`).run(
     eventId, accountId,
-    'Annual Gala — Demo Event',
+    'Annual Gala - Demo Event',
     dateFmt + ' · 7:00 PM',
     'Grand Ballroom, 123 Main Street',
     'This is a demo event to help you explore all features. No emails are sent and no payments are processed.',

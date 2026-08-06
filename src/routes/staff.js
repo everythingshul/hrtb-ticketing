@@ -26,7 +26,7 @@ function getEventDesignPath(eventId) {
   return null;
 }
 
-// ── Single ticket PDF (no auth — linked from individual email) ─
+// ── Single ticket PDF (no auth - linked from individual email) ─
 r.get('/ticket-pdf/:ticketId', async (req, res) => {
   const s = db.prepare('SELECT st.*, l.name as level_name, l.color as level_color FROM staff st LEFT JOIN ticket_levels l ON l.id=st.level_id WHERE st.ticket_id=? AND st.deleted_at IS NULL').get(req.params.ticketId.toUpperCase());
   if (!s) return res.status(404).send('Ticket not found');
@@ -37,7 +37,7 @@ r.get('/ticket-pdf/:ticketId', async (req, res) => {
   res.send(Buffer.from(pdfBytes));
 });
 
-// ── Bulk PDF download — NO AUTH — linked from digest email ─
+// ── Bulk PDF download - NO AUTH - linked from digest email ─
 r.get('/tickets-bulk-pdf', async (req, res) => {
   const { createRequire } = await import('module');
   const require2 = createRequire(import.meta.url);
@@ -209,7 +209,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
   const batchButtons = batches.map((batch, idx) => {
     const url = `${appUrl}/api/staff/tickets-bulk-pdf?ids=${encodeURIComponent(batch.join(','))}`;
     const label = batches.length === 1
-      ? `Download All ${batch.length} Staff Ticket(s) — One PDF`
+      ? `Download All ${batch.length} Staff Ticket(s) - One PDF`
       : `Download Staff Tickets ${idx*batchSize+1}–${idx*batchSize+batch.length} (PDF ${idx+1} of ${batches.length})`;
     return `<a href="${url}" style="display:inline-block;background:#1a3a6b;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;margin:4px 0">${label}</a>`;
   }).join('<br>');
@@ -237,7 +237,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
       <tbody>
         ${rawList.map((s,i) => `<tr style="background:${i%2?'#f8f9fb':'#fff'}">
           <td style="padding:8px 10px">${s.first_name||''} ${s.last_name||''}</td>
-          <td style="padding:8px 10px">${s.level_name||'—'}</td>
+          <td style="padding:8px 10px">${s.level_name||'-'}</td>
           <td style="padding:8px 10px;font-family:monospace;font-size:11px">${s.ticket_id}</td>
         </tr>`).join('')}
       </tbody>
@@ -248,7 +248,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
   </div>
 </div></body></html>`;
 
-  await sendMail({ to: toEmail, subject: subject||`${rawList.length} staff ticket(s) — ${event.name}`, html, attachments, replyTo: owner?.reply_to||owner?.email });
+  await sendMail({ to: toEmail, subject: subject||`${rawList.length} staff ticket(s) - ${event.name}`, html, attachments, replyTo: owner?.reply_to||owner?.email });
   db.transaction(() => rawList.forEach(s => db.prepare(`UPDATE staff SET status='sent',sent_at=datetime('now') WHERE id=?`).run(s.id)))();
   res.json({ ok: true, sent: rawList.length });
 });

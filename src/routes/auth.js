@@ -10,7 +10,7 @@ import { OAuth2Client } from 'google-auth-library';
 const r = Router();
 
 // ── Register (first-ever user becomes admin, otherwise invite required) ──
-// ── Public self-signup — creates demo account ─────────────
+// ── Public self-signup - creates demo account ─────────────
 r.post('/signup', async (req, res) => {
   try {
     const { name, email, password, first_name, last_name, phone, company } = req.body;
@@ -50,7 +50,7 @@ r.post('/register', async (req, res) => {
     if (!token) {
       const total = db.prepare('SELECT COUNT(*) as c FROM accounts WHERE is_active=1').get().c;
       if (total > 0) return res.status(403).json({ error: 'An invite link is required to register' });
-      // First ever user — needs name and email
+      // First ever user - needs name and email
       const { name, email } = req.body;
       if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
       const exists = db.prepare('SELECT id FROM accounts WHERE email=? AND is_active=1').get(email.toLowerCase());
@@ -70,7 +70,7 @@ r.post('/register', async (req, res) => {
     const provisional = db.prepare('SELECT * FROM accounts WHERE id=? AND is_active=0').get(invite.account_id);
     if (!provisional) return res.status(400).json({ error: 'Invite link is invalid or has already been used' });
 
-    // Activate it with the password — name was already set by admin
+    // Activate it with the password - name was already set by admin
     const hash = await bcrypt.hash(password, 12);
     const { first_name, last_name, phone, company } = req.body;
     db.prepare('UPDATE accounts SET password_hash=?,is_active=1,first_name=?,last_name=?,phone=?,company=? WHERE id=?').run(hash, first_name||null, last_name||null, phone||null, company||null, provisional.id);
@@ -88,7 +88,7 @@ r.post('/register', async (req, res) => {
   }
 });
 
-// ── Login — detects multiple roles and returns context choices ──
+// ── Login - detects multiple roles and returns context choices ──
 r.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -217,7 +217,7 @@ r.get('/invite/:token', (req, res) => {
   res.json({ email: inv.email, accountName: inv.account_name, role: inv.role, name: inv.invited_name });
 });
 
-// ── Send invite — user sets their OWN password on first login ──
+// ── Send invite - user sets their OWN password on first login ──
 r.post('/invite', auth, async (req, res) => {
   try {
     const { email, accountId, role = 'member' } = req.body;
@@ -239,12 +239,12 @@ r.post('/invite', auth, async (req, res) => {
     db.prepare('INSERT INTO invite_tokens (id,account_id,email,token,role,expires_at) VALUES (?,?,?,?,?,?)').run(uuid(), accountId, email.toLowerCase(), token, role, expires);
 
     const appUrl = process.env.APP_URL || 'http://localhost:3001';
-    // Link goes to set-password page, not register — user only needs to set name + password
+    // Link goes to set-password page, not register - user only needs to set name + password
     const url = `${appUrl}/register.html?token=${token}&email=${encodeURIComponent(email)}`;
 
     await sendMail({
       to: email,
-      subject: `You're invited to join ${account.name} — Mamudem Tickets`,
+      subject: `You're invited to join ${account.name} - Mamudem Tickets`,
       html: inviteEmail({ fromName: req.user.name, accountName: account.name, url, role })
     });
 
@@ -350,7 +350,7 @@ r.post('/scanner-pin', auth, async (req, res) => {
     const scannerEmail = `scanner-${id.slice(0,8)}@es.internal`;
     const hash = await bcrypt.hash(pin, 8);
     const accountId = uuid();
-    db.prepare('INSERT INTO accounts (id,name,email,password_hash,role) VALUES (?,?,?,?,?)').run(accountId, label || `Scanner — ${event.name}`, scannerEmail, hash, 'scanner');
+    db.prepare('INSERT INTO accounts (id,name,email,password_hash,role) VALUES (?,?,?,?,?)').run(accountId, label || `Scanner - ${event.name}`, scannerEmail, hash, 'scanner');
     db.prepare('INSERT INTO scanner_pins (id,account_id,event_id,pin,label,allow_lookup,allowed_levels,created_by) VALUES (?,?,?,?,?,?,?,?)').run(id, accountId, eventId, pin, label || 'Door Scanner', allow_lookup ? 1 : 0, allowed_levels || null, req.user.id);
     res.json({ ok: true, pin, label: label || 'Door Scanner', allow_lookup: !!allow_lookup, allowed_levels, id });
   } catch(e) { console.error(e); res.status(500).json({ error: e.message }); }
