@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pricing — Mamudem</title>
+<title>Pricing - Mamudem</title>
 <meta name="description" content="Simple, transparent pricing for Mamudem event ticketing. One event, all features included. No monthly fees, no surprises.">
 <meta name="keywords" content="synagogue ticketing pricing, event ticketing cost, community event software pricing, cheap event ticketing">
 <meta name="robots" content="index, follow">
@@ -156,7 +156,7 @@ fetch('/api/connect/pricing-plans').then(r=>r.json()).then(({ plans }) => {
       <div class="tier-period">${p.description||'&nbsp;'}</div>
       <div class="tier-desc"></div>
       <ul class="tier-features">${feats.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
-      <a href="/signup.html" class="btn-cta${isFeatured?' gold':''}">Get Started →</a>
+      <a href="/signup.html" class="btn-cta${isFeatured?' gold':''}">Get Started</a>
     </div>`;
   }).join('');
 }).catch(() => loadFromSiteContent());
@@ -173,7 +173,7 @@ function loadFromSiteContent() {
       { nameKey:'pricing.tier3_name', priceKey:'pricing.tier3_price', periodKey:'pricing.tier3_period', descKey:'pricing.tier3_desc', featKey:'pricing.tier3_features', cta:'Get Started', ctaHref:'/signup.html', featured:true, badge:'Best Value' },
     ];
     const grid = document.getElementById('tiers-grid');
-    if (!tiers.some(t => c[t.nameKey])) return; // nothing configured — leave empty
+    if (!tiers.some(t => c[t.nameKey])) return; // nothing configured - leave empty
     grid.innerHTML = tiers.map(t => {
       const feats = (c[t.featKey]||'').split('\n').filter(Boolean);
       return `<div class="tier${t.featured?' featured':''}">
@@ -183,7 +183,7 @@ function loadFromSiteContent() {
         ${t.periodKey ? `<div class="tier-period">${c[t.periodKey]||''}</div>` : '<div class="tier-period">&nbsp;</div>'}
         <div class="tier-desc">${c[t.descKey]||''}</div>
         <ul class="tier-features">${feats.map(f=>`<li>${f}</li>`).join('')}</ul>
-        <a href="${t.ctaHref}" class="btn-cta${t.featured?' gold':''}">${t.cta} →</a>
+        <a href="${t.ctaHref}" class="btn-cta${t.featured?' gold':''}">${t.cta}</a>
       </div>`;
     }).join('');
   }).catch(() => {});

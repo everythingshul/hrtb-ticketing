@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Mamudem — Door Scanner</title>
+<title>Mamudem - Door Scanner</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
   body { background: #080808; }
@@ -65,7 +65,7 @@
       <div class="numpad-btn" onclick="addDigit('9')">9</div>
       <div class="numpad-btn del" onclick="delDigit()">⌫</div>
       <div class="numpad-btn" onclick="addDigit('0')">0</div>
-      <div class="numpad-btn enter" onclick="submitPin()">Enter →</div>
+      <div class="numpad-btn enter" onclick="submitPin()">Enter</div>
     </div>
   </div>
   <div class="back-link"><a href="/index.html">← Staff login</a></div>
@@ -91,7 +91,7 @@ async function loadEvents() {
 
   try {
     if (preselect) {
-      // Event-specific URL — only show this event, no dropdown
+      // Event-specific URL - only show this event, no dropdown
       const data = await fetch('/api/events/public/' + preselect).then(r=>r.json());
       if (data.event) {
         const sel = document.getElementById('event-select');

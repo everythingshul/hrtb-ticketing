@@ -169,6 +169,7 @@ const api = {
     maintenanceStatus: () => req('/admin/maintenance'),
     setMaintenance: enabled => req('/admin/maintenance', { method: 'POST', body: JSON.stringify({ enabled }) }),
     contactAdmin: data => req('/admin/contact', { method: 'POST', body: JSON.stringify(data) }),
+    testEmail: to => req('/admin/test-email', { method: 'POST', body: JSON.stringify({ to }) }),
     getSiteContent: () => req('/admin/site-content'),
     updateSiteContent: updates => req('/admin/site-content', { method: 'PATCH', body: JSON.stringify({ updates }) }),
   },
@@ -241,7 +242,7 @@ function renderSidebar(activePage) {
       ${memberships.map(m => `<button class="sb-item" onclick="switchAccount('${m.accountId}')" style="font-size:11px;opacity:.7">${esc(m.accountName)} (${m.role})</button>`).join('')}
     </div>` : '';
 
-  // Event submenu — shown when inside an event page
+  // Event submenu - shown when inside an event page
   const eventPages = ['event-detail.html','event-stats.html','event-levels.html','event-sales.html','event-sell.html','event-staff.html'];
   const inEventPage = eventPages.some(p => window.location.pathname.includes(p));
   const eventSubmenuHTML = (inEventPage && currentEventId) ? `
@@ -275,10 +276,11 @@ function renderSidebar(activePage) {
   }
 
   sidebar.innerHTML = `
-    <div class="sb-logo" style="padding:12px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1)">
-      <a href="/dashboard.html" style="display:block">
+    <div class="sb-logo" style="padding:12px 16px 10px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <a href="/dashboard.html" style="display:block;flex:1;min-width:0">
         <img src="/logo.png" alt="Mamudem" style="width:100%;max-width:180px;height:auto;display:block;filter:brightness(0) invert(1)" id="sb-logo-img">
       </a>
+      <button id="sb-toggle" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:15px;line-height:1;padding:5px 7px;border-radius:6px;flex-shrink:0">&#x2715;</button>
     </div>
     <nav class="sb-nav" id="sb-nav-content">
       ${switcherHTML}
@@ -401,7 +403,7 @@ window.addEventListener('DOMContentLoaded', () => {
   new MutationObserver(() => applyEnglishOnly()).observe(document.body, { childList: true, subtree: true });
 });
 // Keeps TKT- prefix in place for manual typing
-// USB/Bluetooth scanners send full IDs rapidly — they overwrite the prefix naturally
+// USB/Bluetooth scanners send full IDs rapidly - they overwrite the prefix naturally
 function enforceTktPrefix(input) {
   let val = input.value.toUpperCase();
   // If scanner pasted a full ID (fast input), keep it as-is
@@ -480,7 +482,7 @@ const statusLabel = { pending:'Pending', preprint:'Pre-printed', sent:'Sent', ch
 function badgeHTML(status) { return `<span class="badge badge-${status}">${statusLabel[status]||status}</span>`; }
 function qrUrl(id) { return `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(id)}&margin=8`; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmtDate(d) { return d ? new Date(d).toLocaleString() : '—'; }
+function fmtDate(d) { return d ? new Date(d).toLocaleString() : '-'; }
 
 function downloadCSV(url, filename) {
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click();

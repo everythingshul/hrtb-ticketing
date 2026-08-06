@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ticket Transactions — Admin</title>
+<title>Ticket Transactions - Admin</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
   <main class="main"><div class="page">
 
     <div class="ph mb16">
-      <div class="ph-left"><h1>Ticket Transactions</h1><p class="text2 sm">Every ticket purchase — online, portal, IVR, SMS.</p></div>
+      <div class="ph-left"><h1>Ticket Transactions</h1><p class="text2 sm">Every ticket purchase - online, portal, IVR, SMS.</p></div>
     </div>
 
     <!-- Filters -->
@@ -127,16 +127,16 @@ async function load(page) {
         <th>Level</th><th>Channel</th><th>Amount</th><th>Status</th><th>Ticket ID</th><th>Actions</th>
       </tr></thead>
       <tbody>${txns.map(t => `<tr>
-        <td class="xs text2" style="white-space:nowrap">${t.created_at?.slice(0,16)||'—'}</td>
+        <td class="xs text2" style="white-space:nowrap">${t.created_at?.slice(0,16)||'-'}</td>
         <td><strong>${esc(t.first_name||'')} ${esc(t.last_name||'')}</strong></td>
-        <td class="text2 sm">${esc(t.email||'—')}</td>
-        <td class="text2 sm" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.event_name||'—')}</td>
-        <td class="text2 sm">${esc(t.account_name||'—')}</td>
-        <td>${t.level_name ? `<span class="badge" style="font-size:10px">${esc(t.level_name)}</span>` : '—'}</td>
+        <td class="text2 sm">${esc(t.email||'-')}</td>
+        <td class="text2 sm" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.event_name||'-')}</td>
+        <td class="text2 sm">${esc(t.account_name||'-')}</td>
+        <td>${t.level_name ? `<span class="badge" style="font-size:10px">${esc(t.level_name)}</span>` : '-'}</td>
         <td><span class="badge badge-${t.channel==='online'?'checked':t.channel==='phone'||t.channel==='sms'?'warn':'deactivated'}" style="font-size:10px">${esc(t.channel||'portal')}</span></td>
-        <td class="mono xs">${t.amount_cents ? '$'+(t.amount_cents/100).toFixed(2) : '—'}</td>
+        <td class="mono xs">${t.amount_cents ? '$'+(t.amount_cents/100).toFixed(2) : '-'}</td>
         <td><span class="badge badge-${t.status==='checked'?'checked':t.status==='sent'?'checked':t.status==='deactivated'?'deactivated':'warn'}" style="font-size:10px">${esc(t.status||'pending')}</span></td>
-        <td class="mono xs">${esc(t.ticket_id||'—')}</td>
+        <td class="mono xs">${esc(t.ticket_id||'-')}</td>
         <td><div class="row" style="gap:4px">
           ${t.payment_intent_id ? `<button class="btn btn-sm btn-danger" onclick="openRefund('${t.id}','${esc(t.first_name||'')} ${esc(t.last_name||'')}','${t.amount_cents||0}','${t.payment_intent_id||''}')">Refund</button>` : ''}
           ${t.status !== 'deactivated' ? `<button class="btn btn-sm" onclick="cancelTicket('${t.id}')">Cancel</button>` : ''}
@@ -149,7 +149,7 @@ async function load(page) {
     if (pages > 1) {
       pager.innerHTML = `<button class="btn btn-sm btn-ghost" onclick="load(${currentPage-1})" ${currentPage<=1?'disabled':''}>← Prev</button>
         <span>Page ${currentPage} of ${pages} &nbsp;(${total} total)</span>
-        <button class="btn btn-sm btn-ghost" onclick="load(${currentPage+1})" ${currentPage>=pages?'disabled':''}>Next →</button>`;
+        <button class="btn btn-sm btn-ghost" onclick="load(${currentPage+1})" ${currentPage>=pages?'disabled':''}>Next</button>`;
     } else { pager.innerHTML = ''; }
   } catch(e) { wrap.innerHTML = `<div class="info-box warn">Error: ${esc(e.message)}</div>`; }
 }
@@ -173,7 +173,7 @@ async function doRefund() {
     const d = await api.admin.refundTicket(_refundId, { cancel_ticket: cancel, amount_cents });
     if (d.error) throw new Error(d.error);
     hideModal('modal-refund');
-    toast('Refund processed' + (cancel ? ' — ticket cancelled' : ''));
+    toast('Refund processed' + (cancel ? ' - ticket cancelled' : ''));
     load(currentPage);
   } catch(e) { warn.textContent = e.message; warn.style.display = 'block'; btn.disabled=false; btn.textContent='Process Refund'; }
 }

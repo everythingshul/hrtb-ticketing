@@ -89,7 +89,7 @@
         <div class="setting-card">
           <div class="setting-hd">
             <div>
-              <div class="setting-title">Ticket Activation <span class="tip-icon" data-tip="Allows attendees to self-activate by entering their ticket ID on the sale page — useful for offline-assigned tickets.">i</span></div>
+              <div class="setting-title">Ticket Activation <span class="tip-icon" data-tip="Allows attendees to self-activate by entering their ticket ID on the sale page - useful for offline-assigned tickets.">i</span></div>
               <div class="setting-sub">Attendees can self-activate by entering their ticket ID on the sale page</div>
             </div>
             <label class="toggle-pill">
@@ -141,8 +141,8 @@
         <div class="section-badge">Ticket Levels</div>
       </div>
       <div class="card mb22">
-        <p class="sm text2 mb12">Set price and toggle online availability per level. <a href="/event-levels.html?id=" id="levels-link" style="color:var(--cyan)">Manage levels →</a></p>
-        <div id="levels-list"><div class="text2 sm">No ticket levels — add them on the Ticket Levels page first.</div></div>
+        <p class="sm text2 mb12">Set price and toggle online availability per level. <a href="/event-levels.html?id=" id="levels-link" style="color:var(--cyan)">Manage levels</a></p>
+        <div id="levels-list"><div class="text2 sm">No ticket levels - add them on the Ticket Levels page first.</div></div>
         <div id="online-sales-count" style="display:none" class="info-box ok mt12"></div>
       </div>
 
@@ -177,7 +177,7 @@
             <input type="number" id="pc-max-total" min="1" placeholder="e.g. 100">
           </div>
           <div id="pc-level-limits" class="mb8" style="display:none">
-            <label class="mb6">Max Tickets Per Level <span class="xs text2">(optional — leave blank = unlimited)</span></label>
+            <label class="mb6">Max Tickets Per Level <span class="xs text2">(optional - leave blank = unlimited)</span></label>
             <div id="pc-level-limits-rows"></div>
           </div>
           <div class="fg mb8">
@@ -193,7 +193,7 @@
 
     </div><!-- end sales-wrap -->
 
-    <!-- Phone & SMS ordering section — always visible -->
+    <!-- Phone & SMS ordering section - always visible -->
     <div id="phone-ordering-wrap" style="display:none">
       <div class="mb8 mt4" style="display:flex;align-items:center;gap:8px">
         <div class="section-badge" style="background:#0d2454">
@@ -227,9 +227,9 @@ async function load() {
   levels = attData.levels || [];
   eventData = attData.event;
   if (!eventData) { window.location = '/events.html'; return; }
-  document.getElementById('ev-title').textContent = eventData.name + ' — Online Sales';
+  document.getElementById('ev-title').textContent = eventData.name + ' - Online Sales';
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-  document.title = `Online Sales — ${eventData.name}`;
+  document.title = `Online Sales - ${eventData.name}`;
   localStorage.setItem('hrtb_current_event_name', eventData.name);
   document.getElementById('levels-link').href = `/event-levels.html?id=${eventId}`;
   renderSidebar();
@@ -299,7 +299,7 @@ function renderSettings() {
 
 function renderLevels() {
   const list = document.getElementById('levels-list');
-  if (!levels.length) { list.innerHTML = '<div class="text2 sm">No ticket levels — add them on the Ticket Levels page first.</div>'; return; }
+  if (!levels.length) { list.innerHTML = '<div class="text2 sm">No ticket levels - add them on the Ticket Levels page first.</div>'; return; }
   list.innerHTML = levels.map(l => `
     <div class="level-card">
       <span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44;min-width:80px;text-align:center">${esc(l.name)}</span>
@@ -497,7 +497,7 @@ function renderPromos() {
     <thead><tr><th>Code</th><th>Discount</th><th>Expires</th><th>Uses</th><th>Status</th><th></th></tr></thead>
     <tbody>${promos.map(p => {
       const discLabel = p.type === 'percent' ? `${p.value}%` : `$${(p.value/100).toFixed(2)}`;
-      const expires = p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '—';
+      const expires = p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '-';
       const isExpired = p.expires_at && new Date(p.expires_at) < new Date();
       const usesLabel = `${p.uses}${p.max_uses ? '/'+p.max_uses : ''}`;
       const moneyLabel = p.max_money ? ` · $${(p.money_given/100).toFixed(2)}/$${(p.max_money/100).toFixed(2)} off` : '';
@@ -561,12 +561,12 @@ async function loadPhoneOrdering() {
           <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
             <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">SMS</div>
             <div style="font-size:13px;font-weight:600">Guests text to buy</div>
-            <div class="xs text2 mt4">Customer texts the number → conversational checkout → card entry → ticket emailed</div>
+            <div class="xs text2 mt4">Customer texts the number conversational checkout card entry ticket emailed</div>
           </div>
           <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
             <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">IVR Phone</div>
             <div style="font-size:13px;font-weight:600">Guests call to buy</div>
-            <div class="xs text2 mt4">Customer calls → automated voice menu → keypad entry → card charged → ticket emailed</div>
+            <div class="xs text2 mt4">Customer calls automated voice menu keypad entry card charged ticket emailed</div>
           </div>
         </div>
         <div class="info-box tip mt12" style="font-size:12px">Payments go through the platform Stripe account. Tickets are issued the same as online purchases. Card data is never stored.</div>`;

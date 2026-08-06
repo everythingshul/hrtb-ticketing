@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign Up Free — Mamudem</title>
+<title>Sign Up Free - Mamudem</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
 
@@ -54,7 +54,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 
       <div class="demo-badge">
         <strong>You'll start in Demo Mode</strong>
-        Your account comes with a full demo event loaded with sample attendees, tickets, and a scanner PIN — so you can explore every feature right away. Upgrade anytime to go live.
+        Your account comes with a full demo event loaded with sample attendees, tickets, and a scanner PIN - so you can explore every feature right away. Upgrade anytime to go live.
       </div>
 
       <div id="err" class="info-box warn mb16" style="display:none"></div>
@@ -76,7 +76,7 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
         </label>
       </div>
 
-      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;margin-top:4px" id="btn-submit" onclick="signup()">Create Free Account →</button>
+      <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px;margin-top:4px" id="btn-submit" onclick="signup()">Create Free Account</button>
       <div id="google-section" style="display:none">
         <div style="display:flex;align-items:center;gap:10px;margin:14px 0"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11px;color:var(--text2);flex-shrink:0">or sign up with</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
         <div id="google-btn-signup" style="display:flex;justify-content:center;min-height:44px"></div>
@@ -98,7 +98,7 @@ function validatePhone(input) {
   if (!val) { hint.textContent = ''; return; }
   if (!val.startsWith('+')) { hint.textContent = 'Must start with country code, e.g. +1 (US), +44 (UK), +972 (Israel)'; hint.style.color='var(--warn)'; return; }
   const digits = val.replace(/[^0-9]/g,'').length;
-  if (digits < 7 || digits > 15) { hint.textContent = 'Invalid length — most numbers are 10–15 digits including country code'; hint.style.color='var(--warn)'; return; }
+  if (digits < 7 || digits > 15) { hint.textContent = 'Invalid length - most numbers are 10–15 digits including country code'; hint.style.color='var(--warn)'; return; }
   hint.textContent = 'Looks good!'; hint.style.color='var(--green)';
 }
 
@@ -130,10 +130,10 @@ async function signup() {
   } catch(e) {
     let msg = e.message;
     if (msg.includes('already exists') || msg === 'ACCOUNT_EXISTS') {
-      msg = 'An account with this email already exists. <a href="/login.html" style="color:var(--navy);font-weight:600">Sign in instead →</a>';
+      msg = 'An account with this email already exists. <a href="/login.html" style="color:var(--navy);font-weight:600">Sign in instead</a>';
     }
     err.innerHTML = msg; err.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Create Free Account →';
+    btn.disabled = false; btn.textContent = 'Create Free Account';
   }
 }
 </script>
@@ -167,13 +167,13 @@ async function handleGoogleSignup(response) {
     });
     const d = await r.json();
     if (d.error) { errEl.textContent = d.error; errEl.style.display='block'; return; }
-    // New account with no org info yet → ask for it
+    // New account with no org info yet ask for it
     if (d.new_account && !d.user.company) {
       window._pendingGoogleToken = d.token;
       window._pendingGoogleUser = d.user;
       showGoogleOrgForm(d.user);
     } else {
-      // Existing account or already has org info → just log in
+      // Existing account or already has org info just log in
       Auth.set(d.token, d.user);
       window.location = d.user.role === 'admin' ? '/admin.html' : '/dashboard.html';
     }
@@ -188,13 +188,13 @@ function showGoogleOrgForm(user) {
       <div style="font-weight:700">${user.name||user.email}</div>
       <div class="text2 xs">${user.email}</div>
     </div>
-    <p class="text2 sm mb16">One more step — tell us about your organization:</p>
+    <p class="text2 sm mb16">One more step - tell us about your organization:</p>
     <div class="fg"><label>Business or Organization Name *</label>
       <input id="gg-org" placeholder="Beth Israel Synagogue" autocomplete="organization"></div>
     <div class="fg"><label>Phone * <span style="font-size:11px;color:var(--text2)">(include country code)</span></label>
       <input id="gg-phone" type="tel" placeholder="+1 555 000 0000"></div>
     <div id="gg-err" class="info-box warn" style="display:none;margin-bottom:10px"></div>
-    <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px" onclick="finishGoogleSignup()">Complete Setup →</button>`;
+    <button class="btn btn-gold" style="width:100%;justify-content:center;padding:12px" onclick="finishGoogleSignup()">Complete Setup</button>`;
 }
 
 async function finishGoogleSignup() {

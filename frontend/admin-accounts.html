@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin — Accounts</title>
+<title>Admin - Accounts</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -100,10 +100,10 @@
       <button class="btn btn-gold" onclick="savePhoneNumber()">Save</button>
     </div>
     <div id="ph-buy-section" style="display:none;margin-top:14px;padding:12px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Buying: <span id="ph-buying-number" style="font-family:monospace"></span> — ~$1.15/month</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px">Buying: <span id="ph-buying-number" style="font-family:monospace"></span> - ~$1.15/month</div>
       <div class="fg mb8"><label style="font-size:12px">Expiry Date</label><input id="ph-buy-expires" type="date"></div>
       <div class="row" style="gap:8px">
-        <button class="btn btn-gold" onclick="confirmPurchase()">Buy &amp; Assign →</button>
+        <button class="btn btn-gold" onclick="confirmPurchase()">Buy &amp; Assign</button>
         <button class="btn btn-ghost" onclick="document.getElementById('ph-buy-section').style.display='none'">Cancel</button>
       </div>
     </div>
@@ -303,7 +303,7 @@ async function openAccountFeatures(accountId, name) {
         </label>
         <div style="flex:1">
           <div style="font-size:12px;font-weight:600">${esc(label)}
-            ${isOverridden?`<span class="badge badge-warn" style="font-size:9px;margin-left:4px">${val===1?'FORCED ON':'FORCED OFF'}</span>`:`<span class="xs text2" style="font-weight:400"> — platform default</span>`}
+            ${isOverridden?`<span class="badge badge-warn" style="font-size:9px;margin-left:4px">${val===1?'FORCED ON':'FORCED OFF'}</span>`:`<span class="xs text2" style="font-weight:400"> - platform default</span>`}
           </div>
           <div class="xs text2">${esc(desc)}</div>
           ${isOverridden?`<button class="btn btn-sm btn-ghost" style="font-size:10px;padding:1px 6px;margin-top:4px" onclick="clearAccountFeature('${accountId}','${key}')">Clear override</button>`:''}
@@ -375,9 +375,9 @@ async function searchNumbers() {
     res.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Number</th><th>Location</th><th>Cost</th><th></th></tr></thead><tbody>
       ${data.numbers.map(n=>`<tr>
         <td style="font-family:monospace;font-weight:700">${esc(n.phoneNumber)}</td>
-        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'-')}</td>
         <td class="text2 sm">${esc(n.monthly_cost)}/mo</td>
-        <td><button class="btn btn-sm btn-primary" onclick="selectNumberToBuy('${esc(n.phoneNumber)}')">Buy →</button></td>
+        <td><button class="btn btn-sm btn-primary" onclick="selectNumberToBuy('${esc(n.phoneNumber)}')">Buy</button></td>
       </tr>`).join('')}</tbody></table></div>`;
   } catch(e) { res.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
 }
@@ -402,7 +402,7 @@ async function confirmPurchase() {
     if (data.error) throw new Error(data.error);
     toast(`✓ ${data.phoneNumber} purchased and assigned!`);
     hideModal('modal-phone-assign'); _pendingBuyNumber = null; await load();
-  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Buy & Assign →'; }
+  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent='Buy & Assign'; }
 }
 
 async function loadOwnedNumbers() {
@@ -415,7 +415,7 @@ async function loadOwnedNumbers() {
       ${data.numbers.map(n=>`<tr>
         <td style="font-family:monospace">${esc(n.phoneNumber)}</td>
         <td>${n.configured?'<span class="badge badge-checked" style="font-size:10px">✓</span>':'<span class="badge badge-warn" style="font-size:10px">!</span>'}</td>
-        <td class="text2 sm">${n.assignedEvent?esc(n.assignedEvent.name):'—'}</td>
+        <td class="text2 sm">${n.assignedEvent?esc(n.assignedEvent.name):'-'}</td>
         <td>${!n.assignedEvent?`<button class="btn btn-sm" onclick="assignOwnedNumber('${esc(n.phoneNumber)}')">Assign</button>`:''}</td>
       </tr>`).join('')}</tbody></table></div>`;
   } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }

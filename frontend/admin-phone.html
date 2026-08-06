@@ -50,12 +50,12 @@
       <div class="card mb16">
         <div class="section-title mb12">Search &amp; Buy a Number</div>
         <div class="info-box tip mb12" style="font-size:12px">
-          <strong>Toll-free numbers recommended</strong> — no per-number registration needed, SMS works immediately after your one-time toll-free verification. ~$2.00/month per number.
+          <strong>Toll-free numbers recommended</strong> - no per-number registration needed, SMS works immediately after your one-time toll-free verification. ~$2.00/month per number.
         </div>
         <div class="form-row mb12" style="gap:10px;align-items:flex-end">
           <div class="fg" style="margin:0"><label>Number Type</label>
             <select id="ph-type">
-              <option value="tollFree">Toll-Free (+1-800/888/877…) — Recommended</option>
+              <option value="tollFree">Toll-Free (+1-800/888/877…) - Recommended</option>
               <option value="local">Local (requires 10DLC registration)</option>
             </select></div>
           <div class="fg" style="margin:0" id="ph-area-wrap" style="display:none"><label>Area Code <span class="tip-icon" data-tip="Only for local numbers">i</span></label>
@@ -73,7 +73,7 @@
         <div id="ph-buy-confirm" style="display:none;margin-top:14px;padding:14px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
           <div style="font-size:14px;font-weight:700;margin-bottom:10px">
             Buy: <span id="ph-buying-num" style="font-family:monospace"></span>
-            <span class="text2 sm" style="font-weight:400"> — <span id="ph-buying-cost">$2.00</span>/month</span>
+            <span class="text2 sm" style="font-weight:400"> - <span id="ph-buying-cost">$2.00</span>/month</span>
           </div>
           <div class="fg mb10" style="max-width:260px"><label style="font-size:12px">Expiry Date <span class="tip-icon" data-tip="System sends 1-day warning then auto-releases. Blank = never expires.">i</span></label>
             <input id="ph-buy-expires" type="date"></div>
@@ -125,13 +125,13 @@
           <div class="fg" style="margin:0;max-width:280px">
             <label style="font-size:12px">TTS Voice Override <span class="tip-icon" data-tip="Override the global voice for this event only. Blank = use global setting.">i</span></label>
             <select id="ph-ivr-voice">
-              <option value="">— Use global default —</option>
-              <option value="Polly.Matthew">Matthew (Male, US) — clear &amp; natural</option>
-              <option value="Polly.Joanna">Joanna (Female, US) — warm &amp; friendly</option>
-              <option value="Polly.Brian">Brian (Male, UK) — warm &amp; authoritative</option>
-              <option value="Polly.Amy">Amy (Female, UK) — upbeat &amp; clear</option>
-              <option value="Polly.Justin">Justin (Male, US) — young &amp; energetic</option>
-              <option value="Polly.Kendra">Kendra (Female, US) — bright &amp; cheerful</option>
+              <option value="">- Use global default -</option>
+              <option value="Polly.Matthew">Matthew (Male, US) - clear &amp; natural</option>
+              <option value="Polly.Joanna">Joanna (Female, US) - warm &amp; friendly</option>
+              <option value="Polly.Brian">Brian (Male, UK) - warm &amp; authoritative</option>
+              <option value="Polly.Amy">Amy (Female, UK) - upbeat &amp; clear</option>
+              <option value="Polly.Justin">Justin (Male, US) - young &amp; energetic</option>
+              <option value="Polly.Kendra">Kendra (Female, US) - bright &amp; cheerful</option>
             </select>
           </div>
           <button class="btn btn-sm btn-primary" onclick="previewVoice()">
@@ -156,7 +156,7 @@ renderSidebar();
 const params = new URLSearchParams(location.search);
 const eventId = params.get('id');
 
-// No event selected — show picker instead of redirecting
+// No event selected - show picker instead of redirecting
 if (!eventId) {
   document.getElementById('page-title').textContent = 'Phone & SMS/IVR';
   document.getElementById('page-sub').textContent = 'Select an event to manage its phone settings';
@@ -218,7 +218,7 @@ async function load() {
 
     document.getElementById('page-title').textContent = eventData.name;
     document.getElementById('page-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-    document.title = eventData.name + ' — Phone';
+    document.title = eventData.name + ' - Phone';
 
     // Backend returns { global, overrides, settings }
     globalSettings = settingsRes.global || {};
@@ -285,7 +285,7 @@ async function searchNums() {
       + d.numbers.map(n=>`<tr>
           <td style="font-family:monospace;font-weight:700;letter-spacing:.05em">${esc(fmtNum(n.phoneNumber))}</td>
           <td><span class="badge ${n.type==='toll-free'?'badge-checked':''}" style="font-size:10px">${n.type||'local'}</span></td>
-          <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+          <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'-')}</td>
           <td class="text2 sm">${n.monthly_cost||'$1.15'}/mo</td>
           <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}','${n.monthly_cost||'$1.15'}')">Select</button></td>
         </tr>`).join('')
@@ -330,7 +330,7 @@ async function toggleSms() {
   const newVal = !eventData.sms_ivr_enabled;
   try {
     await fetch('/api/phone/event/'+eventId+'/toggle-sms',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.token()},body:JSON.stringify({enabled:newVal})});
-    toast(newVal?'SMS/IVR enabled':'Disabled — number kept');
+    toast(newVal?'SMS/IVR enabled':'Disabled - number kept');
     await load();
   } catch(e) { toast(e.message,'error'); }
 }
@@ -445,10 +445,10 @@ function renderIvrFields() {
             placeholder="${esc(globalVal)}">${esc(shownText)}</textarea>
         </div>
         <div class="fg" style="margin:0">
-          <label style="font-size:11px">Recording <span style="font-weight:400;color:var(--text3)">(overrides TTS — URL or upload)</span></label>
+          <label style="font-size:11px">Recording <span style="font-weight:400;color:var(--text3)">(overrides TTS - URL or upload)</span></label>
           <div class="row" style="gap:4px">
             <input id="${recId}" style="font-size:11px;flex:1"
-              placeholder="${esc(globalRec||'https://... .mp3 or upload →')}"
+              placeholder="${esc(globalRec||'https://... .mp3 or upload')}"
               value="${esc(shownRec)}">
             <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:10px;white-space:nowrap" title="Upload audio file">
               Upload <input type="file" accept="audio/*" style="display:none" onchange="uploadIvrAudio(this,'${recId}')">
@@ -529,7 +529,7 @@ async function uploadIvrAudio(input, targetFieldId) {
     if (d.error) throw new Error(d.error);
     const field = document.getElementById(targetFieldId);
     if (field) field.value = d.url;
-    toast('Audio uploaded — save to apply');
+    toast('Audio uploaded - save to apply');
   } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 
@@ -539,7 +539,7 @@ function previewTts(fieldId, key) {
   if (!el) return;
   const v = document.getElementById('ph-ivr-voice')?.value || globalSettings['ivr.tts_voice'] || 'Polly.Matthew';
   const text = (el.value?.trim() || el.dataset?.global || globalSettings[key] || '').replace(/{{[^}]+}}/g, 'example');
-  if (!text) { toast('No text to preview — enter text or check global default', 'error'); return; }
+  if (!text) { toast('No text to preview - enter text or check global default', 'error'); return; }
   speak(text, v);
 }
 
@@ -593,7 +593,7 @@ function speak(text, voiceKey) {
     toast('Playing: ' + (pick ? pick.name : 'default'));
   }
 
-  // Always wait 150ms after cancel before speaking — Chrome requirement
+  // Always wait 150ms after cancel before speaking - Chrome requirement
   setTimeout(() => {
     if (synth.getVoices().length > 0) {
       doIt();

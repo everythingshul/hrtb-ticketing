@@ -218,7 +218,7 @@ async function applyPromo() {
       promoData = res.data;
       resultEl.style.background='#f0fff4'; resultEl.style.border='1px solid #b2f5ca'; resultEl.style.color='#145a2e';
       var savings = '$'+(res.data.discountCents/100).toFixed(2);
-      resultEl.innerHTML = '✓ Promo applied — you save '+savings+'! New total: $'+(res.data.finalCents/100).toFixed(2);
+      resultEl.innerHTML = '✓ Promo applied - you save '+savings+'! New total: $'+(res.data.finalCents/100).toFixed(2);
       // Reload payment element with discounted total
       loadPaymentElement();
     }
@@ -291,7 +291,7 @@ function load() {
     document.getElementById('activation-panel').style.display='block';
   }
   if(!eventData.salesOpen){
-    // Sales closed — hide purchase panel, only show activation
+    // Sales closed - hide purchase panel, only show activation
     document.getElementById('purchase-panel').style.display='none';
   } else if(eventData.allowActivation){
     document.getElementById('purchase-panel').classList.remove('centered');
@@ -398,10 +398,10 @@ function loadPaymentElement(){
   .then(function(r){return r.json().then(function(d){return{ok:r.ok,data:d};});})
   .then(function(result){
     if(!result.ok) throw new Error(result.data.error||'Could not start payment');
-    // Free order — no payment needed
+    // Free order - no payment needed
     if(result.data.free){
       currentOrderId=result.data.orderId;
-      document.getElementById('payment-element').innerHTML='<div style="text-align:center;padding:16px;color:#27a85f;font-weight:600">✓ Free order — click Complete below</div>';
+      document.getElementById('payment-element').innerHTML='<div style="text-align:center;padding:16px;color:#27a85f;font-weight:600">✓ Free order - click Complete below</div>';
       var btn=document.getElementById('pay-btn');
       btn.disabled=false; btn.textContent='Complete Order \u2192';
       btn.onclick=function(){goStep('step-confirm');pollOrder(currentOrderId);};
@@ -480,7 +480,7 @@ function activateTicket(){
     if(btn){btn.disabled=false;btn.textContent='Activate Ticket';}
     if(result.ok){
       document.getElementById('activate-success').style.display='block';
-      document.getElementById('activate-name').textContent=result.data.attendee.first_name+' '+result.data.attendee.last_name+' — '+result.data.attendee.event_name;
+      document.getElementById('activate-name').textContent=result.data.attendee.first_name+' '+result.data.attendee.last_name+' - '+result.data.attendee.event_name;
       document.getElementById('activate-id').value='';
     } else if(result.data.already){
       document.getElementById('activate-success').style.display='block';

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mamudem — Set Up Your Account</title>
+<title>Mamudem - Set Up Your Account</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -26,7 +26,7 @@
         <div class="fg"><label>Email</label><input id="email" type="email" placeholder="you@example.com"></div>
       </div>
 
-      <!-- Name display (shown when invited — read only, set by admin) -->
+      <!-- Name display (shown when invited - read only, set by admin) -->
       <div id="invited-name-display" style="display:none;margin-bottom:14px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r)">
         <div style="font-size:11px;color:var(--text2);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em;font-weight:600">Your name</div>
         <div id="invited-name" style="font-size:15px;font-weight:600;color:var(--navy)"></div>
@@ -52,7 +52,7 @@
         <input id="pass2" type="password" placeholder="Repeat your password">
       </div>
       <button class="btn btn-gold" style="width:100%;justify-content:center;padding:11px;margin-top:4px" onclick="register()">
-        Activate my account →
+        Activate my account
       </button>
     </div>
     <div class="auth-foot" style="color:rgba(255,255,255,.5)">
@@ -68,7 +68,7 @@
   const inviteToken = params.get('token');
 
   if (!inviteToken) {
-    // No token — must be first admin setup
+    // No token - must be first admin setup
     document.getElementById('first-admin-fields').style.display = 'block';
     document.getElementById('page-title').textContent = 'Create admin account';
     document.getElementById('page-sub').textContent = 'Set up the system administrator account';
@@ -76,7 +76,7 @@
     if (pf) pf.style.display = 'none';
     document.getElementById('name').focus();
   } else {
-    // Invited user — look up invite to show their name
+    // Invited user - look up invite to show their name
     api.auth.inviteInfo(inviteToken).then(d => {
       document.getElementById('invite-banner').style.display = 'block';
       document.getElementById('invite-banner').innerHTML = ` You've been invited to <strong>Mamudem</strong> as <strong>${esc(d.role)}</strong>`;

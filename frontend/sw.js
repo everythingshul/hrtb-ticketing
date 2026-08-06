@@ -1,4 +1,4 @@
-// Mamudem — Service Worker
+// Mamudem - Service Worker
 // Strategy: Network-first for HTML/API, cache-first for static assets
 // This means: the app always tries to load fresh content from server first.
 // If offline, falls back to cache. App updates automatically when server changes.
@@ -32,7 +32,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Always go to network for API calls — never cache
+  // Always go to network for API calls - never cache
   if (url.pathname.startsWith('/api/')) return;
 
   // Network-first for HTML pages (ensures updates are picked up)

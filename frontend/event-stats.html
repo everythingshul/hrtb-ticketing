@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mamudem — Event Stats</title>
+<title>Mamudem - Event Stats</title>
 <link rel="stylesheet" href="/css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -145,11 +145,11 @@ async function load() {
   ]);
 
   if (eventData) {
-    document.getElementById('ev-title').textContent = eventData.name + ' — Stats';
+    document.getElementById('ev-title').textContent = eventData.name + ' - Stats';
     localStorage.setItem('hrtb_current_event_name', eventData.name);
     renderSidebar();
     document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-    document.title = `Stats — ${eventData.name}`;
+    document.title = `Stats - ${eventData.name}`;
   }
 
   // Plan usage meters
@@ -184,11 +184,11 @@ async function load() {
   }
 
   if (eventData) {
-    document.getElementById('ev-title').textContent = eventData.name + ' — Stats';
+    document.getElementById('ev-title').textContent = eventData.name + ' - Stats';
     localStorage.setItem('hrtb_current_event_name', eventData.name);
     renderSidebar();
     document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-    document.title = `Stats — ${eventData.name}`;
+    document.title = `Stats - ${eventData.name}`;
   }
 
   const { byStatus, confirmed, unconfirmed, byLevel, byStaffLevel, noLevel, total, online, offline, totalStaff } = statsData;
@@ -202,7 +202,7 @@ async function load() {
     <div class="stat"><div class="stat-label">Confirmed</div><div class="stat-val green">${confirmed}</div></div>
     <div class="stat"><div class="stat-label">Not Confirmed</div><div class="stat-val orange">${unconfirmed}</div></div>`;
 
-  // Status pie — always show all categories
+  // Status pie - always show all categories
   const statusAllKeys = ['pending','sent','checked','preprint','deactivated'];
   const statusValues = statusAllKeys.map(k => byStatus[k]||0);
   const statusTotal = statusValues.reduce((s,v)=>s+v, 0);
@@ -230,7 +230,7 @@ async function load() {
     { color:'#27a85f', label:'Online (Stripe)',  value: online||0,  pct: sourceTotal ? Math.round((online||0)/sourceTotal*100) : 0 },
     { color:'#00aadd', label:'Offline (Manual)', value: offline||0, pct: sourceTotal ? Math.round((offline||0)/sourceTotal*100) : 0 },
   ]);
-  // Staff pie — always show, empty if no data
+  // Staff pie - always show, empty if no data
   const staffColors = (staffStats.byLevel||[]).map((l,i) => l.color || LEVEL_PALETTE[i % LEVEL_PALETTE.length]);
   if (staffStats.byLevel && staffStats.byLevel.length > 0 && staffStats.total > 0) {
     buildPie('chart-staff', staffStats.byLevel.map(l=>l.name), staffStats.byLevel.map(l=>l.total), staffColors);
@@ -243,7 +243,7 @@ async function load() {
   }
   document.getElementById('card-staff').style.display = 'block';
 
-  // Level pies — always show
+  // Level pies - always show
   document.getElementById('card-level-checkin').style.display = 'block';
   document.getElementById('card-level-count').style.display = 'block';
   if (byLevel && byLevel.length > 0) {

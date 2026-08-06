@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mamudem — Event Ticketing for Synagogues & Communities</title>
+<title>Mamudem - Event Ticketing for Synagogues & Communities</title>
 <meta name="description" content="Professional event ticketing for synagogues and community organizations. Sell tickets online, manage attendees, scan at the door, and take orders by phone or SMS.">
 <meta name="keywords" content="synagogue event ticketing, jewish community event tickets, shul ticketing system, event management synagogue, online ticket sales community, IVR phone ticket ordering">
 <meta name="robots" content="index, follow">
@@ -18,12 +18,12 @@
 <link rel="canonical" href="https://mamudem.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Mamudem">
-<meta property="og:title" content="Mamudem — Event Ticketing for Communities">
+<meta property="og:title" content="Mamudem - Event Ticketing for Communities">
 <meta property="og:description" content="The complete ticketing platform built for synagogues and community organizations. Online sales, phone/SMS ordering, door scanning, and attendee management.">
 <meta property="og:url" content="https://mamudem.com/">
 <meta property="og:image" content="https://mamudem.com/icons/icon-512.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Mamudem — Event Ticketing for Communities">
+<meta name="twitter:title" content="Mamudem - Event Ticketing for Communities">
 <meta name="twitter:description" content="The complete ticketing platform built for synagogues and community organizations. Online sales, phone/SMS ordering, door scanning, and attendee management.">
 <meta name="twitter:image" content="https://mamudem.com/icons/icon-512.png">
 <meta name="description" content="Sell tickets online, manage attendees, scan at the door, take orders by phone and SMS. Built for synagogues and community organizations.">
@@ -56,7 +56,8 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 .hero::before{content:'';position:absolute;inset:0;background:url('https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1600&q=80&auto=format&fit=crop') center/cover no-repeat;opacity:0.15;pointer-events:none}
 .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,22,40,0.55) 0%,rgba(15,45,94,0.6) 60%,rgba(10,22,40,0.85) 100%);pointer-events:none}
 .hero-inner{position:relative;z-index:2}
-.hero-eyebrow{display:inline-block;background:rgba(200,150,12,.2);border:1px solid rgba(200,150,12,.4);color:var(--gold2);font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:20px}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:11px;color:rgba(255,255,255,.82);font-size:12.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:24px}
+.hero-eyebrow::before{content:'';width:26px;height:2px;background:var(--gold2);flex-shrink:0}
 .hero h1{font-size:clamp(30px,5.5vw,58px);font-weight:900;line-height:1.1;max-width:800px;margin:0 auto 22px;letter-spacing:-.02em}
 .hero h1 em{color:var(--gold2);font-style:normal}
 .hero p{font-size:clamp(15px,2vw,19px);color:rgba(255,255,255,.78);max-width:600px;margin:0 auto 38px;line-height:1.7}
@@ -102,8 +103,8 @@ nav{background:var(--navy);padding:0 32px;display:flex;align-items:center;justif
 .logo-strip{display:flex;align-items:center;gap:48px;width:max-content;animation:logoScroll 28s linear infinite}
 .logo-strip:hover{animation-play-state:paused}
 @keyframes logoScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-.logo-item{height:44px;width:auto;max-width:140px;opacity:.5;filter:grayscale(1);transition:all .25s;flex-shrink:0}
-.logo-item:hover{opacity:.9;filter:none;transform:scale(1.05)}
+.logo-item{height:64px;width:auto;max-width:180px;opacity:1;transition:transform .25s;flex-shrink:0}
+.logo-item:hover{transform:scale(1.06)}
 .logo-placeholder{height:40px;width:110px;background:var(--border);border-radius:8px;flex-shrink:0;opacity:.4}
 .customer-placeholder{width:120px;height:48px;background:var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text2);font-weight:600}
 
@@ -166,9 +167,9 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
   <div class="hero-inner">
     <div class="hero-eyebrow">Built for synagogues &amp; communities</div>
     <h1 id="hero-title">Event Ticketing That <em>Works the Way You Do</em></h1>
-    <p id="hero-subtitle">Sell tickets online, manage attendees, scan at the door — and let guests buy by phone or SMS. No tech skills needed.</p>
+    <p id="hero-subtitle">Sell tickets online, manage attendees, scan at the door - and let guests buy by phone or SMS. No tech skills needed.</p>
     <div class="hero-btns">
-      <a href="/signup.html" class="btn-gold" id="cta-primary">Get Started Free →</a>
+      <a href="/signup.html" class="btn-gold" id="cta-primary">Get Started Free</a>
       <a href="/pricing.html" class="btn-outline" id="cta-secondary">View Pricing</a>
     </div>
   </div>
@@ -192,21 +193,21 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#92400e" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.9.372 1.845.566 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
       </div>
       <h3 id="ch2-title">IVR Phone Ordering <span class="badge-new">NEW</span></h3>
-      <p id="ch2-desc">Guests call a dedicated number, navigate a menu by keypad, and pay with their card — fully automated, no staff needed.</p>
+      <p id="ch2-desc">Guests call a dedicated number, navigate a menu by keypad, and pay with their card - fully automated, no staff needed.</p>
     </div>
     <div class="channel-card">
       <div class="channel-icon" style="background:#dcfce7">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       </div>
       <h3 id="ch3-title">SMS Ordering <span class="badge-new">NEW</span></h3>
-      <p id="ch3-desc">Guests text your number, get a conversational checkout experience, and pay by card — no app, no login required.</p>
+      <p id="ch3-desc">Guests text your number, get a conversational checkout experience, and pay by card - no app, no login required.</p>
     </div>
     <div class="channel-card">
       <div class="channel-icon" style="background:#f3e8ff">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b21a8" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
       <h3 id="ch4-title">Staff Portal Sale</h3>
-      <p id="ch4-desc">Sell tickets manually through the admin portal — no payment required from the buyer, great for at-the-door sales.</p>
+      <p id="ch4-desc">Sell tickets manually through the admin portal - no payment required from the buyer, great for at-the-door sales.</p>
     </div>
   </div>
 </div>
@@ -232,13 +233,13 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
     </div><h3 id="f4-title">Promo Codes</h3><p id="f4-desc">Percentage or fixed discounts with usage limits, expiry dates, and email restrictions.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    </div><h3 id="f5-title">Your Own Stripe</h3><p id="f5-desc">Connect your Stripe account. All funds go directly to you — we never touch your money.</p></div>
+    </div><h3 id="f5-title">Your Own Stripe</h3><p id="f5-desc">Connect your Stripe account. All funds go directly to you - we never touch your money.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg>
     </div><h3 id="f6-title">Reports &amp; Stats</h3><p id="f6-desc">Real-time dashboard with check-in rates, revenue, level breakdowns, and daily email reports.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    </div><h3 id="f7-title">Demo Mode</h3><p id="f7-desc">Every account starts with a full demo event loaded with sample data — explore everything before going live.</p></div>
+    </div><h3 id="f7-title">Demo Mode</h3><p id="f7-desc">Every account starts with a full demo event loaded with sample data - explore everything before going live.</p></div>
     <div class="feat"><div class="feat-ico">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93A10 10 0 0 0 2.93 19.07m16.14 0A10 10 0 0 0 4.93 4.93"/></svg>
     </div><h3 id="f8-title">Capacity Control</h3><p id="f8-desc">Set max tickets per event or per level, with automatic alerts when you're getting close.</p></div>
@@ -270,8 +271,8 @@ footer{background:var(--navy2);color:rgba(255,255,255,.65);padding:48px 32px 24p
 <!-- CTA -->
 <div class="cta-band">
   <h2 id="cta-band-title">Ready to run a better event?</h2>
-  <p id="cta-band-sub">Start free with a full demo — no credit card required.</p>
-  <a href="/signup.html" class="btn-gold" id="cta-band-btn">Create Your Free Account →</a>
+  <p id="cta-band-sub">Start free with a full demo - no credit card required.</p>
+  <a href="/signup.html" class="btn-gold" id="cta-band-btn">Create Your Free Account</a>
 </div>
 
 <!-- Footer -->
@@ -320,7 +321,7 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
   // Hero
   set('hero-title',   c['home.hero_title'],    true);
   set('hero-subtitle',c['home.hero_subtitle'],  false);
-  set('cta-primary',  c['home.cta_primary'] ? c['home.cta_primary']+' →' : null, false);
+  set('cta-primary',  c['home.cta_primary'] || null, false);
   set('cta-secondary',c['home.cta_secondary'],  false);
 
   // Channels section
@@ -360,7 +361,7 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
   // CTA band
   set('cta-band-title', c['home.cta_band_title'], false);
   set('cta-band-sub',   c['home.cta_band_sub'],   false);
-  set('cta-band-btn',   c['home.cta_band_btn'] ? c['home.cta_band_btn']+' →' : null, false);
+  set('cta-band-btn',   c['home.cta_band_btn'] || null, false);
 
   // ── Customer logos strip ─────────────────────────────────
   (function() {
@@ -392,7 +393,7 @@ fetch('/api/admin/site-content').then(r=>r.json()).then(({ content: c }) => {
       return;
     }
 
-    // Build logos — duplicate for seamless infinite scroll
+    // Build logos - duplicate for seamless infinite scroll
     const makeLogos = () => valid.map(l =>
       `<img src="${l.url}" alt="${(l.name||'').replace(/"/g,'&quot;')}" class="logo-item" title="${(l.name||'').replace(/"/g,'&quot;')}" onerror="this.style.display='none'">`
     ).join('');
@@ -510,7 +511,7 @@ const _pwaDismissed = localStorage.getItem('pwa-dismissed');
 const _pwaInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
 if (!_pwaDismissed && !_pwaInstalled) {
-  // Android / Chrome — capture beforeinstallprompt
+  // Android / Chrome - capture beforeinstallprompt
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
     _pwaPrompt = e;

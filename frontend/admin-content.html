@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin — Site Content</title>
+<title>Admin - Site Content</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -80,6 +80,14 @@ function field(key, label, hint='', tall=false) {
       ? `<textarea id="${id}" style="min-height:${tall===true?70:tall}px;font-size:12px">${esc(val)}</textarea>`
       : `<input id="${id}" value="${esc(val)}" style="font-size:12px">`
     }</div>`;
+}
+
+function secretField(key, label, hint='') {
+  const val = siteContent[key] || '';
+  const id = 'sc-' + key.replace(/[^a-z0-9]/gi,'-');
+  allKeys.push({ key, id });
+  return `<div class="fg"><label style="font-size:12px">${esc(label)} ${hint?`<span class="tip-icon" data-tip="${esc(hint)}">i</span>`:''}
+    </label><input type="password" id="${id}" value="${esc(val)}" style="font-size:12px" autocomplete="off"></div>`;
 }
 
 function sectionTitle(t) { return `<div class="section-title mt20 mb10">${t}</div>`; }
@@ -219,7 +227,7 @@ async function renderSubTab(tab) {
           </button>
         </div>
       </div>
-      <p class="text2 sm mb12">For each step: enter TTS text OR paste a recording URL (.mp3/.wav). Recording overrides TTS. Per-event overrides can be set in Admin → All Events → phone button.</p>
+      <p class="text2 sm mb12">For each step: enter TTS text OR paste a recording URL (.mp3/.wav). Recording overrides TTS. Per-event overrides can be set in Admin All Events phone button.</p>
       ${msgs.map(([key,label]) => {
         const recKey = key+'_recording';
         const textId = 'sc-'+key.replace(/[^a-z0-9]/gi,'-');
@@ -242,7 +250,7 @@ async function renderSubTab(tab) {
             <div class="fg" style="margin:0">
               <label style="font-size:11px">Recording <span style="font-weight:400;color:var(--text3)">(overrides TTS)</span></label>
               <div class="row" style="gap:4px">
-                <input id="${recId}" placeholder="https://... .mp3 or upload →" value="${esc(siteContent[recKey]||'')}" style="font-size:11px;flex:1">
+                <input id="${recId}" placeholder="https://... .mp3 or upload" value="${esc(siteContent[recKey]||'')}" style="font-size:11px;flex:1">
                 <label class="btn btn-sm btn-ghost" style="cursor:pointer;font-size:10px;white-space:nowrap">
                   Upload <input type="file" accept="audio/*" style="display:none" onchange="uploadGlobalAudio(this,'${recId}')">
                 </label>
@@ -316,7 +324,7 @@ async function renderSubTab(tab) {
             <div class="fg" style="margin:0"><label style="font-size:12px">Max Ticket Levels</label><input id="plan-max-levels" type="number" min="1" placeholder="Unlimited"></div>
           </div>
           <div class="fg">
-            <label>Features <span style="font-size:11px;font-weight:400;color:var(--text2)">one per line — shown as bullet points on pricing page</span></label>
+            <label>Features <span style="font-size:11px;font-weight:400;color:var(--text2)">one per line - shown as bullet points on pricing page</span></label>
             <textarea id="plan-features" style="min-height:130px;font-size:12px" placeholder="Online ticket sales&#10;Email ticket delivery&#10;QR code door scanner&#10;Promo codes&#10;Up to 500 attendees"></textarea>
           </div>
           <div class="row mb12" style="gap:10px;align-items:center">
@@ -358,16 +366,31 @@ async function renderSubTab(tab) {
         ${selField('currency','Currency',[['usd','USD ($)'],['ils','ILS (₪)'],['eur','EUR (€)'],['gbp','GBP (£)']])}
       </div>
       ${sectionTitle('SMS/IVR')}
-      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a> → .</p>
+      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a>.</p>
       <div class="form-row">
         ${selField('sms.enabled','SMS Ordering',[['0','Disabled'],['1','Enabled']])}
         ${selField('ivr.enabled','IVR Phone Ordering',[['0','Disabled'],['1','Enabled']])}
-      </div>`;
+      </div>
+      ${sectionTitle('Email Delivery')}
+      <p class="text2 sm mb12">Choose how system emails (tickets, invites, alerts) are sent. Brevo uses their API directly - no server restart needed after saving. Gmail SMTP requires SMTP_USER/SMTP_PASS to be set in the server environment.</p>
+      <div class="form-row">
+        ${selField('mail.provider','Provider',[['gmail','Gmail SMTP (server env vars)'],['brevo','Brevo API']])}
+        ${field('brevo.sender_name','Sender Name','Shown as the "From" name on outgoing emails')}
+      </div>
+      <div class="form-row">
+        ${field('brevo.sender_email','Brevo Sender Email','Must be a verified sender in your Brevo account')}
+        ${secretField('brevo.api_key','Brevo API Key','Found in Brevo under SMTP & API, API Keys')}
+      </div>
+      <div class="row" style="gap:8px;align-items:center">
+        <button class="btn btn-sm" onclick="sendTestEmail()">Send Test Email</button>
+        <span class="xs text2">Save changes above first - the test uses the last saved settings.</span>
+      </div>
+      <div class="xs text2" id="test-email-status" style="margin-top:6px"></div>`;
   }
 
   else if (tab === 'features') {
     area.innerHTML = `
-      <p class="text2 sm mb16">Control which features are available platform-wide. These are global defaults — admins can also override per event or per account.</p>
+      <p class="text2 sm mb16">Control which features are available platform-wide. These are global defaults - admins can also override per event or per account.</p>
       <div id="features-loading" class="text2 sm">Loading…</div>`;
     try {
       const { features } = await fetch('/api/admin/features',{headers:{'Authorization':'Bearer '+Auth.token()}}).then(r=>r.json());
@@ -408,12 +431,12 @@ async function renderSubTab(tab) {
       ['pci.business_address','Business Address','Street, City, State, ZIP'],
       ['pci.business_url','Website URL','e.g. https://mamudem.com'],
       ['pci.acquirer_name','Payment Processor','e.g. Stripe'],
-      ['pci.merchant_id','Stripe Merchant ID','Stripe Dashboard → Settings → Account'],
+      ['pci.merchant_id','Stripe Merchant ID','Stripe Dashboard Settings Account'],
       ['pci.transaction_volume','Annual Card Transactions','e.g. under 1,000'],
       ['pci.asv_vendor','ASV Scan Vendor','e.g. SecurityMetrics, Qualys'],
       ['pci.asv_last_scan','Last ASV Scan Date','YYYY-MM-DD'],
       ['pci.saq_last_filed','Last SAQ-D Filed','YYYY-MM-DD'],
-      ['pci.saq_next_due','Next SAQ-D Due','YYYY-MM-DD — 12 months from last'],
+      ['pci.saq_next_due','Next SAQ-D Due','YYYY-MM-DD - 12 months from last'],
       ['pci.ip_ranges','Server IP Address','Find in Render Dashboard'],
       ['pci.hosting_provider','Hosting Provider','Render.com'],
       ['pci.cde_description','Cardholder Data Environment','Describe how card data flows',true],
@@ -422,7 +445,7 @@ async function renderSubTab(tab) {
     area.innerHTML = `
       <div class="info-box tip mb16" style="font-size:13px;line-height:1.8">
         <strong>SAQ Required: SAQ-D Merchant</strong> (MOTO transactions) &nbsp;·&nbsp; Annual self-assessment &nbsp;·&nbsp; Quarterly ASV scans<br>
-        Card data flow: Customer → Twilio → server RAM → Stripe API → tokenized. Never stored.<br>
+        Card data flow: Customer Twilio server RAM Stripe API tokenized. Never stored.<br>
         <a href="https://listings.pcisecuritystandards.org/documents/PCI-DSS-v4-0-SAQ-D-Merchant.pdf" target="_blank" style="color:var(--navy);font-weight:600">Download SAQ-D Form ↗</a> &nbsp;·&nbsp;
         <a href="https://stripe.com/docs/payments/payment-intents/moto" target="_blank" style="color:var(--navy);font-weight:600">Stripe MOTO Docs ↗</a>
       </div>
@@ -447,6 +470,21 @@ async function renderSubTab(tab) {
   }
 }
 
+async function sendTestEmail() {
+  const statusEl = document.getElementById('test-email-status');
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Sending…';
+  if (statusEl) statusEl.textContent = '';
+  try {
+    const { to } = await api.admin.testEmail();
+    toast(`Test email sent to ${to}`);
+    if (statusEl) { statusEl.textContent = `Sent to ${to}`; statusEl.style.color = 'var(--green)'; }
+  } catch(e) {
+    toast(e.message, 'error');
+    if (statusEl) { statusEl.textContent = e.message; statusEl.style.color = 'var(--red)'; }
+  } finally { btn.disabled = false; btn.textContent = 'Send Test Email'; }
+}
+
 async function saveAll() {
   // Save current tab's visible fields
   const updates = {};
@@ -454,14 +492,12 @@ async function saveAll() {
     const el = document.getElementById(id);
     if (el) updates[key] = el.value;
   }
-  const siteKeys = Object.keys(updates).filter(k =>
-    !k.startsWith('platform_fee') && !k.startsWith('currency') &&
-    !k.startsWith('sms.enabled') && !k.startsWith('ivr.enabled') && !k.startsWith('pci.')
-  );
-  const platformKeys = Object.keys(updates).filter(k =>
+  const isPlatformKey = k =>
     k.startsWith('platform_fee') || k.startsWith('currency') ||
-    k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.')
-  );
+    k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.') ||
+    k.startsWith('mail.') || k.startsWith('brevo.');
+  const siteKeys = Object.keys(updates).filter(k => !isPlatformKey(k));
+  const platformKeys = Object.keys(updates).filter(isPlatformKey);
   const promises = [];
   if (siteKeys.length) promises.push(api.admin.updateSiteContent(Object.fromEntries(siteKeys.map(k=>[k,updates[k]]))));
   if (platformKeys.length) promises.push(api.connect.updateSettings(Object.fromEntries(platformKeys.map(k=>[k,updates[k]]))));
@@ -579,7 +615,7 @@ async function copyPlan(id) {
   try {
     const feats = Array.isArray(p.features)?p.features:(p.features?(() => { try{return JSON.parse(p.features);}catch{return[];} })():[]);
     await api.connect.createPlan({ name:p.name+' (copy)', price_cents:p.price_cents, description:p.description, features:feats, sort_order:p.sort_order, show_on_pricing:0, is_active:0 });
-    toast('Plan copied — edit and enable when ready'); loadPlans();
+    toast('Plan copied - edit and enable when ready'); loadPlans();
   } catch(e) { toast(e.message,'error'); }
 }
 
@@ -612,7 +648,7 @@ async function loadAccountPromos() {
       <thead><tr><th>Code</th><th>Discount</th><th>Expires</th><th>Uses</th><th>Status</th><th></th></tr></thead>
       <tbody>${promos.map(p => {
         const discLabel = p.type === 'percent' ? `${p.value}%` : `$${(p.value/100).toFixed(2)}`;
-        const expires = p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '—';
+        const expires = p.expires_at ? new Date(p.expires_at).toLocaleDateString() : '-';
         const isExpired = p.expires_at && new Date(p.expires_at) < new Date();
         const usesLabel = `${p.uses}${p.max_uses ? '/'+p.max_uses : ''}`;
         const moneyLabel = p.max_money ? ` · $${(p.money_given/100).toFixed(2)}/$${(p.max_money/100).toFixed(2)} off` : '';
@@ -675,7 +711,7 @@ function renderLogoList() {
   const list = document.getElementById('logo-list');
   if (!list) return;
   if (!_logos.length) {
-    list.innerHTML = '<span class="xs text2" style="padding:8px;color:var(--text3)">No logos yet — upload one above</span>';
+    list.innerHTML = '<span class="xs text2" style="padding:8px;color:var(--text3)">No logos yet - upload one above</span>';
     return;
   }
   list.innerHTML = _logos.map((l, i) => `
@@ -746,7 +782,7 @@ async function uploadLogo(input) {
     _logos.push({ name: d.name, url: d.url });
     renderLogoList();
     await saveLogoOrder();
-    toast('Logo added — visible on homepage when toggle is on');
+    toast('Logo added - visible on homepage when toggle is on');
   } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 
@@ -769,7 +805,7 @@ async function uploadGlobalAudio(input, targetFieldId) {
     if (d.error) throw new Error(d.error);
     const field = document.getElementById(targetFieldId);
     if (field) field.value = d.url;
-    toast('Audio uploaded — click Save to apply');
+    toast('Audio uploaded - click Save to apply');
   } catch(e) { toast('Upload failed: ' + e.message, 'error'); }
 }
 
@@ -834,7 +870,7 @@ function speakText(text, voiceKey) {
     toast('Playing: ' + (pick ? pick.name : 'default'));
   }
 
-  // Always wait 150ms after cancel before speaking — Chrome requirement
+  // Always wait 150ms after cancel before speaking - Chrome requirement
   setTimeout(() => {
     if (synth.getVoices().length > 0) {
       doIt();

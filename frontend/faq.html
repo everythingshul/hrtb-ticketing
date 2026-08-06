@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FAQ — Mamudem</title>
-<meta name="description" content="Frequently asked questions about Mamudem — the event ticketing platform for synagogues and community organizations.">
+<title>FAQ - Mamudem</title>
+<meta name="description" content="Frequently asked questions about Mamudem - the event ticketing platform for synagogues and community organizations.">
 <meta name="keywords" content="event ticketing faq, synagogue ticketing questions, how does ticket scanning work, community event software faq">
 <meta name="robots" content="index, follow">
 <meta name="author" content="Mamudem">
@@ -130,17 +130,17 @@ function toggle(el) {
 
 const DEFAULT_FAQS = [
   { q: 'Do I need a credit card to sign up?', a: 'No. You can sign up and explore every feature with a full demo event at no cost. A payment is only required when you create your first real live event.' },
-  { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account — we never touch it.' },
+  { q: 'How does ticket payment processing work?', a: 'You connect your own Stripe account. When guests buy tickets online, the money goes directly into your Stripe account - we never touch it.' },
   { q: 'Can guests buy tickets by phone or SMS?', a: 'Yes! Mamudem supports fully automated IVR phone ordering (guests call a dedicated number and pay by keypad) and SMS text ordering (guests text to buy). Contact us to get a number assigned to your event.' },
   { q: 'Can I import my existing guest list?', a: 'Yes. Upload a CSV or Excel file and the system will import everyone, match any existing records, and optionally email tickets automatically.' },
-  { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance — staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
+  { q: 'How does the door scanner work?', a: 'Any phone or tablet with a camera can scan QR codes. Create a scanner PIN for each entrance - staff open the scanner page on any device. No app download required. Multiple entrances can run simultaneously.' },
   { q: 'Can different entrances admit different ticket types?', a: 'Yes. Each scanner PIN can be restricted to specific ticket levels. Your VIP entrance only admits VIP tickets, and staff always scan through regardless.' },
   { q: 'What is a staff ticket?', a: 'Staff tickets are completely separate from guest tickets. They use a business card-size ID badge PDF, are tracked on their own Staff page, do not count toward capacity, and always scan as Access Granted.' },
   { q: 'Can I set a capacity limit per event?', a: 'Yes. Set a maximum per event or per ticket level, with optional email alerts when you are getting close to selling out. Online sales stop automatically when capacity is reached.' },
-  { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only — you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
+  { q: 'What happens when my event ends?', a: 'Events automatically close 48 hours after the end date you set. A closed event becomes read-only - you can still view all stats and attendee info, but no changes can be made. Admins can reopen any time.' },
   { q: 'Can I run multiple events at the same time?', a: 'Yes, there is no limit. Each event has its own ticket levels, sale page, scanner PINs, promo codes, and attendee list.' },
-  { q: 'What are promo codes?', a: 'Promo codes let you offer discounts — percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific email addresses. Buyers enter the code at checkout.' },
-  { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data — we never store card numbers anywhere.' },
+  { q: 'What are promo codes?', a: 'Promo codes let you offer discounts - percentage off, fixed dollar amount, expiry date, maximum uses, spending cap, or restriction to specific email addresses. Buyers enter the code at checkout.' },
+  { q: 'Is my data secure?', a: 'Yes. All data is stored on your private server. Passwords are hashed. Stripe handles all payment card data - we never store card numbers anywhere.' },
 ];
 
 function renderFaqs(items) {
@@ -154,7 +154,7 @@ function renderFaqs(items) {
     </div>`).join('');
 }
 
-// Render defaults immediately — no loading state
+// Render defaults immediately - no loading state
 renderFaqs(DEFAULT_FAQS);
 
 // Try to load admin-customized content and overwrite if set

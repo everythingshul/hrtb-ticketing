@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin — All Events</title>
+<title>Admin - All Events</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -36,7 +36,7 @@
 <div id="modal-phone" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-phone')">
   <div class="modal modal-lg">
     <div class="modal-hd">
-      <h2>Phone &amp; SMS/IVR — <span id="ph-event-name"></span></h2>
+      <h2>Phone &amp; SMS/IVR - <span id="ph-event-name"></span></h2>
       <button class="modal-x" onclick="hideModal('modal-phone')">&#x2715;</button>
     </div>
 
@@ -82,7 +82,7 @@
       <div id="ph-buy-confirm" style="display:none;margin-top:14px;padding:14px;background:#f0f7ff;border-radius:var(--r);border:1px solid #b3d4f2">
         <div style="font-size:13px;font-weight:700;margin-bottom:10px">
           Buy: <span id="ph-buying-num" style="font-family:monospace"></span>
-          <span class="text2" style="font-weight:400"> — ~$1.15/month billed to your Twilio account</span>
+          <span class="text2" style="font-weight:400"> - ~$1.15/month billed to your Twilio account</span>
         </div>
         <div class="fg mb10"><label style="font-size:12px">Expiry Date <span class="tip-icon" data-tip="System sends 1-day warning then auto-releases the number and stops billing.">i</span></label>
           <input id="ph-buy-expires" type="date"></div>
@@ -127,7 +127,7 @@
           <label style="font-size:12px">TTS Voice</label>
           <div class="row" style="gap:8px">
             <select id="ph-ivr-voice" style="flex:1">
-              <option value="">— Use global default —</option>
+              <option value="">- Use global default -</option>
               <option value="Polly.Joanna">Joanna (Female, US)</option>
               <option value="Polly.Matthew">Matthew (Male, US)</option>
               <option value="Polly.Amy">Amy (Female, UK)</option>
@@ -208,8 +208,8 @@ function renderEvents() {
     <thead><tr><th>Event</th><th>Account</th><th>Date</th><th>Attendees</th><th>Phone Number</th><th>Status</th><th></th></tr></thead>
     <tbody>${filtered.map(e=>`<tr>
       <td><strong>${esc(e.name)}</strong>${e.is_demo?'<span class="badge" style="background:#e8f4fb;color:#1a6b9a;border:1px solid #b3d4f2;font-size:10px;margin-left:6px">DEMO</span>':''}</td>
-      <td class="text2 sm">${esc(e.account_name||'—')}</td>
-      <td class="text2 sm">${esc(e.date||'—')}</td>
+      <td class="text2 sm">${esc(e.account_name||'-')}</td>
+      <td class="text2 sm">${esc(e.date||'-')}</td>
       <td>${e.attendee_count||0}</td>
       <td>${e.phone_number
         ? `<span style="font-family:monospace;font-size:12px;color:var(--navy)">${esc(e.phone_number)}</span><span class="badge badge-${e.sms_ivr_enabled?'checked':'deactivated'}" style="font-size:9px;margin-left:5px">${e.sms_ivr_enabled?'On':'Off'}</span>`
@@ -408,7 +408,7 @@ function speakPreview(text, voiceKey) {
     toast('Playing: ' + (pick ? pick.name : 'default'));
   }
 
-  // Always wait 150ms after cancel before speaking — Chrome requirement
+  // Always wait 150ms after cancel before speaking - Chrome requirement
   setTimeout(() => {
     if (synth.getVoices().length > 0) {
       doIt();
@@ -474,7 +474,7 @@ async function searchNumbers() {
       <thead><tr><th>Number</th><th>Location</th><th>Cost</th><th></th></tr></thead>
       <tbody>${data.numbers.map(n=>`<tr>
         <td style="font-family:monospace;font-weight:700">${esc(n.phoneNumber)}</td>
-        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'—')}</td>
+        <td class="text2 sm">${esc([n.locality,n.region].filter(Boolean).join(', ')||'-')}</td>
         <td class="text2 sm">${esc(n.monthly_cost||'$1.15')}/mo</td>
         <td><button class="btn btn-sm btn-primary" onclick="selectBuy('${esc(n.phoneNumber)}')">Buy</button></td>
       </tr>`).join('')}</tbody></table></div>`;
@@ -517,7 +517,7 @@ async function loadOwnedNumbers() {
       <tbody>${data.numbers.map(n=>`<tr>
         <td style="font-family:monospace">${esc(n.phoneNumber)}</td>
         <td>${n.configured?'<span class="badge badge-checked" style="font-size:10px">OK</span>':'<span class="badge badge-warn" style="font-size:10px">Not configured</span>'}</td>
-        <td class="text2 sm">${n.assignedEvent ? `<a href="/event-detail.html?id=${n.assignedEvent.id}" target="_blank" style="color:var(--navy)">${esc(n.assignedEvent.name)}</a>` : '—'}</td>
+        <td class="text2 sm">${n.assignedEvent ? `<a href="/event-detail.html?id=${n.assignedEvent.id}" target="_blank" style="color:var(--navy)">${esc(n.assignedEvent.name)}</a>` : '-'}</td>
         <td>${!n.assignedEvent ? `<button class="btn btn-sm" onclick="assignOwned('${esc(n.phoneNumber)}')">Assign Here</button>` : (n.assignedEvent?.id===_phoneEventId?'<span class="badge badge-checked" style="font-size:10px">This event</span>':'')}</td>
       </tr>`).join('')}</tbody></table></div>`;
   } catch(e) { wrap.innerHTML = `<div class="info-box warn">${esc(e.message)}</div>`; }
@@ -546,7 +546,7 @@ async function toggleEventSms() {
   const newVal = !ev?.sms_ivr_enabled;
   try {
     await fetch(`/api/phone/event/${_phoneEventId}/toggle-sms`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${Auth.token()}`},body:JSON.stringify({enabled:newVal})});
-    toast(newVal?'Enabled':'Disabled — number kept');
+    toast(newVal?'Enabled':'Disabled - number kept');
     await load(); updatePhoneStatus();
   } catch(e) { toast(e.message,'error'); }
 }

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Account Transactions — Admin</title>
+<title>Account Transactions - Admin</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -49,15 +49,15 @@ async function load() {
     wrap.innerHTML = `<div class="table-wrap"><table>
       <thead><tr><th>Date</th><th>Account</th><th>Email</th><th>Event</th><th>Amount</th><th>Status</th><th>Stripe PI</th></tr></thead>
       <tbody>${txns.map(t=>`<tr>
-        <td class="xs text2 mono">${t.created_at?.slice(0,16)||'—'}</td>
-        <td><strong>${esc(t.account_name||'—')}</strong></td>
-        <td class="text2 sm">${esc(t.account_email||'—')}</td>
-        <td class="text2 sm">${esc(t.event_name||'—')}</td>
+        <td class="xs text2 mono">${t.created_at?.slice(0,16)||'-'}</td>
+        <td><strong>${esc(t.account_name||'-')}</strong></td>
+        <td class="text2 sm">${esc(t.account_email||'-')}</td>
+        <td class="text2 sm">${esc(t.event_name||'-')}</td>
         <td class="mono"><strong>$${(t.amount_cents/100).toFixed(2)}</strong></td>
         <td><span class="badge badge-${t.status==='paid'?'checked':'warn'}" style="font-size:10px">${esc(t.status)}</span></td>
         <td class="mono xs">${t.stripe_payment_intent_id
           ? `<a href="https://dashboard.stripe.com/payments/${t.stripe_payment_intent_id}" target="_blank" style="color:var(--navy)">${t.stripe_payment_intent_id.slice(0,18)}…</a>`
-          : '—'}</td>
+          : '-'}</td>
       </tr>`).join('')}
       </tbody></table></div>`;
   } catch(e) { wrap.innerHTML = `<div class="info-box warn">Error: ${esc(e.message)}</div>`; }

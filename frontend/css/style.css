@@ -1,4 +1,4 @@
-/* ── Mamudem — Global Styles ── */
+/* ── Mamudem - Global Styles ── */
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -75,6 +75,7 @@ a{color:var(--cyan);text-decoration:none}
 .sb-urole{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.08em}
 .sb-logout{background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:15px;padding:4px 6px;border-radius:6px;margin-left:auto}
 .sb-logout:hover{color:#fff;background:rgba(255,255,255,.1)}
+#sb-toggle:hover{color:#fff;background:rgba(255,255,255,.1)}
 .sb-restricted-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,170,221,.2);color:var(--cyan);border-radius:99px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;margin-top:6px}
 
 /* ── Page header ── */
@@ -290,7 +291,7 @@ tbody tr:hover td{background:var(--bg3)}
 .stat-pill .n{font-family:var(--font-d);font-size:20px;font-weight:800;line-height:1;color:#1a3a6b}
 .stat-pill .l{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3)}
 
-/* Toggle pill — used across all event pages */
+/* Toggle pill - used across all event pages */
 .toggle-pill{position:relative;width:44px;height:24px;flex-shrink:0}
 .toggle-pill input{opacity:0;width:0;height:0;position:absolute}
 .toggle-track{position:absolute;inset:0;background:#ccc;border-radius:12px;cursor:pointer;transition:.2s}

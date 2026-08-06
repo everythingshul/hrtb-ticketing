@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mamudem — Door Check-in</title>
+<title>Mamudem - Door Check-in</title>
 <link rel="stylesheet" href="/css/style.css">
 <style>
   .sb-restricted-badge {
@@ -151,7 +151,7 @@
       <!-- USB scanner status -->
       <div class="usb-bar" id="usb-bar">
         <div class="dot"></div>
-        <span id="usb-label">USB / Bluetooth scanner ready — scan any ticket at any time, even without clicking anything first</span>
+        <span id="usb-label">USB / Bluetooth scanner ready - scan any ticket at any time, even without clicking anything first</span>
       </div>
 
       <!-- Two-column layout -->
@@ -166,7 +166,7 @@
           <!-- Manual ticket ID -->
           <div class="card">
             <div class="section-title" style="margin-bottom:10px"> Ticket ID</div>
-            <p class="sm text2 mb12">Type a ticket ID and press Enter — or just scan with a USB/Bluetooth scanner without clicking anything first.</p>
+            <p class="sm text2 mb12">Type a ticket ID and press Enter - or just scan with a USB/Bluetooth scanner without clicking anything first.</p>
             <div class="row" style="gap:8px">
               <input
                 id="manual-tid"
@@ -185,7 +185,7 @@
           <!-- Name search -->
           <div class="card" id="name-search-card">
             <div class="section-title" style="margin-bottom:10px">Name &amp; Phone Search</div>
-            <p class="sm text2 mb12">Find a guest by name or phone and check them in — useful when they don't have their ticket.</p>
+            <p class="sm text2 mb12">Find a guest by name or phone and check them in - useful when they don't have their ticket.</p>
             <div class="row mb12" style="gap:8px">
               <input
                 id="name-search"
@@ -199,7 +199,7 @@
             <div id="name-results"></div>
           </div>
 
-          <!-- Camera — desktop: below other sections via flex order -->
+          <!-- Camera - desktop: below other sections via flex order -->
           <div class="card" id="camera-card">
             <div class="section-title" style="margin-bottom:10px"> Camera scanner (optional)</div>
             <p class="sm text2 mb12">Use your phone or webcam as a scanner. A USB scanner is faster for high-volume check-in at a PC.</p>
@@ -275,7 +275,7 @@ async function loadStats() {
     allAttendees = attendees;
     // Event-wide checked-in count (accurate across all kiosks)
     checkedInCount = attendees.filter(a => a.status === 'checked').length;
-    // sessionScans is local to this kiosk since login — never reset from server
+    // sessionScans is local to this kiosk since login - never reset from server
     refreshStats();
   } catch {}
 }
@@ -293,7 +293,7 @@ let usbBuffer = '', usbTimer = null;
 
 document.addEventListener('keydown', e => {
   const active = document.activeElement;
-  // If focus is on a real input that the user is typing into, don't intercept —
+  // If focus is on a real input that the user is typing into, don't intercept -
   // UNLESS it's the manual ticket ID box (which we also want to catch Enter on).
   const isUserInput = active.tagName === 'INPUT' && active.id !== 'manual-tid';
   const isTextarea  = active.tagName === 'TEXTAREA';
@@ -327,7 +327,7 @@ function flashUsbBar() {
   document.getElementById('usb-label').textContent = 'Scanner input detected…';
   setTimeout(() => {
     bar.classList.remove('active');
-    document.getElementById('usb-label').textContent = 'USB / Bluetooth scanner ready — scan any ticket at any time, even without clicking anything first';
+    document.getElementById('usb-label').textContent = 'USB / Bluetooth scanner ready - scan any ticket at any time, even without clicking anything first';
   }, 800);
 }
 
@@ -448,7 +448,7 @@ function showResult(data, ticketId) {
             <input id="af-ln" placeholder="Last name *">
           </div>
           <input id="af-ph" placeholder="Phone (optional)">
-          <button class="btn-go" onclick="assignAndCheckIn('${ticketId}')">Assign &amp; Check In →</button>
+          <button class="btn-go" onclick="assignAndCheckIn('${ticketId}')">Assign &amp; Check In</button>
           <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:2px" onclick="document.getElementById('result-area').innerHTML=''">Cancel</button>
         </div>
       </div>`;

@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin — Backup &amp; Restore</title>
+<title>Admin - Backup &amp; Restore</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -33,11 +33,11 @@
     <!-- Backup -->
     <div class="card mb16">
       <div class="section-title mb8">Database Backup</div>
-      <p class="text2 sm mb12">Download a full backup of the database. Store it somewhere safe.</p>
+      <p class="text2 sm mb12">Download a complete snapshot of the database (every table, in one .db file). Store it somewhere safe.</p>
       <button class="btn btn-sm btn-primary" onclick="downloadBackup()">↓ Download Backup</button>
       <input type="file" id="restore-file" accept=".db,.sqlite" style="display:none" onchange="uploadRestore(event)">
       <button class="btn btn-sm" style="margin-left:8px" onclick="document.getElementById('restore-file').click()">↑ Restore from Backup</button>
-      <p class="xs text2 mt8">! Restore will replace ALL current data.</p>
+      <p class="xs text2 mt8">! Restore will replace ALL current data and requires a server restart to take effect. The current database is saved as a safety copy before it's replaced.</p>
     </div>
 
     <!-- Trash -->
@@ -67,7 +67,7 @@ async function loadMaintenance() {
   try {
     const data = await fetch('/api/admin/maintenance', { headers:{'Authorization':`Bearer ${Auth.token()}`} }).then(r=>r.json());
     maintenanceEnabled = data.enabled;
-    document.getElementById('maint-status').textContent = maintenanceEnabled ? 'Currently ON — site showing maintenance page' : 'Currently OFF — site is live';
+    document.getElementById('maint-status').textContent = maintenanceEnabled ? 'Currently ON - site showing maintenance page' : 'Currently OFF - site is live';
     document.getElementById('maint-btn').textContent = maintenanceEnabled ? 'Turn Off' : 'Turn On';
     document.getElementById('maint-btn').className = 'btn btn-sm ' + (maintenanceEnabled ? 'btn-success' : 'btn-danger');
   } catch(e) { document.getElementById('maint-status').textContent = 'Could not check status'; }
@@ -86,12 +86,14 @@ function downloadBackup() { window.location = '/api/admin/backup?token=' + Auth.
 async function uploadRestore(e) {
   const file = e.target.files[0]; e.target.value = '';
   if (!file) return;
-  if (!confirm('! This will REPLACE all current data with the backup. Continue?')) return;
+  if (!confirm('! This will REPLACE all current data with the backup once the server restarts. Continue?')) return;
   const fd = new FormData(); fd.append('backup', file);
   try {
     const h = {'Authorization':`Bearer ${Auth.token()}`};
-    await fetch('/api/admin/restore', { method:'POST', headers:h, body:fd });
-    toast('Restore complete — page will reload'); setTimeout(() => location.reload(), 2000);
+    const res = await fetch('/api/admin/restore', { method:'POST', headers:h, body:fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Restore failed');
+    alert(data.message || 'Backup uploaded. Restart the server for the changes to take effect.');
   } catch(e) { toast(e.message,'error'); }
 }
 
@@ -107,14 +109,14 @@ function trashTab(tab) {
 async function loadTrash() {
   document.getElementById('trash-content').innerHTML = '<div class="text2 sm">Loading…</div>';
   try {
-    const data = await api.admin.getTrash();
-    const items = data[currentTrashTab] || [];
+    const data = await api.admin.getTrash(currentTrashTab);
+    const items = data.items || [];
     if (!items.length) { document.getElementById('trash-content').innerHTML = '<div class="text2 sm">Nothing in trash.</div>'; return; }
     document.getElementById('trash-content').innerHTML = `<div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Deleted</th><th>Actions</th></tr></thead>
       <tbody>${items.map(item=>`<tr>
         <td>${esc(item.name||item.first_name+' '+item.last_name||item.email||item.id)}</td>
-        <td class="text2 sm">${item.deleted_at?new Date(item.deleted_at).toLocaleDateString():'—'}</td>
+        <td class="text2 sm">${item.deleted_at?new Date(item.deleted_at).toLocaleDateString():'-'}</td>
         <td><div class="row" style="gap:4px">
           <button class="btn btn-sm btn-success" onclick="restoreItem('${currentTrashTab}','${item.id}')">Restore</button>
           <button class="btn btn-sm btn-danger" onclick="purgeItem('${currentTrashTab}','${item.id}')">Delete Forever</button>

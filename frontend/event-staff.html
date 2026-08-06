@@ -58,7 +58,7 @@
       </select>
       <select id="bulk-level-select" style="width:140px;font-size:12px;display:none" onchange="bulkChangeLevel(this.value)">
         <option value="">Change level…</option>
-        <option value="__none">— Remove level —</option>
+        <option value="__none">- Remove level -</option>
       </select>
       <button id="bulk-delete-btn" class="btn btn-sm btn-danger" style="display:none" onclick="bulkDelete()">Delete</button>
       <button class="btn btn-sm" onclick="sendAll()">Send All</button>
@@ -103,7 +103,7 @@
   <div class="modal"><div class="modal-hd"><h2>Add Staff Member</h2><button class="modal-x" onclick="hideModal('modal-add')">&#x2715;</button></div>
     <div class="form-row"><div class="fg"><label>First name *</label><input id="a-fn" placeholder="Jane"></div><div class="fg"><label>Last name *</label><input id="a-ln" placeholder="Doe"></div></div>
     <div class="form-row"><div class="fg"><label>Phone</label><input id="a-ph" placeholder="+1 555 000 0000"></div><div class="fg"><label>Email</label><input id="a-em" type="email" placeholder="jane@example.com"></div></div>
-    <div class="fg"><label>Staff Level *</label><select id="a-level"><option value="">— Select level —</option></select></div>
+    <div class="fg"><label>Staff Level *</label><select id="a-level"><option value="">- Select level -</option></select></div>
     <div class="modal-ft"><button class="btn" onclick="hideModal('modal-add')">Cancel</button><button class="btn btn-gold" onclick="addStaff()">Add Staff Member</button></div>
   </div>
 </div>
@@ -113,7 +113,7 @@
   <div class="modal"><div class="modal-hd"><h2>Generate Pre-printed Staff Tickets</h2><button class="modal-x" onclick="hideModal('modal-preprint')">&#x2715;</button></div>
     <p class="text2 sm mb16">Creates blank staff passes with unique QR codes. Assign names later by scanning or entering the ticket ID.</p>
     <div class="fg"><label>Number of tickets</label><input id="pp-count" type="number" value="10" min="1" max="500"></div>
-    <div class="fg"><label>Staff Level (optional)</label><select id="pp-level"><option value="">— No level —</option></select></div>
+    <div class="fg"><label>Staff Level (optional)</label><select id="pp-level"><option value="">- No level -</option></select></div>
     <div class="fg"><label>Send to email (optional) <span class="hint" style="display:inline">comma-separated for multiple</span></label><input id="pp-email" placeholder="coordinator@example.com"></div>
     <div class="modal-ft"><button class="btn" onclick="hideModal('modal-preprint')">Cancel</button><button class="btn btn-gold" onclick="doPrint()">Generate Tickets</button></div>
   </div>
@@ -192,9 +192,9 @@
       The file contains people whose phone or email already exists. Choose what to do for each.
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-gold" onclick="setAllOverride('update')">Set All → Update</button>
-      <button class="btn btn-sm btn-success" onclick="setAllOverride('keep')">Set All → Keep</button>
-      <button class="btn btn-sm" style="background:#7c5cbe;color:#fff" onclick="setAllOverride('duplicate')">Set All → Add Duplicate</button>
+      <button class="btn btn-sm btn-gold" onclick="setAllOverride('update')">Set All Update</button>
+      <button class="btn btn-sm btn-success" onclick="setAllOverride('keep')">Set All Keep</button>
+      <button class="btn btn-sm" style="background:#7c5cbe;color:#fff" onclick="setAllOverride('duplicate')">Set All Add Duplicate</button>
     </div>
     <div id="conflict-list" style="max-height:400px;overflow-y:auto"></div>
     <div class="modal-ft">
@@ -215,7 +215,7 @@
     <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
       <div style="margin-bottom:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
       <h3 style="font-size:14px;margin-bottom:4px">Click to select your list</h3>
-      <p style="font-size:12px">.csv or .txt — one ticket ID per row</p>
+      <p style="font-size:12px">.csv or .txt - one ticket ID per row</p>
     </div>
     <input type="file" id="confirm-file-input" accept=".csv,.txt" style="display:none" onchange="processConfirmUpload(event)">
     <div id="confirm-result" style="display:none;margin-top:12px"></div>
@@ -235,8 +235,8 @@
       <div class="fg" style="margin-bottom:0">
         <label>Name/Phone Lookup</label>
         <select id="pin-lookup">
-          <option value="1">Allowed — staff can search by name or phone</option>
-          <option value="0">Disabled — ticket ID or QR only</option>
+          <option value="1">Allowed - staff can search by name or phone</option>
+          <option value="0">Disabled - ticket ID or QR only</option>
         </select>
       </div>
     </div>
@@ -271,9 +271,9 @@ async function load() {
   attendees = data.staff || [];
 
   if (!eventData) { window.location = '/events.html'; return; }
-  document.getElementById('ev-title').textContent = eventData.name + ' — Staff';
+  document.getElementById('ev-title').textContent = eventData.name + ' - Staff';
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-  document.title = `Staff — ${eventData.name}`;
+  document.title = `Staff - ${eventData.name}`;
   localStorage.setItem('hrtb_current_event_name', eventData.name);
   renderSidebar();
 
@@ -282,7 +282,7 @@ async function load() {
   lf.innerHTML = '<option value="">All levels</option><option value="__none">No level</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
 
   const bls = document.getElementById('bulk-level-select');
-  bls.innerHTML = '<option value="">Change level…</option><option value="__none">— Remove level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  bls.innerHTML = '<option value="">Change level…</option><option value="__none">- Remove level -</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
 
   renderStats(); filterTable();
 }
@@ -361,9 +361,9 @@ function renderTable() {
       return `<tr class="${selected.has(a.id)?'selected-row':''}">
         <td><input type="checkbox" ${selected.has(a.id)?'checked':''} onchange="toggleOne('${a.id}',this)"></td>
         <td style="white-space:nowrap"><strong>${esc(a.first_name||'')} ${esc(a.last_name||'')}</strong></td>
-        <td class="text2 mono" style="font-size:12px">${esc(a.phone||'—')}</td>
-        <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'—')}</td>
-        <td>${lvl ? `<span class="badge" style="background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44;font-size:11px">${esc(lvl.name)}</span>` : '<span class="text3" style="font-size:11px">—</span>'}</td>
+        <td class="text2 mono" style="font-size:12px">${esc(a.phone||'-')}</td>
+        <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'-')}</td>
+        <td>${lvl ? `<span class="badge" style="background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44;font-size:11px">${esc(lvl.name)}</span>` : '<span class="text3" style="font-size:11px">-</span>'}</td>
         <td><button class="btn btn-sm ${a.confirmed?'btn-success':'btn-ghost'}" style="min-width:88px;font-size:11px" onclick="toggleConfirm('${a.id}',${a.confirmed?0:1})">${a.confirmed?'✓ Activated':'Activate'}</button></td>
         <td>${badgeHTML(a.status)}</td>
         <td class="mono" style="font-size:11px;color:var(--text2)">${esc(a.ticket_id)}</td>
@@ -396,7 +396,7 @@ function applySort() {
 // ── Add ──────────────────────────────────────────────────
 function openAddModal() {
   const sel = document.getElementById('a-level');
-  sel.innerHTML = '<option value="">— Select level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  sel.innerHTML = '<option value="">- Select level -</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   ['a-fn','a-ln','a-ph','a-em'].forEach(id => document.getElementById(id).value = '');
   showModal('modal-add');
 }
@@ -416,7 +416,7 @@ async function addStaff() {
 // ── Pre-print ─────────────────────────────────────────────
 function openPreprint() {
   const sel = document.getElementById('pp-level');
-  if (sel) sel.innerHTML = '<option value="">— No level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+  if (sel) sel.innerHTML = '<option value="">- No level -</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   showModal('modal-preprint');
 }
 async function doPrint() {
@@ -446,7 +446,7 @@ async function lookupTicket() {
   try {
     const { attendee } = await api.staff.lookup(id);
     currentAssignId = id;
-    document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket — fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
+    document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket - fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
     document.getElementById('as-status').className = `info-box mb12 ${attendee.status==='preprint'?'tip':'ok'}`;
     document.getElementById('as-found').style.display='block';
     document.getElementById('as-btn').style.display='inline-flex';
@@ -530,7 +530,7 @@ async function saveEdit() {
 // ── Bulk ops ──────────────────────────────────────────────
 async function bulkDelete() {
   if (!selected.size) return;
-  if (!confirm(`Delete ${selected.size} selected staff? They can be restored from Admin → Trash within 30 days.`)) return;
+  if (!confirm(`Delete ${selected.size} selected staff? They can be restored from Admin Trash within 30 days.`)) return;
   try {
     await api.staff.bulkDelete(eventId, [...selected]);
     attendees = attendees.filter(a => !selected.has(a.id)); selected.clear(); toast('Deleted'); renderStats(); filterTable();
@@ -708,7 +708,7 @@ async function editPinLevels(pinId){
   const current=pin.allowed_levels?JSON.parse(pin.allowed_levels):[];
   const checks=allLevels.map(l=>`<label style="display:flex;align-items:center;gap:6px;margin-bottom:8px;cursor:pointer"><input type="checkbox" value="${l.id}" ${current.includes(l.id)?'checked':''} style="width:15px;height:15px"><span class="badge" style="background:${l.color}22;color:${l.color};border:1px solid ${l.color}44">${esc(l.name)}</span></label>`).join('');
   const div=document.createElement('div');
-  div.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center"><div style="background:#fff;border-radius:12px;padding:24px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)"><h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3><p class="xs text2 mb12">Leave all unchecked = allow all levels</p><div>${checks||'<p class="text2 sm">No levels</p>'}</div><div class="row mt16" style="gap:8px;justify-content:flex-end"><button class="btn" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="this.closest('[style*=fixed]').remove()">Cancel</button><button class="btn btn-gold" onclick="savePinLevels('${pinId}',this)">Save</button></div></div></div>`;
+  div.innerHTML=`<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center"><div style="background:#fff;border-radius:12px;padding:24px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2)"><h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions - ${esc(pin.label)}</h3><p class="xs text2 mb12">Leave all unchecked = allow all levels</p><div>${checks||'<p class="text2 sm">No levels</p>'}</div><div class="row mt16" style="gap:8px;justify-content:flex-end"><button class="btn" style="background:var(--bg3);color:var(--text);border:1px solid var(--border)" onclick="this.closest('[style*=fixed]').remove()">Cancel</button><button class="btn btn-gold" onclick="savePinLevels('${pinId}',this)">Save</button></div></div></div>`;
   document.body.appendChild(div);
 }
 async function savePinLevels(pinId,btn){

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mamudem Tickets — My Profile</title>
+<title>Mamudem Tickets - My Profile</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -120,7 +120,7 @@ async function loadConnectStatus() {
     if (data.connected) {
       wrap.innerHTML = `<div class="info-box ok mb12">Stripe account connected${data.livemode ? ' <strong>(Live mode)</strong>' : ' (Test mode)'}<br><span class="xs text2 mt4" style="display:block">Account: ${esc(data.accountId)}</span></div><button class="btn btn-sm btn-danger" onclick="disconnectStripe()">Disconnect Stripe</button>`;
     } else {
-      wrap.innerHTML = `<div class="info-box tip mb12">No Stripe account connected. Connect your own Stripe to collect ticket payments directly.</div><button class="btn btn-sm btn-primary" onclick="connectStripe()">Connect Stripe Account →</button>`;
+      wrap.innerHTML = `<div class="info-box tip mb12">No Stripe account connected. Connect your own Stripe to collect ticket payments directly.</div><button class="btn btn-sm btn-primary" onclick="connectStripe()">Connect Stripe Account</button>`;
     }
     const params = new URLSearchParams(location.search);
     if (params.get('connect_success')) { toast('Stripe connected!'); history.replaceState({},''  ,'/profile.html'); loadConnectStatus(); }

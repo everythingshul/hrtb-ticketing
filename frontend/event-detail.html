@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EShul Tickets">
 <link rel="icon" type="image/x-icon" href="/favicon.ico"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mamudem Tickets — Event</title>
+<title>Mamudem Tickets - Event</title>
 <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -163,10 +163,10 @@
 
     <div class="section-title mb8">Instructions</div>
     <ol style="padding-left:18px;font-size:13px;color:var(--text2);line-height:2;margin-bottom:16px">
-      <li>Download the template below — it shows all required columns</li>
+      <li>Download the template below - it shows all required columns</li>
       <li>Fill in <strong>First Name</strong> and <strong>Last Name</strong> (required)</li>
       <li>Add Phone, Email, Table, Seat as needed</li>
-      <li id="upload-level-hint" style="display:none">Add a <strong>Ticket Level</strong> column — valid names shown in the template</li>
+      <li id="upload-level-hint" style="display:none">Add a <strong>Ticket Level</strong> column - valid names shown in the template</li>
       <li>Save as <strong>.csv</strong> or <strong>.xlsx</strong> and upload here</li>
     </ol>
 
@@ -210,7 +210,7 @@
     <ol style="padding-left:18px;font-size:13px;color:var(--text2);line-height:2;margin-bottom:16px">
       <li>Download the template below to see the required format</li>
       <li>Fill in the <strong>Ticket ID</strong> column with codes like <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">TKT-ABC12345</code></li>
-      <li>One ticket ID per row — you can add as many rows as needed</li>
+      <li>One ticket ID per row - you can add as many rows as needed</li>
       <li>Upload the completed file here</li>
     </ol>
 
@@ -222,7 +222,7 @@
     <div class="upload-zone" id="confirm-upload-zone" onclick="document.getElementById('confirm-file-input').click()" style="padding:22px">
       <div style="margin-bottom:6px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
       <h3 style="font-size:14px;margin-bottom:4px">Click to select your confirmed list</h3>
-      <p style="font-size:12px">.csv or .txt file — one ticket ID per row</p>
+      <p style="font-size:12px">.csv or .txt file - one ticket ID per row</p>
     </div>
     <input type="file" id="confirm-file-input" accept=".csv,.txt" style="display:none" onchange="processConfirmUpload(event)">
 
@@ -259,7 +259,7 @@
     <div class="form-row"><div class="fg"><label>First name *</label><input id="a-fn" placeholder="Jane"></div><div class="fg"><label>Last name *</label><input id="a-ln" placeholder="Doe"></div></div>
     <div class="form-row"><div class="fg"><label>Phone</label><input id="a-ph" placeholder="+1 555 000 0000"></div><div class="fg"><label>Email</label><input id="a-em" type="email" placeholder="jane@example.com"></div></div>
     <div class="form-row"><div class="fg"><label>Table</label><input id="a-tb" placeholder="A / 1 / VIP"></div><div class="fg"><label>Seat</label><input id="a-st" placeholder="3"></div></div>
-    <div class="fg"><label>Ticket Level</label><select id="a-level"><option value="">— No level —</option></select></div>
+    <div class="fg"><label>Ticket Level</label><select id="a-level"><option value="">- No level -</option></select></div>
     <div class="modal-ft"><button class="btn" onclick="hideModal('modal-add')">Cancel</button><button class="btn btn-gold" onclick="addAttendee()">Add Attendee</button></div>
   </div>
 </div>
@@ -269,7 +269,7 @@
   <div class="modal"><div class="modal-hd"><h2>Generate Pre-printed Tickets</h2><button class="modal-x" onclick="hideModal('modal-preprint')">&#x2715;</button></div>
     <p class="text2 sm mb16">Creates blank tickets with unique QR codes. Assign names later by scanning or entering the ticket ID.</p>
     <div class="fg"><label>Number of tickets</label><input id="pp-count" type="number" value="10" min="1" max="500"></div>
-    <div class="fg"><label>Ticket Level (optional)</label><select id="pp-level"><option value="">— No level —</option></select></div>
+    <div class="fg"><label>Ticket Level (optional)</label><select id="pp-level"><option value="">- No level -</option></select></div>
     <div class="form-row">
       <div class="fg"><label>Table (optional)</label><input id="pp-table" placeholder="A / VIP"><div class="hint">Applied to all tickets</div></div>
       <div class="fg"><label>Starting seat # (optional)</label><input id="pp-seat" type="number" placeholder="1"><div class="hint">Auto-increments: 1, 2, 3…</div></div>
@@ -345,7 +345,7 @@
 <!-- Digest modal -->
 <div id="modal-digest" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-digest')">
   <div class="modal"><div class="modal-hd"><h2>Bulk Email Tickets</h2><button class="modal-x" onclick="hideModal('modal-digest')">&#x2715;</button></div>
-    <p class="text2 sm mb16">Send all selected (or all pending/pre-printed) tickets bundled into one email — perfect for a coordinator to print and distribute.</p>
+    <p class="text2 sm mb16">Send all selected (or all pending/pre-printed) tickets bundled into one email - perfect for a coordinator to print and distribute.</p>
     <div class="fg"><label>Send to * <span class="hint" style="display:inline">separate multiple emails with commas</span></label><input id="dg-email" placeholder="coordinator@example.com, other@example.com"></div>
     <div class="fg"><label>Subject (optional)</label><input id="dg-subject" placeholder="Auto-generated if blank"></div>
     <div class="modal-ft"><button class="btn" onclick="hideModal('modal-digest')">Cancel</button><button class="btn btn-gold" onclick="sendDigest()">Send ↗</button></div>
@@ -359,14 +359,14 @@
     <div class="info-box tip mb12" style="font-size:13px;line-height:1.6">
       <strong>What this means:</strong> The file you're uploading contains people whose phone number or email already exists in your attendee list.<br><br>
       For each duplicate, choose one of three options:<br>
-      &nbsp;&nbsp;<strong style="color:var(--gold)">Update existing</strong> — keep the existing ticket &amp; ID, but update their table/seat/name with the new data from your file.<br>
-      &nbsp;&nbsp;<strong style="color:var(--green)">Keep as-is</strong> — do nothing. Skip this person, keep everything exactly as it was.<br>
-      &nbsp;&nbsp;<strong style="color:#7c5cbe">Add as duplicate</strong> — add them again as a brand new attendee with a new ticket ID, even though they already exist.
+      &nbsp;&nbsp;<strong style="color:var(--gold)">Update existing</strong> - keep the existing ticket &amp; ID, but update their table/seat/name with the new data from your file.<br>
+      &nbsp;&nbsp;<strong style="color:var(--green)">Keep as-is</strong> - do nothing. Skip this person, keep everything exactly as it was.<br>
+      &nbsp;&nbsp;<strong style="color:#7c5cbe">Add as duplicate</strong> - add them again as a brand new attendee with a new ticket ID, even though they already exist.
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn btn-sm btn-gold" onclick="setAllOverride('update')">Set All → Update</button>
-      <button class="btn btn-sm btn-success" onclick="setAllOverride('keep')">Set All → Keep</button>
-      <button class="btn btn-sm" style="background:#7c5cbe;color:#fff" onclick="setAllOverride('duplicate')">Set All → Add as Duplicate</button>
+      <button class="btn btn-sm btn-gold" onclick="setAllOverride('update')">Set All Update</button>
+      <button class="btn btn-sm btn-success" onclick="setAllOverride('keep')">Set All Keep</button>
+      <button class="btn btn-sm" style="background:#7c5cbe;color:#fff" onclick="setAllOverride('duplicate')">Set All Add as Duplicate</button>
     </div>
     <div id="conflict-list" style="max-height:400px;overflow-y:auto"></div>
     <div class="modal-ft">
@@ -384,8 +384,8 @@
     <div class="fg">
       <label>Role</label>
       <select id="inv-role">
-        <option value="member">Member — can view attendees and scan tickets</option>
-        <option value="owner">Owner — full access to this account's events</option>
+        <option value="member">Member - can view attendees and scan tickets</option>
+        <option value="owner">Owner - full access to this account's events</option>
       </select>
       <div class="hint">Members and owners can also use the door scanner with a PIN. Roles only apply to this account.</div>
     </div>
@@ -396,7 +396,7 @@
 <!-- Scanner PINs modal -->
 <div id="modal-pins" class="backdrop" style="display:none" onclick="if(event.target===this)hideModal('modal-pins')">
   <div class="modal modal-lg"><div class="modal-hd"><h2>Door Scanner PINs</h2><button class="modal-x" onclick="hideModal('modal-pins')">&#x2715;</button></div>
-    <p class="text2 sm mb16">Create PINs for door staff to log into the scanner kiosk. Each PIN gives access <strong style="color:var(--text)">only to this event's check-in</strong> — no other pages.</p>
+    <p class="text2 sm mb16">Create PINs for door staff to log into the scanner kiosk. Each PIN gives access <strong style="color:var(--text)">only to this event's check-in</strong> - no other pages.</p>
     <div class="info-box tip mb16">
       Scanner URL: <strong style="color:var(--text);font-family:monospace" id="scanner-url"></strong>
     </div>
@@ -405,8 +405,8 @@
       <div class="fg" style="margin-bottom:0">
         <label>Name/Phone Lookup</label>
         <select id="pin-lookup">
-          <option value="1">Allowed — staff can search by name or phone</option>
-          <option value="0">Disabled — ticket ID or QR only</option>
+          <option value="1">Allowed - staff can search by name or phone</option>
+          <option value="0">Disabled - ticket ID or QR only</option>
         </select>
       </div>
     </div>
@@ -430,9 +430,9 @@ if (!eventId) window.location = '/events.html';
 let eventData = null, attendees = [], filtered = [], selected = new Set(), pendingUpload = null, currentSendId = null, levels = [];
 let pageSize = parseInt(localStorage.getItem('hrtb_page_size_'+location.search) || '25');
 let currentPage = 1;
-let sortCol = null, sortDir = 1; // stable sort state — persists across renders
+let sortCol = null, sortDir = 1; // stable sort state - persists across renders
 
-// Debounced search — runs immediately on first keypress, then waits 200ms
+// Debounced search - runs immediately on first keypress, then waits 200ms
 let _searchTimer = null;
 function debouncedFilter() {
   clearTimeout(_searchTimer);
@@ -444,7 +444,7 @@ async function load() {
   try { attData = await api.attendees.list(eventId); }
   catch(e) {
     if (e.message === 'EVENT_CLOSED') {
-      // Try to fetch event info — admins can still see data
+      // Try to fetch event info - admins can still see data
       try {
         const r = await fetch(`/api/attendees/event/${eventId}`, { headers: { 'Authorization': 'Bearer ' + Auth.token() } });
         const d = await r.json();
@@ -468,7 +468,7 @@ async function load() {
   }
   const att = attData.attendees;
   levels = (attData.levels || []).filter(l => !l.is_staff); // staff levels shown on Staff page only
-  // Event comes directly from the attendees endpoint — works for all roles including admin
+  // Event comes directly from the attendees endpoint - works for all roles including admin
   eventData = attData.event;
   if (!eventData) {
     // Fallback: try events list
@@ -481,7 +481,7 @@ async function load() {
   attendees = att;
   document.getElementById('ev-title').textContent = eventData.name;
   document.getElementById('ev-sub').textContent = [eventData.date, eventData.venue].filter(Boolean).join(' · ');
-  document.title = `Mamudem — ${eventData.name}`;
+  document.title = `Mamudem - ${eventData.name}`;
   localStorage.setItem('hrtb_current_event_name', eventData.name);
   renderSidebar(); // re-render with event name
   const descEl = document.getElementById('ev-desc');
@@ -507,7 +507,7 @@ async function load() {
     const banner = document.createElement('div');
     banner.style.cssText = 'background:#fff8e1;border:1.5px solid #f59e0b;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap';
     banner.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" style="flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <span style="font-size:13px;color:#92400e;flex:1"><strong>Closed event — admin view.</strong> Non-admins cannot access this data.</span>
+      <span style="font-size:13px;color:#92400e;flex:1"><strong>Closed event - admin view.</strong> Non-admins cannot access this data.</span>
       <button class="btn btn-sm btn-success" onclick="reopenEventAdmin()">Reopen Event</button>`;
     const pageEl = document.querySelector('.page');
     pageEl.insertBefore(banner, pageEl.firstChild);
@@ -518,7 +518,7 @@ async function load() {
   // Populate bulk level dropdown with current levels
   const bls = document.getElementById('bulk-level-select');
   if (bls) {
-    bls.innerHTML = '<option value="">Change level…</option><option value="__none">— Remove level —</option>' +
+    bls.innerHTML = '<option value="">Change level…</option><option value="__none">- Remove level -</option>' +
       levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   }
 
@@ -554,7 +554,7 @@ function clearFilters() {
 }
 
 function filterTable() {
-  // Keep level filter options in sync — exclude staff levels
+  // Keep level filter options in sync - exclude staff levels
   const lf = document.getElementById('level-filter');
   if (lf) {
     const cur = lf.value;
@@ -634,14 +634,14 @@ function renderTable() {
       return `<tr>
       <td><input type="checkbox" ${selected.has(a.id)?'checked':''} onchange="toggleOne('${a.id}',this)"></td>
       <td style="white-space:nowrap"><strong>${esc(a.first_name||'')} ${esc(a.last_name||'')}</strong></td>
-      <td class="text2 mono" style="font-size:12px">${esc(a.phone||'—')}</td>
-      <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'—')}</td>
+      <td class="text2 mono" style="font-size:12px">${esc(a.phone||'-')}</td>
+      <td class="text2" style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(a.email||'')}">${esc(a.email||'-')}</td>
       ${showSeating ? `<td class="text2" style="font-size:12px;white-space:nowrap">${a.table_number?`${esc(a.table_number)}${a.seat_number?' / '+esc(a.seat_number):''}`:'-'}</td>` : ''}
-      <td>${lvl?`<span class="badge" style="font-size:11px;background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44">${esc(lvl.name)}</span>`:'<span class="text3" style="font-size:11px">—</span>'}</td>
+      <td>${lvl?`<span class="badge" style="font-size:11px;background:${lvl.color}22;color:${lvl.color};border:1px solid ${lvl.color}44">${esc(lvl.name)}</span>`:'<span class="text3" style="font-size:11px">-</span>'}</td>
       ${showActivation ? `<td><button class="btn btn-sm ${a.confirmed?'btn-success':'btn-ghost'}" style="min-width:88px;font-size:11px" onclick="toggleConfirm('${a.id}',${a.confirmed?0:1})">${a.confirmed?'✓ Activated':'Activate'}</button></td>` : ""}
       <td style="text-align:center">
         ${a.source==='online'
-          ?`<span onclick="showCheckoutInfo('${a.id}')" title="Online — click for details" style="cursor:pointer;display:inline-flex">
+          ?`<span onclick="showCheckoutInfo('${a.id}')" title="Online - click for details" style="cursor:pointer;display:inline-flex">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="var(--green)"/></svg></span>`
           :`<span title="Offline / manual" style="display:inline-flex">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a11 11 0 0 1 10.5-2.56"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1" fill="var(--orange)"/></svg></span>`}
@@ -700,16 +700,16 @@ function toggleOne(id, cb) { cb.checked ? selected.add(id) : selected.delete(id)
 function openPreprint() {
   const sel = document.getElementById('pp-level');
   if (sel) {
-    sel.innerHTML = '<option value="">— No level —</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+    sel.innerHTML = '<option value="">- No level -</option>' + levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   }
   showModal('modal-preprint');
 }
 
 function openAddModal() {
-  // Populate level dropdown — exclude staff levels
+  // Populate level dropdown - exclude staff levels
   const sel = document.getElementById('a-level');
   if (sel) {
-    sel.innerHTML = '<option value="">— No level —</option>' +
+    sel.innerHTML = '<option value="">- No level -</option>' +
       levels.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
   }
   showModal('modal-add');
@@ -732,10 +732,10 @@ async function addAttendee(forceBypass) {
       }).then(r => r.json());
 
       if (!cap.ok) {
-        // Show warning popup — allow bypass
+        // Show warning popup - allow bypass
         const msg = cap.warnings.join('\n') + '\n\nThis ticket will exceed the limit. Add anyway as a bypass?';
         if (!confirm('⚠ Capacity Warning\n\n' + msg)) return;
-        // User confirmed bypass — proceed
+        // User confirmed bypass - proceed
       } else if (cap.warnings.length) {
         toast('⚠ ' + cap.warnings[0], 'info');
       }
@@ -784,7 +784,7 @@ async function handleUpload(ev) {
             <div style="display:flex;gap:8px;align-items:center;font-size:12px;margin-bottom:4px">
               <span style="width:80px;color:var(--text2);font-weight:600">${fieldLabel(f)}</span>
               <span style="background:#fff3cd;padding:2px 6px;border-radius:4px">${esc(v.old||'(empty)')}</span>
-              <span style="color:var(--text3)">→</span>
+              <span style="color:var(--text3)"></span>
               <span style="background:#d4edda;padding:2px 6px;border-radius:4px">${esc(v.new||'(empty)')}</span>
             </div>`).join('')}
           <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
@@ -793,11 +793,11 @@ async function handleUpload(ev) {
                Update existing
             </button>
             <button id="act-keep-${i}" class="btn btn-sm ${c.action==='keep'?'btn-success':''}"
-              onclick="setConflictAction(${i},'keep')" title="Do nothing — skip this person and leave their record exactly as it is">
+              onclick="setConflictAction(${i},'keep')" title="Do nothing - skip this person and leave their record exactly as it is">
               ✓ Keep as-is
             </button>
             <button id="act-duplicate-${i}" class="btn btn-sm ${c.action==='duplicate'?'':''}" style="${c.action==='duplicate'?'background:#7c5cbe;color:#fff':''}"
-              onclick="setConflictAction(${i},'duplicate')" title="Add them again as a second attendee with a brand new ticket ID — they will appear twice in your list">
+              onclick="setConflictAction(${i},'duplicate')" title="Add them again as a second attendee with a brand new ticket ID - they will appear twice in your list">
               + Add as duplicate
             </button>
           </div>
@@ -877,7 +877,7 @@ async function lookupTicket() {
   try {
     const { attendee } = await api.attendees.lookup(id);
     currentAssignId = id;
-    document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket — fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
+    document.getElementById('as-status').textContent = attendee.status==='preprint' ? 'Unassigned ticket - fill in person details below' : `Currently assigned to ${attendee.first_name} ${attendee.last_name}`;
     document.getElementById('as-status').className = `info-box mb12 ${attendee.status==='preprint'?'tip':'ok'}`;
     document.getElementById('as-tb').value = attendee.table_number||'';
     document.getElementById('as-st').value = attendee.seat_number||'';
@@ -1012,10 +1012,10 @@ function showCheckoutInfo(id) {
     </div>
     <div class="section-title mb8">Attendee</div>
     <div class="form-row mb8">
-      <div><span class="xs text2">Name</span><div>${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div></div>
-      <div><span class="xs text2">Phone</span><div>${esc(a.phone||'—')}</div></div>
+      <div><span class="xs text2">Name</span><div>${esc(a.first_name||'-')} ${esc(a.last_name||'')}</div></div>
+      <div><span class="xs text2">Phone</span><div>${esc(a.phone||'-')}</div></div>
     </div>
-    <div><span class="xs text2">Email</span><div>${esc(a.email||'—')}</div></div>
+    <div><span class="xs text2">Email</span><div>${esc(a.email||'-')}</div></div>
     ${billing.name || billing.address ? `
     <div class="section-title mb8 mt12">Billing</div>
     ${billing.name ? `<div><span class="xs text2">Billing Name</span><div>${esc(billing.name)}</div></div>` : ''}
@@ -1093,7 +1093,7 @@ function preview(id) {
     <div class="ticket-card">
       <div class="tc-head"><div class="tc-brand">Mamudem</div><div class="tc-name">${esc(eventData.name)}</div><div class="tc-sub">${esc(eventData.date||'')} ${eventData.venue?'· '+esc(eventData.venue):''}</div></div>
       <div class="tc-body">
-        <div class="tc-person">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>
+        <div class="tc-person">${esc(a.first_name||'-')} ${esc(a.last_name||'')}</div>
         ${a.phone?`<div class="tc-phone">${esc(a.phone)}</div>`:''}
         <div class="tc-div"></div>
         <div class="tc-seats">
@@ -1118,7 +1118,7 @@ function printSheet() {
   if (!targets.length) { toast('No tickets to print','error'); return; }
   const ev = eventData;
   const win = window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><title>Tickets — ${esc(ev.name)}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.t{border:1.5px solid #ddd;border-radius:11px;overflow:hidden;page-break-inside:avoid;break-inside:avoid}.th{background:#111;color:#fff;padding:12px 15px}.brand{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-bottom:3px}.en{font-size:14px;font-weight:700}.es{font-size:10px;opacity:.5;margin-top:2px}.tb{padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.tn{font-size:14px;font-weight:700}.tp{font-size:10px;color:#888}.seats{display:flex;gap:14px;margin-top:10px}.sl{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#aaa}.sv{font-size:18px;font-weight:700}.qr img{width:88px;height:88px;border-radius:5px}.tf{border-top:1.5px dashed #e8e8e8;margin:0 15px;padding:7px 0;font-size:9px;color:#bbb;font-family:monospace;letter-spacing:.04em}@media print{@page{margin:8mm}}</style></head><body><div class="grid">${targets.map(a=>`<div class="t"><div class="th"><div class="brand">Mamudem</div><div class="en">${esc(ev.name)}</div><div class="es">${esc(ev.date||'')} ${ev.venue?'· '+esc(ev.venue):''}</div></div><div class="tb"><div><div class="tn">${esc(a.first_name||'—')} ${esc(a.last_name||'')}</div>${a.phone?`<div class="tp">${esc(a.phone)}</div>`:''}<div class="seats">${a.table_number?`<div><div class="sl">Table</div><div class="sv">${esc(a.table_number)}</div></div>`:''} ${a.seat_number?`<div><div class="sl">Seat</div><div class="sv">${esc(a.seat_number)}</div></div>`:''}</div></div><div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=176x176&data=${encodeURIComponent(a.ticket_id)}&margin=6"></div></div><div class="tf">${esc(a.ticket_id)}</div></div>`).join('')}</div></body></html>`);
+  win.document.write(`<!DOCTYPE html><html><head><title>Tickets - ${esc(ev.name)}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;background:#fff;padding:16px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.t{border:1.5px solid #ddd;border-radius:11px;overflow:hidden;page-break-inside:avoid;break-inside:avoid}.th{background:#111;color:#fff;padding:12px 15px}.brand{font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.4;margin-bottom:3px}.en{font-size:14px;font-weight:700}.es{font-size:10px;opacity:.5;margin-top:2px}.tb{padding:12px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.tn{font-size:14px;font-weight:700}.tp{font-size:10px;color:#888}.seats{display:flex;gap:14px;margin-top:10px}.sl{font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:#aaa}.sv{font-size:18px;font-weight:700}.qr img{width:88px;height:88px;border-radius:5px}.tf{border-top:1.5px dashed #e8e8e8;margin:0 15px;padding:7px 0;font-size:9px;color:#bbb;font-family:monospace;letter-spacing:.04em}@media print{@page{margin:8mm}}</style></head><body><div class="grid">${targets.map(a=>`<div class="t"><div class="th"><div class="brand">Mamudem</div><div class="en">${esc(ev.name)}</div><div class="es">${esc(ev.date||'')} ${ev.venue?'· '+esc(ev.venue):''}</div></div><div class="tb"><div><div class="tn">${esc(a.first_name||'-')} ${esc(a.last_name||'')}</div>${a.phone?`<div class="tp">${esc(a.phone)}</div>`:''}<div class="seats">${a.table_number?`<div><div class="sl">Table</div><div class="sv">${esc(a.table_number)}</div></div>`:''} ${a.seat_number?`<div><div class="sl">Seat</div><div class="sv">${esc(a.seat_number)}</div></div>`:''}</div></div><div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=176x176&data=${encodeURIComponent(a.ticket_id)}&margin=6"></div></div><div class="tf">${esc(a.ticket_id)}</div></div>`).join('')}</div></body></html>`);
   win.document.close();
   win.onload = () => win.print();
 }
@@ -1132,11 +1132,11 @@ async function sendInvite() {
 
 function doExport() {
   if (filtered.length === attendees.length) {
-    // No filter — use server export
+    // No filter - use server export
     window.open(api.attendees.exportUrl(eventId));
     return;
   }
-  // Filtered — export only the filtered rows as CSV client-side
+  // Filtered - export only the filtered rows as CSV client-side
   const rows = [
     ['Ticket ID','First Name','Last Name','Phone','Email','Table','Seat','Level','Status','Activated','Source','Sent At','Checked In At'],
     ...filtered.map(a => {
@@ -1206,7 +1206,7 @@ async function doUndoUpload() {
   try {
     const r = await api.attendees.undoUpload(eventId, undoBatchId);
     hideUndoBar();
-    toast(`Undone — ${r.removed} removed, ${r.restored} restored`);
+    toast(`Undone - ${r.removed} removed, ${r.restored} restored`);
     await load();
   } catch(e) { toast(e.message, 'error'); }
 }
@@ -1287,7 +1287,7 @@ function renderSalesPanel() {
       </label>
     </div>
     <div class="fg mb12">
-      <label>Sale Image <span class="xs text2">(shown at top of public sale page — PNG or JPG)</span></label>
+      <label>Sale Image <span class="xs text2">(shown at top of public sale page - PNG or JPG)</span></label>
       <div class="row" style="gap:8px">
         <input type="file" id="sale-image-input" accept="image/png,image/jpeg" style="flex:1;margin:0">
         <button class="btn btn-sm btn-gold" onclick="uploadSaleImage()">Upload</button>
@@ -1426,7 +1426,7 @@ function renderLevelsPanel() {
   if (!el) return;
   el.innerHTML = `
     <div class="section-title mb8">Ticket Levels</div>
-    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong> per name — it appears on the ticket badge. Add a description so staff know what each level means.</p>
+    <p class="sm text2 mb12">Create labels like VIP, Gold, Silver. Max <strong>11 characters</strong> per name - it appears on the ticket badge. Add a description so staff know what each level means.</p>
     ${levels.map(l => `
       <div class="row mb8" style="gap:8px;align-items:flex-start;padding:9px 12px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">
         <div style="width:14px;height:14px;border-radius:3px;background:${l.color};flex-shrink:0;margin-top:2px"></div>
@@ -1450,7 +1450,7 @@ function renderLevelsPanel() {
         </div>
       </div>
       <div class="fg mb8">
-        <label>Description <span style="font-weight:400;color:var(--text3)">(optional — shown to staff, not on ticket)</span></label>
+        <label>Description <span style="font-weight:400;color:var(--text3)">(optional - shown to staff, not on ticket)</span></label>
         <input id="new-level-desc" placeholder="e.g. Front row seats, complimentary dinner included">
       </div>
       <button class="btn btn-gold" onclick="addLevel()">+ Add Level</button>
@@ -1602,7 +1602,7 @@ async function editPinLevels(pinId) {
   const box = document.createElement('div');
   box.style.cssText = 'background:#fff;border-radius:12px;padding:24px;min-width:300px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.2)';
   box.innerHTML = `
-    <h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions — ${esc(pin.label)}</h3>
+    <h3 style="margin-bottom:12px;font-size:15px">Edit Level Restrictions - ${esc(pin.label)}</h3>
     <p class="xs text2 mb12">Leave all unchecked to allow all levels</p>
     <div id="edit-lvl-checks">${checks || '<p class="text2 sm">No levels set up for this event yet</p>'}</div>
     <div class="row mt16" style="gap:8px;justify-content:flex-end">

@@ -51,7 +51,7 @@
           <div class="stotal"><span>Total</span><span id="summary-total">$0.00</span></div>
         </div>
         <div id="err-select" class="info-box warn mt12" style="display:none"></div>
-        <button class="btn btn-gold mt16" id="btn-continue" onclick="goToAttendees()" style="display:none">Continue →</button>
+        <button class="btn btn-gold mt16" id="btn-continue" onclick="goToAttendees()" style="display:none">Continue</button>
       </div>
     </div>
 
@@ -67,7 +67,7 @@
         <div id="err-attendees" class="info-box warn mt12" style="display:none"></div>
         <div class="row mt16" style="gap:10px">
           <button class="btn" onclick="goStep('step-select')" style="flex:0 0 100px;background:var(--bg3);color:var(--text);border:1.5px solid var(--border)">← Back</button>
-          <button class="btn btn-gold" style="flex:1" onclick="goToPayment()">Continue to Payment →</button>
+          <button class="btn btn-gold" style="flex:1" onclick="goToPayment()">Continue to Payment</button>
         </div>
       </div>
     </div>
@@ -84,7 +84,7 @@
         <input type="email" id="billing-email" placeholder="customer@example.com" class="mb8" autocomplete="off">
         <div id="payment-element" style="margin-top:4px"></div>
         <div id="err-payment" class="info-box warn mt12" style="display:none"></div>
-        <button class="btn btn-gold mt16" id="pay-btn" onclick="submitPayment()">Charge Card →</button>
+        <button class="btn btn-gold mt16" id="pay-btn" onclick="submitPayment()">Charge Card</button>
         <div class="row mt12" style="justify-content:center">
           <button style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer" onclick="goStep('step-attendees')">← Back</button>
         </div>
@@ -144,9 +144,9 @@ async function load() {
     if (data.error) { document.getElementById('levels-list').innerHTML = `<div class="info-box warn">${esc(data.error)}</div>`; return; }
 
     eventInfo = data;
-    document.getElementById('ev-title').textContent = data.event.name + ' — Sell Ticket';
+    document.getElementById('ev-title').textContent = data.event.name + ' - Sell Ticket';
     document.getElementById('ev-sub').textContent = [data.event.date, data.event.venue].filter(Boolean).join(' · ');
-    document.title = `Sell Ticket — ${data.event.name}`;
+    document.title = `Sell Ticket - ${data.event.name}`;
     localStorage.setItem('hrtb_current_event_name', data.event.name);
     renderSidebar();
 
@@ -154,7 +154,7 @@ async function load() {
     if (data.eventOverLimit) {
       const w = document.getElementById('cap-warning');
       w.style.display = 'block';
-      w.innerHTML = `⚠ This event is over its capacity limit (${data.totalSold}/${data.event.max_tickets}). You can still sell tickets here — they will bypass the online limit.`;
+      w.innerHTML = `⚠ This event is over its capacity limit (${data.totalSold}/${data.event.max_tickets}). You can still sell tickets here - they will bypass the online limit.`;
     }
 
     // Build level rows
@@ -173,7 +173,7 @@ async function load() {
         <div class="li">
           <div style="font-weight:700;font-size:14px"><span class="badge" style="background:${esc(l.color)}22;color:${esc(l.color)};border:1px solid ${esc(l.color)}44">${esc(l.name)}</span>${l.price > 0 ? '' : ' <span class="xs text2">Free</span>'}</div>
           ${l.description ? `<div class="xs text2 mt4">${esc(l.description)}</div>` : ''}
-          ${overLimit ? `<div class="xs" style="color:#d97706;margin-top:3px">⚠ At limit (${l.sold}/${l.max_tickets}) — will bypass</div>` : l.available !== null ? `<div class="xs text2 mt4">${l.available} available</div>` : ''}
+          ${overLimit ? `<div class="xs" style="color:#d97706;margin-top:3px">⚠ At limit (${l.sold}/${l.max_tickets}) - will bypass</div>` : l.available !== null ? `<div class="xs text2 mt4">${l.available} available</div>` : ''}
         </div>
         <div class="lp">${l.price > 0 ? fmt(l.price) : 'Free'}</div>
         <div class="qw">
@@ -211,7 +211,7 @@ function goToAttendees() {
   let html = '';
   for (let i=0; i<attendeePeople.length; i++) {
     const p = attendeePeople[i];
-    html += `<div class="ab"><div class="at">Ticket ${i+1} — <span class="badge" style="background:${esc(p.levelColor)}22;color:${esc(p.levelColor)};border:1px solid ${esc(p.levelColor)}44">${esc(p.levelName)}</span></div>
+    html += `<div class="ab"><div class="at">Ticket ${i+1} - <span class="badge" style="background:${esc(p.levelColor)}22;color:${esc(p.levelColor)};border:1px solid ${esc(p.levelColor)}44">${esc(p.levelName)}</span></div>
       <div class="form-row mb8"><div class="fg" style="margin:0"><label>First Name *</label><input id="fn-${i}" placeholder="First name" autocomplete="off"></div><div class="fg" style="margin:0"><label>Last Name *</label><input id="ln-${i}" placeholder="Last name" autocomplete="off"></div></div>
       <label>Phone <span class="xs text2">(10 digits)</span></label><input type="tel" id="ph-${i}" placeholder="5551234567" maxlength="15"${i>0?' class="cp-ph"':''}>
       <label>Email</label><input type="email" id="em-${i}" placeholder="customer@example.com"${i>0?' class="cp-em"':''}>
@@ -271,7 +271,7 @@ async function loadPaymentElement() {
       body: JSON.stringify({ items, attendees: attendeePeople, email, bypassCapacity })
     }).then(r=>r.json().then(d=>({ok:r.ok,status:r.status,data:d})));
 
-    // Capacity warning — ask to bypass
+    // Capacity warning - ask to bypass
     if (res.status === 409 && res.data.error === 'CAPACITY_WARNING') {
       const msg = res.data.warnings.join('\n');
       if (confirm(`⚠ Capacity Warning\n\n${msg}\n\nSell anyway and bypass the limit?`)) {
@@ -319,7 +319,7 @@ async function submitPayment() {
   if (error) {
     showErr('err-payment', error.message);
     btn.disabled = false;
-    btn.textContent = 'Charge Card →';
+    btn.textContent = 'Charge Card';
   } else if (paymentIntent?.status === 'succeeded') {
     goStep('step-confirm');
     // Poll for fulfillment
