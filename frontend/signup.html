@@ -98,7 +98,7 @@ function validatePhone(input) {
   if (!val) { hint.textContent = ''; return; }
   if (!val.startsWith('+')) { hint.textContent = 'Must start with country code, e.g. +1 (US), +44 (UK), +972 (Israel)'; hint.style.color='var(--warn)'; return; }
   const digits = val.replace(/[^0-9]/g,'').length;
-  if (digits < 7 || digits > 15) { hint.textContent = 'Invalid length - most numbers are 10–15 digits including country code'; hint.style.color='var(--warn)'; return; }
+  if (digits < 7 || digits > 15) { hint.textContent = 'Invalid length - most numbers are 10-15 digits including country code'; hint.style.color='var(--warn)'; return; }
   hint.textContent = 'Looks good!'; hint.style.color='var(--green)';
 }
 
