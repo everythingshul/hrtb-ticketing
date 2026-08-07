@@ -8,7 +8,7 @@ function getSetting(key, fallback = '') {
   catch { return fallback; }
 }
 
-// ── Rate limiter — spacing depends on provider (Gmail throttles hard, Brevo doesn't) ─
+// ── Rate limiter - spacing depends on provider (Gmail throttles hard, Brevo doesn't) ─
 let lastSentAt = 0;
 async function pace(minIntervalMs) {
   const now = Date.now();
@@ -161,7 +161,7 @@ export function digestEmail({ attendees, event }) {
     const url = `${appUrl}/api/attendees/tickets-bulk-pdf?ids=${encodeURIComponent(batch.join(','))}`;
     const label = batches.length === 1
       ? `Download All ${batch.length} Ticket(s) - One PDF`
-      : `Download Tickets ${idx * batchSize + 1}–${idx * batchSize + batch.length} (PDF ${idx + 1} of ${batches.length})`;
+      : `Download Tickets ${idx * batchSize + 1}-${idx * batchSize + batch.length} (PDF ${idx + 1} of ${batches.length})`;
     return `<a href="${url}" style="display:inline-block;background:${NAVY};color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;margin:4px 0">
       ${label}
     </a>`;

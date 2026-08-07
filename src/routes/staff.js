@@ -210,7 +210,7 @@ r.post('/event/:eventId/digest', requireEvent, blockIfClosed, async (req, res) =
     const url = `${appUrl}/api/staff/tickets-bulk-pdf?ids=${encodeURIComponent(batch.join(','))}`;
     const label = batches.length === 1
       ? `Download All ${batch.length} Staff Ticket(s) - One PDF`
-      : `Download Staff Tickets ${idx*batchSize+1}–${idx*batchSize+batch.length} (PDF ${idx+1} of ${batches.length})`;
+      : `Download Staff Tickets ${idx*batchSize+1}-${idx*batchSize+batch.length} (PDF ${idx+1} of ${batches.length})`;
     return `<a href="${url}" style="display:inline-block;background:#1a3a6b;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:700;margin:4px 0">${label}</a>`;
   }).join('<br>');
 
