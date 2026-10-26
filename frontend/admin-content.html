@@ -366,10 +366,13 @@ async function renderSubTab(tab) {
         ${selField('currency','Currency',[['usd','USD ($)'],['ils','ILS (₪)'],['eur','EUR (€)'],['gbp','GBP (£)']])}
       </div>
       ${sectionTitle('SMS/IVR')}
-      <p class="text2 sm mb12">Phone numbers are assigned per-event in <a href="/admin-events.html">All Events</a>.</p>
+      <p class="text2 sm mb12">SMS ordering uses one shared SimpleSender number for the whole platform - organizers set their own keyword per event (Event &gt; Online Sales). Set <code>SMS_API_BASE</code>/<code>SMS_API_KEY</code> as server environment variables (found under Developer &gt; Docs &amp; Keys in the SimpleSender dashboard); point SimpleSender's inbound webhook at <code>/api/phone/sms/inbound</code>. IVR phone calls are on hold and still use per-event Twilio numbers, assigned in <a href="/admin-events.html">All Events</a>.</p>
       <div class="form-row">
         ${selField('sms.enabled','SMS Ordering',[['0','Disabled'],['1','Enabled']])}
         ${selField('ivr.enabled','IVR Phone Ordering',[['0','Disabled'],['1','Enabled']])}
+      </div>
+      <div class="form-row">
+        ${field('sms.own_number','SimpleSender Number','Shown to organizers alongside their keyword, e.g. "Text GALA2026 to 855-599-6232"')}
       </div>
       ${sectionTitle('Email Delivery')}
       <p class="text2 sm mb12">Choose how system emails (tickets, invites, alerts) are sent. Brevo uses their API directly - no server restart needed after saving. Gmail SMTP requires SMTP_USER/SMTP_PASS to be set in the server environment.</p>
@@ -494,7 +497,7 @@ async function saveAll() {
   }
   const isPlatformKey = k =>
     k.startsWith('platform_fee') || k.startsWith('currency') ||
-    k.startsWith('sms.enabled') || k.startsWith('ivr.enabled') || k.startsWith('pci.') ||
+    k.startsWith('sms.') || k.startsWith('ivr.') || k.startsWith('pci.') ||
     k.startsWith('mail.') || k.startsWith('brevo.');
   const siteKeys = Object.keys(updates).filter(k => !isPlatformKey(k));
   const platformKeys = Object.keys(updates).filter(isPlatformKey);

@@ -11,6 +11,7 @@ import db from '../db.js';
 import { sendMail, ticketEmail } from '../services/mail.js';
 import { generateTicketPDF } from '../services/ticketPDF.js';
 import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
+import { sendSmsChecked, isSmsMockMode, logInboundSms } from '../services/simplesender.js';
 
 const r = Router();
 const SESSION_TTL = 15; // minutes
@@ -87,7 +88,7 @@ function activateTicket(rawCode) {
 r.get('/diag', (req, res) => {
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
   const events = db.prepare(`
-    SELECT e.id, e.name, e.phone_number, e.sms_ivr_enabled, e.closed_at, e.deleted_at,
+    SELECT e.id, e.name, e.sms_keyword, e.phone_number, e.sms_ivr_enabled, e.closed_at, e.deleted_at,
            (SELECT COUNT(*) FROM ticket_levels WHERE event_id=e.id AND is_staff=0 AND price>0) as level_count
     FROM events e WHERE e.deleted_at IS NULL ORDER BY e.created_at DESC LIMIT 20
   `).all();
@@ -99,15 +100,18 @@ r.get('/diag', (req, res) => {
     ivr_enabled: ivrEnabled,
     webhook_sms: `${appUrl}/api/phone/sms/inbound`,
     webhook_ivr: `${appUrl}/api/phone/ivr/inbound`,
+    simplesender_configured: !isSmsMockMode(),
     twilio_configured: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
     stripe_configured: !!process.env.STRIPE_SECRET_KEY,
     events: events.map(e => ({
       id: e.id, name: e.name,
+      sms_keyword: e.sms_keyword,
       phone_number: e.phone_number,
       sms_ivr_enabled: e.sms_ivr_enabled,
       is_closed: !!e.closed_at,
       level_count: e.level_count,
-      ready: !!(e.phone_number && e.sms_ivr_enabled && !e.closed_at)
+      sms_ready: !!(e.sms_keyword && !e.closed_at),
+      ivr_ready: !!(e.phone_number && e.sms_ivr_enabled && !e.closed_at) // on hold - still Twilio
     }))
   });
 });
@@ -134,6 +138,32 @@ function getEventByNumber(toNumber) {
     WHERE (e.phone_number=? OR e.phone_number=?) AND e.sms_ivr_enabled=1
       AND e.deleted_at IS NULL AND e.closed_at IS NULL
   `).get(toNumber, normalized);
+  return row || null;
+}
+
+// ── Route SMS to the correct event by keyword ─────────────
+// SMS (via SimpleSender) shares one platform-wide number - instead of each
+// event having its own dedicated number, an organizer sets a keyword and
+// guests text THAT to the shared number to start that event's ticket sale.
+// Tries an exact match on the whole message first (the common case - the
+// keyword is the entire text), then falls back to just the first word, so
+// "GALA2026 please" still works.
+function cleanKeyword(s) {
+  return (s || '').toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function getEventByKeyword(body) {
+  const whole = cleanKeyword(body);
+  const first = cleanKeyword((body || '').trim().split(/\s+/)[0]);
+  if (!whole && !first) return null;
+  const row = db.prepare(`
+    SELECT e.*, a.email as owner_email, a.name as owner_name, a.id as account_id_val
+    FROM events e
+    JOIN accounts a ON a.id = e.account_id
+    WHERE e.sms_keyword IN (?, ?) AND e.sms_keyword IS NOT NULL AND e.sms_keyword != ''
+      AND e.deleted_at IS NULL AND e.closed_at IS NULL
+    ORDER BY (e.sms_keyword = ?) DESC LIMIT 1
+  `).get(whole, first, whole);
   return row || null;
 }
 
@@ -216,11 +246,7 @@ async function fulfillOrder(orderId, piId) {
   return ticketIds;
 }
 
-// ── TwiML helpers ─────────────────────────────────────────
-function twimlMsg(msg) {
-  return `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${msg}</Message></Response>`;
-}
-
+// ── TwiML helpers (IVR/voice only - on hold, still Twilio) ─
 function twimlSay(key, vars = {}, hangup = false, redirect = null, eventId = null) {
   const recording = g(key + '_recording', '', eventId);
   const voice     = g('ivr.tts_voice', 'Polly.Joanna', eventId);
@@ -261,41 +287,69 @@ r.get('/test/:eventId', (req, res) => {
   const ivrEnabled = g('ivr.enabled', '1');
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
   res.json({
-    event: { id: event.id, name: event.name, phone_number: event.phone_number, sms_ivr_enabled: event.sms_ivr_enabled },
+    event: { id: event.id, name: event.name, sms_keyword: event.sms_keyword, phone_number: event.phone_number, sms_ivr_enabled: event.sms_ivr_enabled },
     platform: { sms_enabled: smsEnabled, ivr_enabled: ivrEnabled },
     app_url: appUrl,
     webhook_sms: `${appUrl}/api/phone/sms/inbound`,
     webhook_ivr: `${appUrl}/api/phone/ivr/inbound`,
     levels: levels.map(l => ({ id: l.id, name: l.name, price_cents: l.price, phone_enabled: l.phone_enabled })),
-    ready: !!(event.phone_number && event.sms_ivr_enabled && appUrl && smsEnabled !== '0'),
+    sms_ready: !!(event.sms_keyword && appUrl && smsEnabled !== '0'),
+    ivr_ready: !!(event.phone_number && event.sms_ivr_enabled && appUrl), // on hold - still Twilio
   });
 });
 
-// ── SMS Inbound ───────────────────────────────────────────
-r.post('/sms/inbound', async (req, res) => {
-  const from    = req.body.From || '';
-  const to      = req.body.To   || '';
-  const body    = (req.body.Body || '').trim();
-  const upper   = body.toUpperCase();
+// The one shared SimpleSender number, for organizers to show guests
+// alongside their event's keyword (e.g. "Text GALA2026 to 855-599-6232").
+r.get('/sms/own-number', (req, res) => {
+  res.json({ number: g('sms.own_number', '') });
+});
 
-  console.log('[SMS inbound] From:', from, '| To:', to, '| Body:', body.slice(0,50));
-  console.log('[SMS inbound] Full body keys:', Object.keys(req.body).join(','));
+// ── SMS Inbound (SimpleSender) ─────────────────────────────
+// Point SimpleSender's inbound-message webhook (Developer > Docs & Keys >
+// Webhooks) at POST /api/phone/sms/inbound. Unlike Twilio, SimpleSender
+// doesn't read a TwiML reply out of this response - every reply has to be
+// sent explicitly via sendSmsChecked(), and this route always just acks
+// 200 so the provider doesn't retry. The real payload shape isn't
+// documented, so field names are guessed defensively (same approach as the
+// eCards integration this was adapted from), with one level of nesting in
+// case the provider wraps the message under data/message/payload.
+function parseInboundSms(req) {
+  const b = req.body || {};
+  const nested = b.data || b.message || b.payload || {};
+  const from = b.from || b.From || b.sender || b.msisdn || b.phone || b.source
+    || nested.from || nested.From || nested.sender || nested.msisdn || nested.phone;
+  const body = b.body || b.Body || b.text || b.message || b.content
+    || nested.body || nested.Body || nested.text || nested.content;
+  return { from: from || '', body: typeof body === 'string' ? body.trim() : '' };
+}
+
+r.post('/sms/inbound', async (req, res) => {
+  const { from, body } = parseInboundSms(req);
+  const upper = body.toUpperCase();
+  res.json({ ok: true }); // ack immediately - reply (if any) is sent separately below
+
+  if (!from) {
+    console.warn('[sms] inbound webhook hit with an unrecognized payload shape - logging raw body for review:', JSON.stringify(req.body));
+    return;
+  }
+  console.log('[SMS inbound] From:', from, '| Body:', body.slice(0, 50));
+  logInboundSms(from, body);
+
+  const reply = async (text, meta = {}) => { await sendSmsChecked(from, text, meta); };
 
   const smsEnabled = g('sms.enabled', '1');
-  if (smsEnabled === '0') return res.type('text/xml').send(twimlMsg('SMS ticket ordering is currently unavailable.'));
+  if (smsEnabled === '0') return reply('SMS ticket ordering is currently unavailable.');
 
-  // Try both raw and normalized number to find the event
-  const toNorm = normalizePhone(to);
-  const linkedEvent = getEventByNumber(to) || getEventByNumber(toNorm);
-  console.log('[SMS inbound] linkedEvent:', linkedEvent ? linkedEvent.name : 'NULL', '| tried:', to, toNorm);
+  // Matched only when starting a fresh order (no session yet) - see below.
+  const linkedEvent = getEventByKeyword(body);
 
   // STOP/HELP commands work regardless of session
-  if (['STOP','CANCEL','QUIT','END','UNSUBSCRIBE'].includes(upper)) {
+  if (['STOP', 'CANCEL', 'QUIT', 'END', 'UNSUBSCRIBE'].includes(upper)) {
     clearSession(from);
-    return res.type('text/xml').send(twimlMsg('You have been unsubscribed. Reply START to resubscribe.'));
+    return reply('You have been unsubscribed. Reply START to resubscribe.');
   }
   if (upper === 'HELP' || upper === 'HELP?') {
-    return res.type('text/xml').send(twimlMsg(tmpl('sms.help', { event_name: linkedEvent?.name || 'this event' })));
+    return reply(tmpl('sms.help', { event_name: linkedEvent?.name || 'this event' }));
   }
   if (upper === 'START') {
     // Welcome them back / start fresh
@@ -303,27 +357,28 @@ r.post('/sms/inbound', async (req, res) => {
   }
 
   // Ticket activation - "ACTIVATE" alone asks for the code next message,
-  // or "ACTIVATE ABC12345" activates in one message.
+  // or "ACTIVATE ABC12345" activates in one message. Works regardless of
+  // keyword/event, since a ticket code is looked up globally.
   const words = body.split(/\s+/);
   if (words[0]?.toUpperCase() === 'ACTIVATE') {
     clearSession(from);
     if (words[1]) {
       const result = activateTicket(words[1]);
-      return res.type('text/xml').send(twimlMsg(tmpl(result.key, result.vars)));
+      return reply(tmpl(result.key, result.vars));
     }
     setSession(from, 'activate_code', {});
-    return res.type('text/xml').send(twimlMsg(tmpl('sms.activate_ask_code')));
+    return reply(tmpl('sms.activate_ask_code'));
   }
 
   const session = getSession(from);
 
   try {
-    const reply = await smsStep(from, body, upper, session, linkedEvent);
-    res.type('text/xml').send(twimlMsg(reply));
-  } catch(e) {
+    const replyText = await smsStep(from, body, upper, session, linkedEvent);
+    await reply(replyText, { eventId: session?.data?.eventId || linkedEvent?.id, accountId: session?.account_id || linkedEvent?.account_id });
+  } catch (e) {
     console.error('[SMS inbound]', e.stack || e.message);
     clearSession(from);
-    res.type('text/xml').send(twimlMsg('Sorry, something went wrong. Please try again in a moment.'));
+    await reply('Sorry, something went wrong. Please try again in a moment.');
   }
 });
 
@@ -364,7 +419,7 @@ async function smsStep(from, body, upper, session, linkedEvent) {
     if (isNaN(qty) || qty < 1 || qty > MAX_QTY) return `Please enter a number between 1 and ${MAX_QTY}.`;
     // Check phone capacity for this level
     const cap = checkPhoneCapacity(data.eventId, data.levelId, qty);
-    if (cap.blocked) { clearSession(from); return cap.reason + ' Text an event code to start a new order.'; }
+    if (cap.blocked) { clearSession(from); return cap.reason + ' Text the event keyword to start a new order.'; }
     const total = data.levelPrice * qty;
     setSession(from, 'get_name', { ...data, quantity:qty, totalCents:total }, session.event_slug, session.account_id);
     return tmpl('sms.get_name', { quantity:qty, level_name:data.levelName, total:(total/100).toFixed(2) });

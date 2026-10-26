@@ -193,17 +193,34 @@
 
     </div><!-- end sales-wrap -->
 
-    <!-- Phone & SMS ordering section - always visible -->
-    <div id="phone-ordering-wrap" style="display:none">
-      <div class="mb8 mt4" style="display:flex;align-items:center;gap:8px">
-        <div class="section-badge" style="background:#0d2454">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          Phone &amp; SMS Ordering
+    <!-- SMS ticket ordering - one shared number, routed by keyword -->
+    <div class="mb8 mt4" style="display:flex;align-items:center;gap:8px">
+      <div class="section-badge" style="background:#0d2454">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        SMS Ticket Ordering
+      </div>
+    </div>
+    <div class="card mb22" id="sms-keyword-card">
+      <p class="sm text2 mb12">Guests text a keyword to buy tickets by SMS - a live back-and-forth to pick a level, quantity, and pay, right in the text thread. Set your own keyword below; it only needs to be unique across the platform.</p>
+      <div class="fg mb12">
+        <label>SMS Keyword <span class="xs text2">(letters and numbers only)</span></label>
+        <div class="row" style="gap:8px">
+          <input id="sms-keyword-input" placeholder="GALA2026" style="flex:1;margin:0;text-transform:uppercase;letter-spacing:.05em" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+          <button class="btn btn-sm btn-primary" onclick="saveSmsKeyword()">Save</button>
         </div>
       </div>
-      <div class="card mb22" id="phone-ordering-card">
-        <div id="phone-ordering-body"><div class="text2 sm">Loading…</div></div>
+      <div id="sms-keyword-status"></div>
+    </div>
+
+    <!-- Phone (IVR) ordering - dedicated per-event number, on hold -->
+    <div class="mb8 mt4" style="display:flex;align-items:center;gap:8px">
+      <div class="section-badge" style="background:#0d2454">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:5px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.66-.66a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Phone Ordering (Call-In)
       </div>
+    </div>
+    <div class="card mb22" id="phone-ordering-card">
+      <div id="phone-ordering-body"><div class="text2 sm">Loading…</div></div>
     </div>
 
   </div></main>
@@ -243,6 +260,7 @@ async function load() {
     document.getElementById('no-access').style.display = 'block';
   }
   await loadPhoneOrdering();
+  await loadSmsKeyword();
 }
 
 function renderSettings() {
@@ -524,14 +542,47 @@ function renderPromos() {
 
 load();
 
-// ── Phone & SMS Ordering Section ─────────────────────────
+// ── SMS Keyword Section (SimpleSender, one shared number) ──
+async function loadSmsKeyword() {
+  const input = document.getElementById('sms-keyword-input');
+  const status = document.getElementById('sms-keyword-status');
+  if (!input) return;
+  input.value = eventData?.sms_keyword || '';
+  try {
+    const { number } = await fetch('/api/phone/sms/own-number').then(r => r.json());
+    renderSmsKeywordStatus(number);
+  } catch { renderSmsKeywordStatus(''); }
+}
+
+function renderSmsKeywordStatus(number) {
+  const status = document.getElementById('sms-keyword-status');
+  if (!status) return;
+  const keyword = eventData?.sms_keyword;
+  if (keyword && number) {
+    status.innerHTML = `<div class="info-box ok" style="font-size:12px">Guests text <b>${esc(keyword)}</b> to <b>${esc(number)}</b> to start buying tickets.</div>`;
+  } else if (keyword) {
+    status.innerHTML = `<div class="info-box tip" style="font-size:12px">Keyword is set, but the platform's SMS number hasn't been configured yet - contact an administrator.</div>`;
+  } else {
+    status.innerHTML = '';
+  }
+}
+
+async function saveSmsKeyword() {
+  const keyword = document.getElementById('sms-keyword-input')?.value.trim();
+  try {
+    await api.attendees.updateSalesSettings(eventId, { sms_keyword: keyword });
+    eventData.sms_keyword = keyword.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    toast(keyword ? 'Keyword saved' : 'Keyword removed');
+    loadSmsKeyword();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Phone (IVR) Ordering Section - on hold, still Twilio ──
 async function loadPhoneOrdering() {
   try {
     const ev = eventData;
-    const wrap = document.getElementById('phone-ordering-wrap');
     const body = document.getElementById('phone-ordering-body');
-    if (!wrap || !body) return;
-    wrap.style.display = 'block';
+    if (!body) return;
 
     const hasNumber = !!(ev.phone_number && ev.sms_ivr_enabled);
     const number = ev.phone_number;
@@ -557,22 +608,15 @@ async function loadPhoneOrdering() {
             ${expires ? `<div class="xs text2">Expires: ${expires}</div>` : ''}
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px">
-          <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">SMS</div>
-            <div style="font-size:13px;font-weight:600">Guests text to buy</div>
-            <div class="xs text2 mt4">Customer texts the number conversational checkout card entry ticket emailed</div>
-          </div>
-          <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
-            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">IVR Phone</div>
-            <div style="font-size:13px;font-weight:600">Guests call to buy</div>
-            <div class="xs text2 mt4">Customer calls automated voice menu keypad entry card charged ticket emailed</div>
-          </div>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:12px;border:1px solid var(--border);max-width:260px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:4px">IVR Phone</div>
+          <div style="font-size:13px;font-weight:600">Guests call to buy</div>
+          <div class="xs text2 mt4">Customer calls automated voice menu keypad entry card charged ticket emailed</div>
         </div>
         <div class="info-box tip mt12" style="font-size:12px">Payments go through the platform Stripe account. Tickets are issued the same as online purchases. Card data is never stored.</div>`;
     }
 
-    // Load recent phone orders for this event
+    // Load recent phone/SMS orders for this event
     try {
       const ordersData = await fetch(`/api/phone/orders?eventId=${eventId}`, { headers:{'Authorization':'Bearer '+Auth.token()} }).then(r=>r.json());
       const orders = (ordersData.orders||[]).filter(o=>o.event_id===eventId);

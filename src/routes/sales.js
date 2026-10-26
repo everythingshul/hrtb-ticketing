@@ -531,7 +531,7 @@ r.patch('/settings/:eventId', auth, (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { slug, sale_enabled, expires_at, allow_activation, allow_unconfirmed_checkin, show_seating } = req.body;
+    const { slug, sale_enabled, expires_at, allow_activation, allow_unconfirmed_checkin, show_seating, sms_keyword } = req.body;
 
     if (slug !== undefined) {
       if (ev.slug && req.user.role !== 'admin') {
@@ -542,6 +542,19 @@ r.patch('/settings/:eventId', auth, (req, res) => {
       const existing = db.prepare('SELECT id FROM events WHERE slug=? AND id!=?').get(clean, ev.id);
       if (existing) return res.status(400).json({ error: 'This URL is already taken - choose another' });
       db.prepare('UPDATE events SET slug=? WHERE id=?').run(clean, ev.id);
+    }
+
+    // SMS keyword: what guests text to the platform's one shared SimpleSender
+    // number to start this event's ticket sale (replaces a dedicated number
+    // per event). Self-serve, unlike the old number-assignment flow.
+    if (sms_keyword !== undefined) {
+      const clean = sms_keyword.toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+      if (sms_keyword && !clean) return res.status(400).json({ error: 'Invalid keyword - use letters and numbers only' });
+      if (clean) {
+        const existing = db.prepare('SELECT id FROM events WHERE sms_keyword=? AND id!=?').get(clean, ev.id);
+        if (existing) return res.status(400).json({ error: 'This keyword is already taken - choose another' });
+      }
+      db.prepare('UPDATE events SET sms_keyword=? WHERE id=?').run(clean || null, ev.id);
     }
 
     if (sale_enabled !== undefined) {

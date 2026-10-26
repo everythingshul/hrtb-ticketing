@@ -491,9 +491,9 @@ const smsDefaults = {
   'pci.annual_transactions':'','pci.saq_version':'SAQ-D v4.0',
   'pci.last_assessment_date':'','pci.next_assessment_due':'',
   'pci.asv_vendor':'','pci.last_scan_date':'','pci.next_scan_due':'','pci.notes':'',
-  'sms.welcome':'Welcome to Mamudem! Text an event code to buy tickets, or HELP for help.',
-  'sms.help':'Mamudem: Text an event code to buy. Text CANCEL to start over.',
-  'sms.invalid_code':'Sorry, that event code was not found. Please check and try again.',
+  'sms.welcome':'Welcome to Mamudem! Text the event keyword to buy tickets, or HELP for help.',
+  'sms.help':'Mamudem: Text the event keyword to buy. Text CANCEL to start over.',
+  'sms.invalid_code':'Sorry, that keyword was not recognized. Please check and try again.',
   'sms.no_levels':'Sorry, no tickets are available for this event.',
   'sms.select_level':'{{event_name}}\n{{event_date}}\n\nSelect a ticket level:\n{{levels}}\n\nReply with a number or CANCEL.',
   'sms.select_quantity':'{{level_name}} - ${{price}} each.\nHow many tickets? (1-10)\nReply with a number or CANCEL.',
@@ -557,6 +557,26 @@ try { db.prepare("UPDATE platform_settings SET value='Polly.Matthew' WHERE key='
 // ── Feature locks - admin can lock/unlock any feature per event ─
 try { db.exec("ALTER TABLE events ADD COLUMN features_locked TEXT"); } catch {}   // JSON: {feature:0|1} override map
 try { db.exec("ALTER TABLE accounts ADD COLUMN features_locked TEXT"); } catch {} // JSON: per-account feature overrides
+
+// ── SMS ordering via SimpleSender - one shared platform number, routed by keyword ──
+// Replaces the old "dedicated Twilio number per event" model for SMS specifically
+// (IVR/voice is on hold and keeps its own per-event Twilio numbers, untouched).
+// An event with a keyword set is reachable by texting that keyword to the
+// platform's single SimpleSender number - see src/services/simplesender.js
+// and the SMS routes in src/routes/sms-ivr.js.
+try { db.exec("ALTER TABLE events ADD COLUMN sms_keyword TEXT"); } catch {}
+
+db.exec(`CREATE TABLE IF NOT EXISTS sms_messages (
+  id TEXT PRIMARY KEY,
+  event_id TEXT, account_id TEXT,
+  direction TEXT NOT NULL,   -- 'outbound' | 'inbound'
+  phone TEXT NOT NULL, body TEXT NOT NULL,
+  status TEXT NOT NULL,      -- 'sent' | 'failed' | 'mock' | 'received'
+  error_message TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
+
+try { db.prepare("INSERT OR IGNORE INTO platform_settings (key,value) VALUES ('sms.own_number','')").run(); } catch {} // SimpleSender's shared sending number, shown to organizers so they know what to tell guests to text
 
 // Platform-level feature defaults (admin can disable globally)
 const featureDefaults = {
