@@ -8,6 +8,7 @@ import { v4 as uuid } from 'uuid';
 import Stripe from 'stripe';
 import twilio from 'twilio';
 import db from '../db.js';
+import { auth, adminOnly } from '../middleware/auth.js';
 import { sendMail, ticketEmail } from '../services/mail.js';
 import { generateTicketPDF } from '../services/ticketPDF.js';
 import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
@@ -16,6 +17,14 @@ import { sendSmsChecked, isSmsMockMode, logInboundSms } from '../services/simple
 const r = Router();
 const SESSION_TTL = 15; // minutes
 const MAX_QTY = 10;
+
+// Does this logged-in user manage the given event's account?
+function requireEventOwner(req, res, next) {
+  const ev = db.prepare('SELECT id, account_id FROM events WHERE id=?').get(req.params.id);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+  next();
+}
 
 // ── Platform Stripe ───────────────────────────────────────
 function getPlatformStripe() {
@@ -85,7 +94,7 @@ function activateTicket(rawCode) {
 }
 
 // ── Public diagnostic - hit this URL in browser to verify setup ──────────
-r.get('/diag', (req, res) => {
+r.get('/diag', auth, adminOnly, (req, res) => {
   const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
   const events = db.prepare(`
     SELECT e.id, e.name, e.sms_keyword, e.phone_number, e.sms_ivr_enabled, e.closed_at, e.deleted_at,
@@ -279,7 +288,7 @@ function twimlGather({ textKey, vars = {}, action, numDigits, timeout = 10, fini
 }
 
 // ── Diagnostic: check SMS/IVR setup for an event ──────────
-r.get('/test/:eventId', (req, res) => {
+r.get('/test/:eventId', auth, adminOnly, (req, res) => {
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!event) return res.status(404).json({ error: 'Event not found' });
   const levels = db.prepare("SELECT * FROM ticket_levels WHERE event_id=? AND is_staff=0 AND price>0 ORDER BY created_at").all(event.id);
@@ -661,7 +670,7 @@ r.post('/ivr/cvv', async (req, res) => {
 });
 
 // Toggle SMS/IVR on/off without cancelling the number
-r.post('/event/:id/toggle-sms', (req, res) => {
+r.post('/event/:id/toggle-sms', auth, adminOnly, (req, res) => {
   const { enabled } = req.body;
   const ev = db.prepare('SELECT phone_number FROM events WHERE id=?').get(req.params.id);
   if (!ev?.phone_number) return res.status(400).json({ error: 'No number assigned to this event.' });
@@ -681,7 +690,7 @@ function getTwilioClient() {
 }
 
 // Search available numbers
-r.get('/numbers/search', async (req, res) => {
+r.get('/numbers/search', auth, adminOnly, async (req, res) => {
   try {
     const client = getTwilioClient();
     const { areaCode, country='US', contains, type='tollFree' } = req.query;
@@ -704,7 +713,7 @@ r.get('/numbers/search', async (req, res) => {
 });
 
 // Buy a number - auto-sets webhooks and optionally assigns to event
-r.post('/numbers/purchase', async (req, res) => {
+r.post('/numbers/purchase', auth, adminOnly, async (req, res) => {
   try {
     const { phoneNumber, eventId, expiresAt } = req.body;
     if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber required' });
@@ -725,7 +734,7 @@ r.post('/numbers/purchase', async (req, res) => {
 });
 
 // Release a number back to Twilio
-r.post('/numbers/release', async (req, res) => {
+r.post('/numbers/release', auth, adminOnly, async (req, res) => {
   try {
     const { eventId } = req.body;
     const ev = db.prepare('SELECT phone_number, twilio_sid FROM events WHERE id=?').get(eventId);
@@ -739,7 +748,7 @@ r.post('/numbers/release', async (req, res) => {
 });
 
 // Move a number from one event to another
-r.post('/numbers/move', async (req, res) => {
+r.post('/numbers/move', auth, adminOnly, async (req, res) => {
   const { fromEventId, toEventId } = req.body;
   if (!fromEventId || !toEventId) return res.status(400).json({ error: 'fromEventId and toEventId required' });
   const fromEvent = db.prepare('SELECT * FROM events WHERE id=?').get(fromEventId);
@@ -765,7 +774,7 @@ r.post('/numbers/move', async (req, res) => {
 });
 
 // List all Twilio numbers you own
-r.get('/numbers/owned', async (req, res) => {
+r.get('/numbers/owned', auth, adminOnly, async (req, res) => {
   try {
     const client = getTwilioClient();
     const nums = await client.incomingPhoneNumbers.list({ limit:100 });
@@ -791,7 +800,7 @@ r.get('/numbers/owned', async (req, res) => {
 });
 
 // Release a number by SID (for unassigned numbers)
-r.post('/numbers/release-sid', async (req, res) => {
+r.post('/numbers/release-sid', auth, adminOnly, async (req, res) => {
   try {
     const { sid, phoneNumber } = req.body;
     if (!sid) return res.status(400).json({ error: 'sid required' });
@@ -807,7 +816,7 @@ r.post('/numbers/release-sid', async (req, res) => {
 
 // ── Phone level settings (per-event, which levels to sell and at what caps) ──
 
-r.get('/event/:id/levels', (req, res) => {
+r.get('/event/:id/levels', auth, requireEventOwner, (req, res) => {
   const levels = db.prepare(`
     SELECT tl.*, 
       (SELECT COUNT(*) FROM phone_orders po WHERE po.event_id=? AND po.level_id=tl.id AND po.status='paid') as phone_sold
@@ -816,7 +825,7 @@ r.get('/event/:id/levels', (req, res) => {
   res.json({ levels });
 });
 
-r.patch('/event/:id/level/:levelId/phone', (req, res) => {
+r.patch('/event/:id/level/:levelId/phone', auth, requireEventOwner, (req, res) => {
   const { phone_enabled, phone_max, phone_alert_at } = req.body;
   const ev = db.prepare('SELECT id FROM events WHERE id=?').get(req.params.id);
   if (!ev) return res.status(404).json({ error: 'Event not found' });
@@ -857,14 +866,14 @@ function checkPhoneCapacity(eventId, levelId, quantity = 1) {
   return { ok: true, blocked: false };
 }
 
-r.post('/event/:id/check-capacity', (req, res) => {
+r.post('/event/:id/check-capacity', auth, requireEventOwner, (req, res) => {
   const { levelId, quantity } = req.body;
   res.json(checkPhoneCapacity(req.params.id, levelId, quantity || 1));
 });
 
 // ── Per-event SMS/IVR settings (overrides per event) ─────
 
-r.get('/event/:id/settings', (req, res) => {
+r.get('/event/:id/settings', auth, requireEventOwner, (req, res) => {
   const globalRows = db.prepare('SELECT key,value FROM platform_settings').all();
   const global = Object.fromEntries(globalRows.map(r => [r.key, r.value]));
   const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(req.params.id);
@@ -872,7 +881,7 @@ r.get('/event/:id/settings', (req, res) => {
   res.json({ global, overrides, settings: { ...global, ...overrides } });
 });
 
-r.patch('/event/:id/settings', (req, res) => {
+r.patch('/event/:id/settings', auth, requireEventOwner, (req, res) => {
   const { updates } = req.body;
   if (!updates) return res.status(400).json({ error: 'updates required' });
   const row = db.prepare('SELECT settings FROM event_sms_settings WHERE event_id=?').get(req.params.id);
@@ -886,7 +895,7 @@ r.patch('/event/:id/settings', (req, res) => {
   res.json({ ok: true });
 });
 
-r.delete('/event/:id/settings', (req, res) => {
+r.delete('/event/:id/settings', auth, requireEventOwner, (req, res) => {
   db.prepare('DELETE FROM event_sms_settings WHERE event_id=?').run(req.params.id);
   res.json({ ok: true });
 });
@@ -900,7 +909,7 @@ r.post('/tts-preview', (req, res) => {
 
 // ── Admin: manage event phone numbers ─────────────────────
 // Manual assign (if number was bought outside the portal)
-r.post('/event/:id/assign-number', (req, res) => {
+r.post('/event/:id/assign-number', auth, adminOnly, (req, res) => {
   const { phoneNumber, expiresAt } = req.body;
   if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber required' });
   db.prepare('UPDATE events SET phone_number=?,phone_number_expires=?,phone_number_notified=0,sms_ivr_enabled=1 WHERE id=?')
@@ -910,21 +919,13 @@ r.post('/event/:id/assign-number', (req, res) => {
 
 // ── Per-event phone number management ────────────────────
 
-r.post('/event/:id/remove-number', (req, res) => {
+r.post('/event/:id/remove-number', auth, requireEventOwner, (req, res) => {
   db.prepare('UPDATE events SET phone_number=NULL,phone_number_expires=NULL,sms_ivr_enabled=0,phone_number_notified=0 WHERE id=?').run(req.params.id);
   res.json({ ok: true });
 });
 
-r.post('/event/:id/toggle-sms', (req, res) => {
-  const { enabled } = req.body;
-  const ev = db.prepare('SELECT phone_number FROM events WHERE id=?').get(req.params.id);
-  if (!ev?.phone_number) return res.status(400).json({ error: 'No number assigned to this event.' });
-  db.prepare('UPDATE events SET sms_ivr_enabled=? WHERE id=?').run(enabled ? 1 : 0, req.params.id);
-  res.json({ ok: true, enabled: !!enabled });
-});
-
 // Manual trigger (also runs automatically every 6h via index.js)
-r.post('/check-expiry', async (req, res) => {
+r.post('/check-expiry', auth, adminOnly, async (req, res) => {
   const now  = new Date().toISOString();
   const in24 = new Date(Date.now() + 24*60*60*1000).toISOString();
 
@@ -949,7 +950,21 @@ r.post('/check-expiry', async (req, res) => {
 });
 
 // ── Admin: phone orders log ───────────────────────────────
-r.get('/orders', async (req, res) => {
+r.get('/orders', auth, async (req, res) => {
+  const { eventId } = req.query;
+  if (eventId) {
+    const ev = db.prepare('SELECT account_id FROM events WHERE id=?').get(eventId);
+    if (!ev) return res.status(404).json({ error: 'Event not found' });
+    if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
+    const orders = db.prepare(`SELECT po.*,e.name as event_name,l.name as level_name
+      FROM phone_orders po
+      LEFT JOIN events e ON e.id=po.event_id
+      LEFT JOIN ticket_levels l ON l.id=po.level_id
+      WHERE po.event_id=? ORDER BY po.created_at DESC LIMIT 500`).all(eventId);
+    return res.json({ orders });
+  }
+  // No eventId - a platform-wide dump, admin only
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const orders = db.prepare(`SELECT po.*,e.name as event_name,l.name as level_name
     FROM phone_orders po
     LEFT JOIN events e ON e.id=po.event_id

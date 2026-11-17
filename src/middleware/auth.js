@@ -1,7 +1,15 @@
 import jwt from 'jsonwebtoken';
+import { randomBytes } from 'crypto';
 import db from '../db.js';
 
-export const JWT_SECRET = process.env.JWT_SECRET || 'hrtb-change-this-secret';
+// A hardcoded fallback secret here would be public (this file is on GitHub),
+// so anyone could forge an admin token on any deployment that forgot to set
+// JWT_SECRET. Generate a strong random one per boot instead - worse case is
+// everyone has to log in again after a restart, not a forgeable admin token.
+if (!process.env.JWT_SECRET) {
+  console.warn('[auth] WARNING: JWT_SECRET is not set. Using a random secret for this process - all sessions will be invalidated on restart. Set JWT_SECRET in your environment to avoid this.');
+}
+export const JWT_SECRET = process.env.JWT_SECRET || randomBytes(48).toString('hex');
 
 export function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;

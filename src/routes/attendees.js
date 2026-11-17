@@ -21,6 +21,13 @@ const DESIGNS_DIR = join(getDataDir(), 'designs');
 
 const r = Router();
 
+// Can this logged-in user manage attendees belonging to this event's account?
+// (admin, the account itself, or a member of that account)
+function canAccessAccount(accountId, user) {
+  if (user.role === 'admin' || accountId === user.id) return true;
+  return !!db.prepare('SELECT id FROM account_members WHERE account_id=? AND user_id=?').get(accountId, user.id);
+}
+
 // ── Public endpoints (no auth) ────────────────────────────
 // Ticket PDF download by ticket ID - linked from email
 r.get('/ticket-pdf/:ticketId', async (req, res) => {
@@ -102,7 +109,7 @@ r.post('/activate', (req, res) => {
 
 
 r.use(auth);
-const upload = multer({ dest: '/tmp/hrtb-uploads/' });
+const upload = multer({ dest: '/tmp/hrtb-uploads/', limits: { fileSize: 10 * 1024 * 1024 } });
 // Use memory storage for design uploads - avoids temp dir / EXDEV issues entirely
 const designUpload = multer({
   storage: multer.memoryStorage(),
@@ -373,6 +380,7 @@ r.post('/event/:eventId/bulk-status', requireEvent, blockIfClosed, (req, res) =>
 r.put('/:id', (req, res) => {
   const a = db.prepare('SELECT * FROM attendees WHERE id=?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(a.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const { first_name, last_name, phone, email, table_number, seat_number, status, level_id, confirmed } = req.body;
   db.prepare(`UPDATE attendees SET first_name=?,last_name=?,phone=?,email=?,table_number=?,seat_number=?,status=?,level_id=?,confirmed=?,updated_at=datetime('now') WHERE id=?`)
     .run(first_name??a.first_name, last_name??a.last_name, phone??a.phone, email??a.email, table_number??a.table_number, seat_number??a.seat_number, status??a.status, level_id!==undefined?level_id:a.level_id, confirmed!==undefined?(confirmed?1:0):a.confirmed, a.id);
@@ -383,6 +391,7 @@ r.put('/:id', (req, res) => {
 r.delete('/:id', (req, res) => {
   const a = db.prepare("SELECT * FROM attendees WHERE id=? AND deleted_at IS NULL").get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(a.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   db.prepare("UPDATE attendees SET deleted_at=datetime('now') WHERE id=?").run(a.id);
   res.json({ ok: true });
 });
@@ -395,6 +404,7 @@ r.post('/:id/send', async (req, res) => {
   const toEmail = req.body.email || a.email;
   if (!toEmail) return res.status(400).json({ error: 'No email address provided' });
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(a.event_id);
+  if (!canAccessAccount(event.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const owner = db.prepare('SELECT email, reply_to, can_send_email, role FROM accounts WHERE id=?').get(event.account_id);
   const replyTo = owner?.reply_to || owner?.email || null;
   if (owner?.role !== 'admin' && !owner?.can_send_email) {
@@ -722,6 +732,7 @@ r.delete('/event/:eventId/levels/:id', requireEvent, blockIfClosed, (req, res) =
 r.post('/:id/confirm', (req, res) => {
   const a = db.prepare('SELECT * FROM attendees WHERE id=?').get(req.params.id);
   if (!a) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(a.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const confirmed = req.body.confirmed ? 1 : 0;
   db.prepare('UPDATE attendees SET confirmed=?,updated_at=datetime(\'now\') WHERE id=?').run(confirmed, a.id);
   res.json({ ok: true, confirmed: !!confirmed });

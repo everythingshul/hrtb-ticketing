@@ -64,10 +64,26 @@ if (!existsSync(siteContentPath)) {
   } catch(e) { console.warn('[startup] could not write site_content.json:', e.message); }
 }
 
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*', credentials: true }));
+// credentials:true only matters for cookie-based auth, which this app
+// doesn't use (tokens go in the Authorization header) - dropped so it can't
+// become a real cross-origin hole if cookie auth is ever added later.
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || process.env.APP_URL || '*' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Required for Twilio webhooks (form-encoded)
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 }));
+
+// Baseline security headers - no helmet dependency, just the handful that
+// matter here. CSP is deliberately left alone: this app is many pages of
+// inline <script>, so a real CSP needs a dedicated pass to enumerate every
+// legitimate inline/external source (Stripe.js, Google Sign-In, html5-qrcode,
+// fonts, etc.) without silently breaking checkout, login, or the scanner.
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  next();
+});
 
 initMail();
 
@@ -93,6 +109,7 @@ app.use((req, res, next) => {
 // API routes
 // Stripe webhook needs raw body
 app.use('/api/sales/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/connect/webhook', express.raw({ type: 'application/json' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);

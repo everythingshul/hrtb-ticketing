@@ -267,15 +267,18 @@ r.post('/event/:slug/checkout', auth, async (req, res) => {
 r.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  // Without a signing secret there is no way to tell a real Stripe event
+  // from a forged POST claiming "payment succeeded" for someone else's
+  // pending order - fail closed rather than trusting an unverified body.
+  if (!webhookSecret) {
+    console.error('[sales/webhook] STRIPE_WEBHOOK_SECRET is not set - refusing unverified webhook');
+    return res.status(500).json({ error: 'Webhook not configured' });
+  }
 
   let event;
   try {
-    if (webhookSecret) {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } else {
-      event = req.body;
-    }
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch(e) {
     return res.status(400).json({ error: e.message });
   }
@@ -589,6 +592,8 @@ r.patch('/settings/:eventId/stripe', auth, (req, res) => {
 r.patch('/level/:levelId', auth, (req, res) => {
   const lvl = db.prepare('SELECT * FROM ticket_levels WHERE id=?').get(req.params.levelId);
   if (!lvl) return res.status(404).json({ error: 'Not found' });
+  const lvlEvent = db.prepare('SELECT account_id FROM events WHERE id=?').get(lvl.event_id);
+  if (req.user.role !== 'admin' && lvlEvent?.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   const { price, online_sale } = req.body;
   if (price !== undefined) db.prepare('UPDATE ticket_levels SET price=? WHERE id=?').run(Math.max(0, parseInt(price)||0), lvl.id);
   if (online_sale !== undefined) db.prepare('UPDATE ticket_levels SET online_sale=? WHERE id=?').run(online_sale?1:0, lvl.id);
@@ -611,6 +616,7 @@ r.post('/image/:eventId', auth, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   const DESIGNS_DIR = getDesignsDir();
   try { mkdirSync(DESIGNS_DIR, { recursive: true }); } catch {}
   // Detect extension from mimetype
@@ -631,19 +637,21 @@ r.post('/image/:eventId', auth, upload.single('image'), async (req, res) => {
 
 // Get online orders for event (for admin/user portal)
 r.get('/orders/:eventId', auth, (req, res) => {
+  const ev = db.prepare('SELECT account_id FROM events WHERE id=?').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   const orders = db.prepare(`SELECT * FROM online_orders WHERE event_id=? ORDER BY created_at DESC`).all(req.params.eventId);
   res.json({ orders });
 });
-
-export default r;
 
 // ── Portal sell: get event + levels for portal sale (auth required) ─
 r.get('/portal/:eventId', auth, async (req, res) => {
   const ev = db.prepare('SELECT * FROM events WHERE id=? AND deleted_at IS NULL').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Event not found' });
 
-  // Check account has can_sell_online
+  // Check account has can_sell_online AND owns this event
   if (req.user.role !== 'admin') {
+    if (ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
     const acc = db.prepare('SELECT can_sell_online FROM accounts WHERE id=?').get(req.user.id);
     if (!acc?.can_sell_online) return res.status(403).json({ error: 'Online sales not enabled for your account' });
   }
@@ -675,6 +683,7 @@ r.post('/portal/:eventId/checkout', auth, async (req, res) => {
     if (!ev) return res.status(404).json({ error: 'Event not found' });
 
     if (req.user.role !== 'admin') {
+      if (ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
       const acc = db.prepare('SELECT can_sell_online FROM accounts WHERE id=?').get(req.user.id);
       if (!acc?.can_sell_online) return res.status(403).json({ error: 'Online sales not enabled' });
     }
@@ -805,6 +814,9 @@ r.post('/event/:slug/promo', (req, res) => {
 
 // List promos for event (auth required)
 r.get('/event/:eventId/promos', auth, (req, res) => {
+  const ev = db.prepare('SELECT account_id FROM events WHERE id=?').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   const promos = db.prepare('SELECT * FROM promo_codes WHERE event_id=? ORDER BY created_at DESC').all(req.params.eventId);
   res.json({ promos });
 });
@@ -815,6 +827,7 @@ r.post('/event/:eventId/promos', auth, (req, res) => {
   if (!code || !type || value === undefined) return res.status(400).json({ error: 'code, type, and value required' });
   const ev = db.prepare('SELECT * FROM events WHERE id=?').get(req.params.eventId);
   if (!ev) return res.status(404).json({ error: 'Event not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
 
   const existing = db.prepare('SELECT id FROM promo_codes WHERE event_id=? AND code=?').get(ev.id, code.trim().toUpperCase());
   if (existing) return res.status(400).json({ error: 'Promo code already exists for this event' });
@@ -832,6 +845,9 @@ r.post('/event/:eventId/promos', auth, (req, res) => {
 // Update promo
 r.patch('/event/:eventId/promos/:promoId', auth, (req, res) => {
   const { active, expires_at, max_uses, allowed_emails, max_money, max_total_tickets, max_tickets_per_level } = req.body;
+  const ev = db.prepare('SELECT account_id FROM events WHERE id=?').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   const promo = db.prepare('SELECT * FROM promo_codes WHERE id=? AND event_id=?').get(req.params.promoId, req.params.eventId);
   if (!promo) return res.status(404).json({ error: 'Promo not found' });
   if (active !== undefined) db.prepare('UPDATE promo_codes SET active=? WHERE id=?').run(active?1:0, promo.id);
@@ -846,6 +862,11 @@ r.patch('/event/:eventId/promos/:promoId', auth, (req, res) => {
 
 // Delete promo
 r.delete('/event/:eventId/promos/:promoId', auth, (req, res) => {
+  const ev = db.prepare('SELECT account_id FROM events WHERE id=?').get(req.params.eventId);
+  if (!ev) return res.status(404).json({ error: 'Event not found' });
+  if (req.user.role !== 'admin' && ev.account_id !== req.user.id) return res.status(403).json({ error: 'Access denied' });
   db.prepare('DELETE FROM promo_codes WHERE id=? AND event_id=?').run(req.params.promoId, req.params.eventId);
   res.json({ ok: true });
 });
+
+export default r;

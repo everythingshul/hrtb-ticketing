@@ -375,10 +375,14 @@ r.post('/event-payment/upgrade-confirm', auth, async (req, res) => {
 r.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const secret = process.env.STRIPE_PLATFORM_WEBHOOK_SECRET;
+  if (!secret) {
+    console.error('[connect/webhook] STRIPE_PLATFORM_WEBHOOK_SECRET is not set - refusing unverified webhook');
+    return res.status(500).send('Webhook not configured');
+  }
   let event;
   try {
     const stripe = getPlatformStripe();
-    event = secret ? stripe.webhooks.constructEvent(req.body, sig, secret) : JSON.parse(req.body);
+    event = stripe.webhooks.constructEvent(req.body, sig, secret);
   } catch(e) { return res.status(400).send('Webhook error: ' + e.message); }
   // Handle successful platform payments
   if (event.type === 'payment_intent.succeeded') {

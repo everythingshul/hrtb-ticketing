@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuid } from 'uuid';
@@ -9,9 +10,20 @@ import { OAuth2Client } from 'google-auth-library';
 
 const r = Router();
 
+// The app-wide rate limit (1000 req/15min) is far too loose for credential
+// guessing specifically - this caps password/PIN attempts per IP much
+// tighter without touching routes like /me that every page load hits.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again in a few minutes.' },
+});
+
 // ── Register (first-ever user becomes admin, otherwise invite required) ──
 // ── Public self-signup - creates demo account ─────────────
-r.post('/signup', async (req, res) => {
+r.post('/signup', authLimiter, async (req, res) => {
   try {
     const { name, email, password, first_name, last_name, phone, company } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required' });
@@ -40,7 +52,7 @@ r.post('/signup', async (req, res) => {
   }
 });
 
-r.post('/register', async (req, res) => {
+r.post('/register', authLimiter, async (req, res) => {
   try {
     const { password, token } = req.body;
     if (!password) return res.status(400).json({ error: 'Password required' });
@@ -89,7 +101,7 @@ r.post('/register', async (req, res) => {
 });
 
 // ── Login - detects multiple roles and returns context choices ──
-r.post('/login', async (req, res) => {
+r.post('/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
@@ -191,7 +203,7 @@ r.post('/google', async (req, res) => {
   }
 });
 
-r.post('/pin-login', async (req, res) => {
+r.post('/pin-login', authLimiter, async (req, res) => {
   try {
     const { pin, eventId } = req.body;
     if (!pin) return res.status(400).json({ error: 'PIN required' });

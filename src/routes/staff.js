@@ -12,6 +12,12 @@ import { generateStaffTicketPDF } from '../services/staffTicketPDF.js';
 
 const r = express.Router();
 
+// Can this logged-in user manage staff records belonging to this account?
+function canAccessAccount(accountId, user) {
+  if (user.role === 'admin' || accountId === user.id) return true;
+  return !!db.prepare('SELECT id FROM account_members WHERE account_id=? AND user_id=?').get(accountId, user.id);
+}
+
 const tid = () => 'TKT-' + Math.random().toString(36).substr(2,8).toUpperCase();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10*1024*1024 } });
 
@@ -113,6 +119,7 @@ r.post('/event/:eventId/preprint', requireEvent, blockIfClosed, (req, res) => {
 r.patch('/:id', (req, res) => {
   const s = db.prepare('SELECT * FROM staff WHERE id=? AND deleted_at IS NULL').get(req.params.id);
   if (!s) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(s.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const { first_name, last_name, phone, email, level_id, status, confirmed } = req.body;
   db.prepare(`UPDATE staff SET first_name=?,last_name=?,phone=?,email=?,level_id=?,updated_at=datetime('now') WHERE id=?`)
     .run(first_name??s.first_name, last_name??s.last_name, phone??s.phone, email??s.email, level_id!==undefined?level_id:s.level_id, s.id);
@@ -127,6 +134,7 @@ r.post('/:id/status', (req, res) => {
   const { status } = req.body;
   const s = db.prepare('SELECT * FROM staff WHERE id=? AND deleted_at IS NULL').get(req.params.id);
   if (!s) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(s.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const extra = status === 'checked' ? `,checked_in_at=datetime('now')` : '';
   db.prepare(`UPDATE staff SET status=?${extra},updated_at=datetime('now') WHERE id=?`).run(status, s.id);
   res.json({ ok: true });
@@ -134,8 +142,11 @@ r.post('/:id/status', (req, res) => {
 
 // ── Confirm/activate ─────────────────────────────────────
 r.post('/:id/confirm', (req, res) => {
+  const s = db.prepare('SELECT * FROM staff WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!s) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(s.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const confirmed = req.body.confirmed ? 1 : 0;
-  db.prepare(`UPDATE staff SET confirmed=?,updated_at=datetime('now') WHERE id=?`).run(confirmed, req.params.id);
+  db.prepare(`UPDATE staff SET confirmed=?,updated_at=datetime('now') WHERE id=?`).run(confirmed, s.id);
   res.json({ ok: true, confirmed: !!confirmed });
 });
 
@@ -147,6 +158,7 @@ r.post('/:id/send', async (req, res) => {
   const toEmail = req.body.email || s.email;
   if (!toEmail) return res.status(400).json({ error: 'No email address' });
   const event = db.prepare('SELECT * FROM events WHERE id=?').get(s.event_id);
+  if (!canAccessAccount(event.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
   const owner = db.prepare('SELECT email,reply_to,can_send_email,role FROM accounts WHERE id=?').get(event.account_id);
   if (owner?.role !== 'admin' && !owner?.can_send_email) return res.status(403).json({ error: 'EMAIL_NOT_ALLOWED' });
   try {
@@ -302,7 +314,10 @@ r.post('/event/:eventId/bulk-delete', requireEvent, blockIfClosed, (req, res) =>
 
 // ── Delete single ─────────────────────────────────────────
 r.delete('/:id', (req, res) => {
-  db.prepare(`UPDATE staff SET deleted_at=datetime('now') WHERE id=?`).run(req.params.id);
+  const s = db.prepare('SELECT * FROM staff WHERE id=? AND deleted_at IS NULL').get(req.params.id);
+  if (!s) return res.status(404).json({ error: 'Not found' });
+  if (!canAccessAccount(s.account_id, req.user)) return res.status(403).json({ error: 'Access denied' });
+  db.prepare(`UPDATE staff SET deleted_at=datetime('now') WHERE id=?`).run(s.id);
   res.json({ ok: true });
 });
 
